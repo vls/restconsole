@@ -1,9 +1,10 @@
 {
-    "version": "4.0.2",
+    "version": "4.1.0",
 
-    "name": "REST Console",
+    "name": "__MSG_name_",
     "description": "REST Console is an HTTP Request Visualizer and Constructor tool, helps developers build, debug and test RESTful APIs.",
 
+    "default_locale": "en",
 
     "options_page": "index.html#options",
     "background_page": "background.html",

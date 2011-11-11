@@ -1,8 +1,11 @@
-# REST Console
+REST Console
+============
 
-an HTTP Request Visualizer and Constructor tool, helps developers build, debug and test RESTful APIs.
+REST Console is an HTTP Request Visualizer and Constructor tool, helps developers build, debug and test RESTful APIs.
 
-## Permissions Breakdown:
+
+Permissions Breakdown
+---------------------
 
 * Your tabs and browsing activity: The only access to tabs we need is for launching the oAuth Authorization page to the 3rd party oAuth provider.
 
@@ -11,7 +14,9 @@ an HTTP Request Visualizer and Constructor tool, helps developers build, debug a
 we don't collect any personal data and we don't want access to your data on all websites, we simply have to use that permission so developers can use the App on all urls.
 
 
-## Features:
+Features
+--------
+
 * Syntax highlighting (multiple themes)
 * Custom headers
 * Construct POST or PUT body via raw input
@@ -23,14 +28,18 @@ we don't collect any personal data and we don't want access to your data on all 
 * Keyboard navigation and shortcuts
 * Customizable Interface
 
-## Coming Soon
+Coming Soon
+-----------
 
 * Request History
 * Auto Complete all Fields
 * HAR Support
 * Send Binary Files as Body
 
-## Changelog
+Changelog
+---------
+
+* v4.1.0 oAuth improvements + more
 * v4.0.2 oAuth improvements, Collapsible sections, Clickable Links in Response, UI enhancements, Bug Fixes.
 * v4.0.1 Corrupted images in the previous build now fixed.
 * v4.0.0 Brand New UI, enhanced oAuth, Multiple files upload, HTML Response preview.
@@ -47,9 +56,52 @@ we don't collect any personal data and we don't want access to your data on all 
 * v2.0.0 Revamped Design.
 * v1.0.0 Released!
 
-## Resources
+Versioning
+----------
 
-* Follow us on Twitter: http://twitter.com/restconsole
-* Get the source code: https://github.com/codeinchaos/rest-console
-* Report issues: https://github.com/codeinchaos/rest-console/issues
-* Donate: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS
+REST Console will be maintained under the Semantic Versioning guidelines as much as possible.
+
+Releases will be numbered with the follow format:
+
+`<major>.<minor>.<patch>`
+
+For more information on SemVer, please visit http://semver.org/.
+
+
+Bug tracker
+-----------
+
+Have a bug? Please create an issue on GitHub!
+
+https://github.com/codeinchaos/rest-console/issues
+
+
+Twitter account
+---------------
+
+Keep up to date on announcements and more by following REST Console on Twitter, <a href="http://twitter.com/restconsole">@RESTConsole</a>.
+
+
+Authors
+-------
+
+**Ahmad Nassri**
+
++ http://twitter.com/ahmadnassri
++ http://github.com/ahmadnassri
+
+
+License
+-------
+
+Copyright 2011 Code in Chaos Inc.
+
+Licensed under The MIT License (MIT): http://www.opensource.org/licenses/mit-license.php
+
+
+Donate
+------
+
+Show us you care and help support this project:
+
+https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS

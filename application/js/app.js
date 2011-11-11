@@ -1,3 +1,575 @@
+/**
+ * Template class for Mooml templates
+ */
+var Template = new Class({
+    'Extends': Mooml.Template,
+
+    'initialize': function(code) {
+        this.name = null;
+        this.code = code;
+        this.prepared = false;
+    }
+});
+
+var App = new Class({
+    'Implements': [Events, Mooml.Templates],
+
+    'mimetypes': [
+        '*/*',
+        'application/atom+xml',
+        'application/atomcat+xml',
+        'application/atomserv+xml',
+        'application/beep+xml',
+        'application/bbolin',
+        'application/davmount+xml',
+        'application/docbook+xml',
+        'application/ecmascript',
+        'application/hta',
+        'application/http',
+        'application/javascript',
+        'application/json',
+        'application/msaccess',
+        'application/msword',
+        'application/news-message-id',
+        'application/news-transmission',
+        'application/octet-stream',
+        'application/ogg',
+        'application/pdf',
+        'application/pgp-encrypted',
+        'application/pgp-keys',
+        'application/pgp-signature',
+        'application/postscript',
+        'application/rar',
+        'application/rdf+xml',
+        'application/rss+xml',
+        'application/rtf',
+        'application/sgml',
+        'application/sgml-open-catalog',
+        'application/xhtml+xml',
+        'application/xml',
+        'application/xml-dtd',
+        'application/xml-external-parsed-entity',
+        'application/xspf+xml',
+        'application/zip',
+        'application/vnd.android.package-archive',
+        'application/vnd.google-earth.kml+xml',
+        'application/vnd.google-earth.kmz',
+        'application/vnd.mozilla.xul+xml',
+        'application/vnd.oasis.opendocument.chart',
+        'application/vnd.oasis.opendocument.database',
+        'application/vnd.oasis.opendocument.formula',
+        'application/vnd.oasis.opendocument.graphics',
+        'application/vnd.oasis.opendocument.graphics-template',
+        'application/vnd.oasis.opendocument.image',
+        'application/vnd.oasis.opendocument.presentation',
+        'application/vnd.oasis.opendocument.presentation-template',
+        'application/vnd.oasis.opendocument.spreadsheet',
+        'application/vnd.oasis.opendocument.spreadsheet-template',
+        'application/vnd.oasis.opendocument.text',
+        'application/vnd.oasis.opendocument.text-master',
+        'application/vnd.oasis.opendocument.text-template',
+        'application/vnd.oasis.opendocument.text-web',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+        'application/vnd.openxmlformats-officedocument.presentationml.template',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+        'application/vnd.sun.xml.calc',
+        'application/vnd.sun.xml.calc.template',
+        'application/vnd.sun.xml.draw',
+        'application/vnd.sun.xml.draw.template',
+        'application/vnd.sun.xml.impress',
+        'application/vnd.sun.xml.impress.template',
+        'application/vnd.sun.xml.math',
+        'application/vnd.sun.xml.writer',
+        'application/vnd.sun.xml.writer.global',
+        'application/vnd.sun.xml.writer.template',
+        'application/vnd.wap.sic',
+        'application/vnd.wap.slc',
+        'application/vnd.wap.wbxml',
+        'application/vnd.wap.wmlc',
+        'application/vnd.wap.wmlscriptc',
+        'application/x-7z-compressed',
+        'application/x-bittorrent',
+        'application/x-cab',
+        'application/x-cbr',
+        'application/x-cbz',
+        'application/x-debian-package',
+        'application/x-executable',
+        'application/x-font',
+        'application/x-freemind',
+        'application/x-hdf',
+        'application/x-httpd-php',
+        'application/x-httpd-php-source',
+        'application/x-httpd-php3',
+        'application/x-httpd-php3-preprocessed',
+        'application/x-httpd-php4',
+        'application/x-httpd-php5',
+        'application/x-quicktimeplayer',
+        'application/x-ruby',
+        'application/x-sh',
+        'application/x-shellscript',
+        'application/x-shockwave-flash',
+        'application/x-silverlight',
+        'application/x-stuffit',
+        'application/x-tar',
+        'application/x-www-form-urlencoded',
+        'audio/3gpp',
+        'audio/amr',
+        'audio/basic',
+        'audio/flac',
+        'audio/g.722.1',
+        'audio/midi',
+        'audio/mp4a-latm',
+        'audio/mpa-robust',
+        'audio/mpeg',
+        'audio/mpegurl',
+        'audio/ogg',
+        'audio/tone',
+        'audio/x-aiff',
+        'audio/x-gsm',
+        'audio/x-mpegurl',
+        'audio/x-ms-wma',
+        'audio/x-ms-wax',
+        'audio/x-pn-realaudio-plugin',
+        'audio/x-pn-realaudio',
+        'audio/x-realaudio',
+        'audio/x-scpls',
+        'audio/x-sd2',
+        'audio/x-wav',
+        'image/gif',
+        'image/jpeg',
+        'image/png',
+        'image/svg+xml',
+        'image/tiff',
+        'image/x-canon-cr2',
+        'image/x-canon-crw',
+        'image/x-coreldraw',
+        'image/x-coreldrawpattern',
+        'image/x-coreldrawtemplate',
+        'image/x-corelphotopaint',
+        'image/x-icon',
+        'image/x-photoshop',
+        'image/x-rgb',
+        'multipart/alternative',
+        'multipart/digest',
+        'multipart/encrypted',
+        'multipart/form-data',
+        'multipart/header-set',
+        'multipart/mixed',
+        'multipart/parallel',
+        'multipart/related',
+        'multipart/report',
+        'multipart/signed',
+        'multipart/voice-message',
+        'text/cache-manifest',
+        'text/calendar',
+        'text/css',
+        'text/csv',
+        'text/directory',
+        'text/html',
+        'text/mathml',
+        'text/plain',
+        'text/rfc822-headers',
+        'text/richtext',
+        'text/rtf',
+        'text/tab-separated-values',
+        'text/uri-list',
+        'text/vnd.curl',
+        'text/vnd.wap.si',
+        'text/vnd.wap.sl',
+        'text/vnd.wap.wml',
+        'text/vnd.wap.wmlscript',
+        'text/x-java',
+        'text/x-makefile',
+        'text/x-perl',
+        'text/x-python',
+        'text/x-scala',
+        'text/x-server-parsed-html',
+        'text/x-setext',
+        'text/x-sh',
+        'text/x-vcalendar',
+        'text/x-vcard',
+        'text/xml',
+        'video/3gpp',
+        'video/fli',
+        'video/mpeg',
+        'video/mp4',
+        'video/quicktime',
+        'video/mp4v-es',
+        'video/ogg',
+        'video/x-flv',
+        'video/x-ms-asf',
+        'video/x-ms-wm',
+        'video/x-ms-wmv',
+        'video/x-ms-wmx',
+        'video/x-ms-wvx',
+        'video/x-msvideo'
+    ],
+
+    'charset': ['*',
+        'UTF-8',
+        'ISO-8859-1',
+        'ISO-8859-2',
+        'ISO-8859-3',
+        'ISO-8859-4',
+        'ISO-8859-5',
+        'ISO-8859-6',
+        'ISO-8859-7',
+        'ISO-8859-8',
+        'ISO-8859-9',
+        'ISO-8859-10',
+        'ISO-8859-11',
+        'ISO-8859-12',
+        'ISO-8859-13',
+        'ISO-8859-14',
+        'ISO-8859-15',
+        'ISO-8859-16',
+        'ISO-2022-JP',
+        'ISO-2022-JP-2',
+        'ISO-2022-KR',
+        'ISO-8859-6-E',
+        'ISO-8859-6-I',
+        'ISO-8859-8-E',
+        'ISO-8859-8-I'
+    ],
+
+    'encoding': [
+        'compress',
+        'deflate',
+        'exi',
+        'gzip',
+        'identity',
+        'pack200-gzip',
+        'sdch',
+        'bzip2',
+        'peerdist'
+    ],
+
+    'methods': [
+        'HEAD',
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'TRACE',
+        'OPTIONS',
+        'CONNET',
+        'PATCH'
+    ],
+
+    'languages': [
+        ['aa', 'Afar'],
+        ['ab', 'Abkhazian'],
+        ['af', 'Afrikaans'],
+        ['am', 'Amharic'],
+        ['ar', 'Arabic'],
+        ['as', 'Assamese'],
+        ['ay', 'Aymara'],
+        ['az', 'Azerbaijani'],
+        ['ba', 'Bashkir'],
+        ['be', 'Byelorussian'],
+        ['bg', 'Bulgarian'],
+        ['bh', 'Bihari'],
+        ['bi', 'Bislama'],
+        ['bn', 'Bengali; Bangla'],
+        ['bo', 'Tibetan'],
+        ['br', 'Breton'],
+        ['ca', 'Catalan'],
+        ['co', 'Corsican'],
+        ['cs', 'Czech'],
+        ['cy', 'Welsh'],
+        ['da', 'Danish'],
+        ['de', 'German'],
+        ['dz', 'Bhutani'],
+        ['el', 'Greek'],
+        ['en', 'English'],
+        ['eo', 'Esperanto'],
+        ['es', 'Spanish'],
+        ['et', 'Estonian'],
+        ['eu', 'Basque'],
+        ['fa', 'Persian'],
+        ['fi', 'Finnish'],
+        ['fj', 'Fiji'],
+        ['fo', 'Faroese'],
+        ['fr', 'French'],
+        ['fy', 'Frisian'],
+        ['ga', 'Irish'],
+        ['gd', 'Scots Gaelic'],
+        ['gl', 'Galician'],
+        ['gn', 'Guarani'],
+        ['gu', 'Gujarati'],
+        ['ha', 'Hausa'],
+        ['he', 'Hebrew (formerly iw)'],
+        ['hi', 'Hindi'],
+        ['hr', 'Croatian'],
+        ['hu', 'Hungarian'],
+        ['hy', 'Armenian'],
+        ['ia', 'Interlingua'],
+        ['id', 'Indonesian (formerly in)'],
+        ['ie', 'Interlingue'],
+        ['ik', 'Inupiak'],
+        ['is', 'Icelandic'],
+        ['it', 'Italian'],
+        ['iu', 'Inuktitut'],
+        ['ja', 'Japanese'],
+        ['jw', 'Javanese'],
+        ['ka', 'Georgian'],
+        ['kk', 'Kazakh'],
+        ['kl', 'Greenlandic'],
+        ['km', 'Cambodian'],
+        ['kn', 'Kannada'],
+        ['ko', 'Korean'],
+        ['ks', 'Kashmiri'],
+        ['ku', 'Kurdish'],
+        ['ky', 'Kirghiz'],
+        ['la', 'Latin'],
+        ['ln', 'Lingala'],
+        ['lo', 'Laothian'],
+        ['lt', 'Lithuanian'],
+        ['lv', 'Latvian, Lettish'],
+        ['mg', 'Malagasy'],
+        ['mi', 'Maori'],
+        ['mk', 'Macedonian'],
+        ['ml', 'Malayalam'],
+        ['mn', 'Mongolian'],
+        ['mo', 'Moldavian'],
+        ['mr', 'Marathi'],
+        ['ms', 'Malay'],
+        ['mt', 'Maltese'],
+        ['my', 'Burmese'],
+        ['na', 'Nauru'],
+        ['ne', 'Nepali'],
+        ['nl', 'Dutch'],
+        ['no', 'Norwegian'],
+        ['oc', 'Occitan'],
+        ['om', '(Afan) Oromo'],
+        ['or', 'Oriya'],
+        ['pa', 'Punjabi'],
+        ['pl', 'Polish'],
+        ['ps', 'Pashto, Pushto'],
+        ['pt', 'Portuguese'],
+        ['qu', 'Quechua'],
+        ['rm', 'Rhaeto-Romance'],
+        ['rn', 'Kirundi'],
+        ['ro', 'Romanian'],
+        ['ru', 'Russian'],
+        ['rw', 'Kinyarwanda'],
+        ['sa', 'Sanskrit'],
+        ['sd', 'Sindhi'],
+        ['sg', 'Sangho'],
+        ['sh', 'Serbo-Croatian'],
+        ['si', 'Sinhalese'],
+        ['sk', 'Slovak'],
+        ['sl', 'Slovenian'],
+        ['sm', 'Samoan'],
+        ['sn', 'Shona'],
+        ['so', 'Somali'],
+        ['sq', 'Albanian'],
+        ['sr', 'Serbian'],
+        ['ss', 'Siswati'],
+        ['st', 'Sesotho'],
+        ['su', 'Sundanese'],
+        ['sv', 'Swedish'],
+        ['sw', 'Swahili'],
+        ['ta', 'Tamil'],
+        ['te', 'Telugu'],
+        ['tg', 'Tajik'],
+        ['th', 'Thai'],
+        ['ti', 'Tigrinya'],
+        ['tk', 'Turkmen'],
+        ['tl', 'Tagalog'],
+        ['tn', 'Setswana'],
+        ['to', 'Tonga'],
+        ['tr', 'Turkish'],
+        ['ts', 'Tsonga'],
+        ['tt', 'Tatar'],
+        ['tw', 'Twi'],
+        ['ug', 'Uighur'],
+        ['uk', 'Ukrainian'],
+        ['ur', 'Urdu'],
+        ['uz', 'Uzbek'],
+        ['vi', 'Vietnamese'],
+        ['vo', 'Volapuk'],
+        ['wo', 'Wolof'],
+        ['xh', 'Xhosa'],
+        ['yi', 'Yiddish (formerly ji)'],
+        ['yo', 'Yoruba'],
+        ['za', 'Zhuang'],
+        ['zh', 'Chinese'],
+        ['zu', 'Zulu']
+    ],
+
+    'templates': {
+        'header': new Template(function(data) {
+            div({'class': 'topbar'},
+                div({'class': 'fill'},
+                    div({'class': 'container-fluid'},
+                        div({'class': 'brand'},
+                            img({'src': 'images/logo/32.png', 'align': 'left'}),
+                            'REST Console small',
+                            small('version 4.1.0')
+                        ),
+
+                        ul({'class': 'nav'},
+                            li(a({'href': '#options', 'scroll': true}, span('O'), 'ptions')),
+                            li(a({'href': '#target', 'scroll': true}, span('T'), 'arget')),
+                            li(a({'href': '#body', 'scroll': true}, span('B'), 'ody')),
+                            li(a({'href': '#authorization', 'scroll': true}, span('A'), 'uthorization')),
+                            li(a({'href': '#headers', 'scroll': true}, span('H'), 'eaders')),
+                            li(a({'href': '#response', 'scroll': true}, span('R'), 'esponse'))
+                        )
+                    )
+                )
+            )
+        }),
+
+        'container': new Template(function(data) {
+            div({'class': 'container-fluid'},
+                this.renderTemplate('sidebar'),
+                this.renderTemplate('content')
+            )
+        }),
+
+        'sidebar': new Template(function(data) {
+            div({'class': 'sidebar'},
+                div({'class': 'page'},
+                    h5('Services'),
+
+                    select({'class': 'span3'},
+                        option('Twitter'),
+                        option('Facebook'),
+                        option('LinkedIn')
+                    ),
+
+                    h5('History'),
+                    p('Coming Soon...'),
+
+                    br()
+                )
+            )
+        }),
+
+        'content': new Template(function(data) {
+            div({'class': 'content'},
+                this.renderTemplate('options')
+            )
+        }),
+
+        'options': new Template(function(data) {
+            div({'class': 'page', 'id': 'options'},
+                div({'class': 'page-header'},
+                    h1('Options'),
+                    a({'href': '#', 'class': 'minimize'}, img({'src': 'images/minimize.png'}))
+                ),
+
+                section(
+                    form({
+                        'class': 'form-stacked',
+                        'novalidate': true
+                        },
+
+                        div({'class': 'row'},
+                            div({'class': 'span8'},
+                                fieldset(
+                                    legend('General'),
+
+                                    div({'class': 'clearfix'},
+                                        label(
+                                            input({'type': 'checkbox', 'name': 'help'}),
+                                            span('Hide Help Lines')
+                                        )
+                                    )
+                                )
+                            ),
+
+                            div({'class': 'span8'},
+                                fieldset(
+                                    legend('Syntax Highlighting'),
+
+                                    div({'class': 'clearfix'},
+                                        label(
+                                            input({'type': 'checkbox', 'name': 'lines'}),
+                                            span('Hide Line Numbers')
+                                        ),
+
+                                        span({'class': 'help-block'}, 'Results are not immediate, will affect next request.')
+                                    ),
+
+                                    div({'class': 'clearfix'},
+                                        label({'for': 'theme'}, 'Color Theme'),
+                                        span({'class': 'help-block'}, 'Syntax highlighting default color theme'),
+
+                                        div({'class': 'row'},
+                                            div({'class': 'span2'},
+                                                label(
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'default'}),
+                                                    span('Default')
+                                                )
+                                            ),
+
+                                            div({'class': 'span2'},
+                                                label(
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}),
+                                                    span('Bootstrap')
+                                                )
+                                            ),
+
+                                            div({'class': 'span2'},
+                                                label(
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'desert'}),
+                                                    span('Desert')
+                                                )
+                                            )
+                                        ),
+
+                                        div({'class': 'row'},
+                                            div({'class': 'span2'},
+                                                label(
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}),
+                                                    span('Sunburst')
+                                                )
+                                            ),
+
+                                            div({'class': 'span3'},
+                                                label(
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}),
+                                                    span('Sons of Obsidian')
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+
+                        div({'class': 'actions'},
+                            input({'type': 'submit', 'data-action': 'submit', 'class': 'btn success', 'value': 'Save'}),
+                            input({'type': 'reset', 'data-action': 'reset', 'class': 'btn danger', 'value': 'Reset'})
+                        )
+                    )
+                )
+            )
+        }),
+
+        'datalist': new Template(function(data) {
+            datalist({'id': data.id}, this.renderTemplate('option', data.values))
+        }),
+
+        'option': new Template(function(data) {
+            data = Array.from(data);
+            option({'value': data[0]}, [data[1], data[0]].pick())
+        })
+    },
+
+    initialize: function() {
+        document.body.adopt(this.renderTemplate('header'));
+        document.body.adopt(this.renderTemplate('container'));
+    }
+});
+
 // error messages
 Error = function(title, text, element) {
     var messages = document.getElement('.messages').removeClass('hide');
@@ -12,6 +584,7 @@ Error = function(title, text, element) {
 
 // add events
 window.addEvent('domready', function() {
+    return;
     // enable smooth scrolling
     new Fx.SmoothScroll({
         'offset': { 'y': -50 },
@@ -96,14 +669,14 @@ window.addEvent('domready', function() {
         if (this.get('checked')) {
             var theme = this.get('value');
             document.getElement('select[name="theme"] option[value="' + theme + '"]').set('selected', true);
-            document.head.getElementById('theme').set('href', 'css/prettify/' + theme + '.css');
+            document.head.getElementById('theme').set('href', 'style/prettify/' + theme + '.css');
 
             _gaq.push(['_trackEvent', 'Theme', theme]);
         }
     }).fireEvent('change');
 
     document.getElements('select[name="theme"]').addEvent('change', function(event) {
-        document.head.getElementById('theme').set('href', 'css/prettify/' + this.get('value') + '.css');
+        document.head.getElementById('theme').set('href', 'style/prettify/' + this.get('value') + '.css');
 
         _gaq.push(['_trackEvent', 'Theme Swap', this.get('value')]);
     });
@@ -225,23 +798,24 @@ window.addEvent('domready', function() {
 
             var data = this.toQueryString().parseQueryString();
 
-            // oauth object
-            var oauth = {
-                'path': request.uri,
-                'action': request.method,
-                'method': data.signature,
-                'parameters': {
-                    'oauth_version': data.version,
-                    'oauth_signature_method': data.signature
-                },
-                'signatures': {
-                    'consumer_key': data.consumer_key,
-                    'shared_secret': data.consumer_secret,
-                    'access_token': data.token_key,
-                    'access_secret': data.token_secret
-                }
+            // start oauth
+            var accessor = {
+                'consumerKey': data.consumer_key,
+                'consumerSecret': data.consumer_secret,
+                'token': data.token_key,
+                'tokenSecret': data.token_secret
             };
 
+            var message = {
+                'action': request.uri,
+                'method': request.method,
+                'parameters': [
+                    ['oauth_version', data.version],
+                    ['oauth_signature_method', data.signature]
+                ]
+            };
+
+/*
             // optional params
             if (data.scope.length > 0) {
                 oauth.parameters.scope = data.scope;
@@ -250,7 +824,7 @@ window.addEvent('domready', function() {
             if (data.oauth_verifier.length > 0) {
                 oauth.parameters.oauth_verifier = data.oauth_verifier;
             }
-
+*/
             // params container
             var container = document.getElement('ul.params');
 
@@ -269,18 +843,18 @@ window.addEvent('domready', function() {
 
             elements.keys.each(function(key, index) {
                 if (key.length > 0) {
-                    oauth.parameters[key] = elements.values[index];
+                    message.parameters.push([key, elements.values[index]]);
                 }
             });
 
-            // convert to query string
-            oauth.parameters = Object.toQueryString(oauth.parameters);
+            // sign
+            OAuth.completeRequest(message, accessor);
 
-            // sign oauth object
-            var oauth = OAuthSimple().sign(oauth, data.separator);
+            console.log(message);
 
             if (data.method == 'header') {
-                var input = document.getElement('input[name="Authorization"]').set('value', oauth.header);
+                var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
+                var input = document.getElement('input[name="Authorization"]').set('value', header);
                 input.getPrevious('.add-on').getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
             } else {
                 var input = document.getElement('input[name="Authorization"]').set('value', '');
