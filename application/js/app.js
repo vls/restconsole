@@ -11,6 +11,21 @@ var Template = new Class({
     }
 });
 
+DOMEvent.definePseudo('input', function(split, fn, args) {
+    // args[0] is the Event instance
+    var char = args[0].code;
+
+    if (char < 16 ||                // non printables
+        (char == 16) ||             // avoid shift
+        (char > 32 && char < 41) || // navigation keys
+        char == 46)                 // Delete Key (Add to these if you need)
+    {
+        return;
+    }
+
+    fn.apply(this, args);
+});
+
 var App = new Class({
     'Implements': [Events, Mooml.Templates],
 
@@ -415,7 +430,7 @@ var App = new Class({
         }),
 
         'header': new Template(function(data) {
-            div({'class': 'topbar'},
+            header({'class': 'topbar'},
                 div({'class': 'fill'},
                     div({'class': 'container-fluid'},
                         div({'class': 'brand'},
@@ -465,7 +480,7 @@ var App = new Class({
 
         'content': new Template(function(data) {
             div({'class': 'content'},
-                this.renderTemplate('options'),
+                //~ this.renderTemplate('options'),
                 this.renderTemplate('target')
             )
         }),
@@ -559,11 +574,13 @@ var App = new Class({
         }),
 
         'target': new Template(function(data) {
-            section({'id': 'options'},
+            section({'id': 'marin'},
                 header(
-                    a({'href': '#', 'class': 'minimize'}, img({'src': 'images/minimize.png'})),
-                    h1('Target')
+                    img({'src': 'images/minimize.png'}),
+                    h2('Main')
                 ),
+
+                h3('Target'),
 
                 form({
                     'class': 'form-stacked',
@@ -571,9 +588,19 @@ var App = new Class({
                     },
 
                     div({'class': 'row'},
-                        div({'class': 'span3'},
+                        div({'class': 'span10'},
                             div({'class': 'clearfix'},
-                                label({'for': 'method'}, 'Request Method'),
+                                label({'for': 'uri'}, 'URI'),
+                                div({'class': 'input'},
+                                    input({'class': 'span10', 'type': 'text', 'name': 'uri', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: http://example.com/resources/ef7d-xj36p', 'required': true}),
+                                    span({'class': 'help-block'}, 'Universal Resource Identifier. ex: https://www.sample.com:9000')
+                                )
+                            )
+                        ),
+
+                        div({'class': 'span2 offset1'},
+                            div({'class': 'clearfix'},
+                                label({'for': 'method'}, 'Method'),
                                 div({'class': 'input'},
                                     input({'class': 'span2', 'type': 'text', 'name': 'method', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: POST', 'list': 'methods', 'required': true}),
                                     span({'class': 'help-block'}, 'HTTP Verb')
@@ -581,25 +608,120 @@ var App = new Class({
                             )
                         ),
 
-                        div({'class': 'span'},
+                        div({'class': 'span2 offset1'},
                             div({'class': 'clearfix'},
-                                label({'for': 'uri'}, 'Request URI'),
+                                label({'for': 'timeout'}, 'Timeout'),
                                 div({'class': 'input'},
-                                    input({'class': 'span', 'type': 'text', 'name': 'uri', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: http://example.com/resources/ef7d-xj36p', 'required': true}),
-                                    span({'class': 'help-block'}, 'Universal Resource Identifier. ex: https://www.sample.com:9000')
+                                    input({'class': 'span2', 'type': 'number', 'name': 'timeout', 'value': 60, 'tabindex': 2, 'min': 1, 'step': 1, 'required': true}),
+                                    span({'class': 'help-block'}, 'seconds')
                                 )
                             )
                         )
                     ),
 
                     div({'class': 'row'},
-                        div({'class': 'span5'},
+                        div({'class': 'clearfix'},
+                            label({'for': 'query'}, 'Query String'),
+                            div({'class': 'input'},
+                                ul({
+                                    'class': 'unstyled query',
+                                    'events': {
+                                        'click:relay(input[type="button"])': function(event) {
+                                            var row = this.getParent('li');
+                                            var next = row.getNext();
+
+                                            if (next != row.getParent('ul').getLast()) {
+                                                next.getFirst().focus();
+                                            }
+
+                                            row.destroy();
+                                        },
+
+                                        'keyup:input:relay(li.error input[type="text"]:first-of-type)': function(event) {
+                                            event.target.getParent('li').removeClass('error');
+                                        },
+
+                                        'blur:relay(li:not(:last-of-type) input[type="text"]:first-of-type)': function(event) {
+                                            var value = this.get('value').trim();
+
+                                            if (value == '') {
+                                                this.getParent('li').addClass('error');
+                                            } else {
+                                                this.set('value', value);
+                                            }
+                                        },
+
+                                        'focus:relay(li:last-of-type input[type="text"])': function(event) {
+                                            var row = this.getParent('li');
+                                            var previous = row.getPrevious();
+                                            var index = row.getChildren().indexOf(this);
+
+                                            if (previous && previous.getChildren()[0].get('value') == '') {
+                                                previous.addClass('error').getFirst().focus();
+                                            } else {
+                                                var clone = row.clone();
+                                                clone.inject(row, 'before');
+                                                clone.getElement('input').focus();
+                                            }
+                                        }
+                                    }},
+                                    li({'class': 'clearfix row'},
+                                        input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                        input({'class': 'span1 btn danger', 'type': 'button', 'tabindex': 3, 'value': 'd'})
+                                    )
+                                )
+                            ),
+
+                            span({'class': 'help-block'},  '')
+                        )
+                    ),
+
+                    h3('Accept'),
+
+                    div({'class': 'row'},
+                        div({'class': 'span8'},
                             div({'class': 'clearfix'},
-                                label({'for': 'timeout'}, 'Request Timeout'),
+                                label({'for': 'accept'}, 'Content-Type'),
                                 div({'class': 'input'},
-                                    input({'class': 'span2', 'type': 'number', 'name': 'timeout', 'value': 60, 'tabindex': 2, 'min': 1, 'step': 1, 'required': true}),
-                                    span('seconds'),
-                                    span({'class': 'help-block'}, 'Timeout in seconds before aborting.')
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: text/plain', 'list': 'mimetypes', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Content-Types that are acceptable.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'charset'}, 'Charset'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Charset', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'charset', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Character sets that are acceptable.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'encoding'}, 'Encoding'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Encoding', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: identity', 'list': 'encoding', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Acceptable encodings.', a({'href': 'http://en.wikipedia.org/wiki/HTTP_compression', 'target': '_blank'}, 'See HTTP compression.'))
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'language'}, 'Language'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Language', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: en-US', 'list': 'language', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Acceptable languages for response.')
                                 )
                             )
                         )

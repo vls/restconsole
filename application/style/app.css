@@ -10,21 +10,21 @@ body {
     user-select: none;
 }
 
-.topbar .brand {
+header.topbar .brand {
     padding-top: 4px;
-    padding-bottom: 0px;
+    padding-bottom: 4px;
 }
 
-.topbar .brand img {
+header.topbar .brand img {
     margin-right: 4px;
 }
 
-.topbar .brand small {
+header.topbar .brand small {
     display:block;
     font-size: 10px;
 }
 
-.topbar .nav a span {
+header.topbar .nav a span {
     border-bottom: 1px solid #BFBFBF;
 }
 
@@ -63,8 +63,9 @@ section {
     background-clip: padding-box;
 }
 
-section header a {
+section header img {
     float: right;
+    cursor: pointer;
 }
 
 section form.form-stacked {
@@ -75,16 +76,22 @@ section form .row {
     margin-left: 0px;
 }
 
-section form .row [class*="span"] {
+section form .row [class*="span"]:first-of-type {
     margin-left: 0px;
 }
 
-fieldset {
-    margin-bottom: 0px;
+ul.query li {
+    margin-bottom: 10px;
 }
 
-.clearfix:last-of-type {
-    margin-bottom: 0px;
+ul.query li:last-of-type input[type="button"] {
+    display: none;
+}
+
+ul.query li.error input[type="button"] {
+    color: white;
+    border-color: #C43C35 #C43C35 #882A25;
+    border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
 }
 
 /*
