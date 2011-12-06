@@ -453,7 +453,61 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
-            div({'class': 'container-fluid'},
+            div({
+                'class': 'container-fluid',
+                'events': {
+                    // global enable / disable action on input fields
+                    'click:relay(.input-prepend input[type="checkbox"])': function(event) {
+                        var input = this.getParent('.input-prepend').getLast();
+
+                        if (input.get('disabled')) {
+                            input.set('disabled', false).focus();
+                        } else {
+                            input.set('disabled', true);
+                        }
+                    },
+
+                    // start pairs
+                    'click:relay(.pairs button)': function(event) {
+                        var row = this.getParent('li');
+                        var next = row.getNext();
+
+                        if (next != row.getParent('ul').getLast()) {
+                            next.getFirst().focus();
+                        }
+
+                        row.destroy();
+                    },
+
+                    'keyup:input:relay(.pairs li.error input[type="text"]:first-child)': function(event) {
+                        event.target.getParent('li').removeClass('error');
+                    },
+
+                    'blur:relay(.pairs li:not(:last-child) input[type="text"]:first-child)': function(event) {
+                        var value = this.get('value').trim();
+
+                        if (value == '') {
+                            this.getParent('li').addClass('error');
+                        } else {
+                            this.set('value', value);
+                        }
+                    },
+
+                    'focus:relay(.pairs li:last-of-type input[type="text"])': function(event) {
+                        var row = this.getParent('li');
+                        var previous = row.getPrevious();
+                        var index = row.getChildren().indexOf(this);
+
+                        if (previous && previous.getChildren()[0].get('value') == '') {
+                            previous.addClass('error').getFirst().focus();
+                        } else {
+                            var clone = row.clone();
+                            clone.inject(row, 'before');
+                            clone.getElement('input').focus();
+                        }
+                    }
+                    // end pairs
+                }},
                 this.renderTemplate('sidebar'),
                 this.renderTemplate('content')
             )
@@ -481,7 +535,8 @@ var App = new Class({
         'content': new Template(function(data) {
             div({'class': 'content'},
                 //~ this.renderTemplate('options'),
-                this.renderTemplate('target')
+                this.renderTemplate('target'),
+                this.renderTemplate('body')
             )
         }),
 
@@ -574,7 +629,7 @@ var App = new Class({
         }),
 
         'target': new Template(function(data) {
-            section({'id': 'marin'},
+            section({'id': 'main'},
                 header(
                     img({'src': 'images/minimize.png'}),
                     h2('Main')
@@ -613,122 +668,155 @@ var App = new Class({
                                 label({'for': 'timeout'}, 'Timeout'),
                                 div({'class': 'input'},
                                     input({'class': 'span2', 'type': 'number', 'name': 'timeout', 'value': 60, 'tabindex': 2, 'min': 1, 'step': 1, 'required': true}),
-                                    span({'class': 'help-block'}, 'seconds')
+                                    span({'class': 'help-block'}, 'in seconds')
                                 )
                             )
                         )
                     ),
 
                     div({'class': 'row'},
-                        div({'class': 'clearfix'},
-                            label({'for': 'query'}, 'Query String'),
-                            div({'class': 'input'},
-                                ul({
-                                    'class': 'unstyled query',
-                                    'events': {
-                                        'click:relay(input[type="button"])': function(event) {
-                                            var row = this.getParent('li');
-                                            var next = row.getNext();
+                        div({'class': 'span6'},
+                            h3('Accept'),
 
-                                            if (next != row.getParent('ul').getLast()) {
-                                                next.getFirst().focus();
-                                            }
-
-                                            row.destroy();
-                                        },
-
-                                        'keyup:input:relay(li.error input[type="text"]:first-of-type)': function(event) {
-                                            event.target.getParent('li').removeClass('error');
-                                        },
-
-                                        'blur:relay(li:not(:last-of-type) input[type="text"]:first-of-type)': function(event) {
-                                            var value = this.get('value').trim();
-
-                                            if (value == '') {
-                                                this.getParent('li').addClass('error');
-                                            } else {
-                                                this.set('value', value);
-                                            }
-                                        },
-
-                                        'focus:relay(li:last-of-type input[type="text"])': function(event) {
-                                            var row = this.getParent('li');
-                                            var previous = row.getPrevious();
-                                            var index = row.getChildren().indexOf(this);
-
-                                            if (previous && previous.getChildren()[0].get('value') == '') {
-                                                previous.addClass('error').getFirst().focus();
-                                            } else {
-                                                var clone = row.clone();
-                                                clone.inject(row, 'before');
-                                                clone.getElement('input').focus();
-                                            }
-                                        }
-                                    }},
-                                    li({'class': 'clearfix row'},
-                                        input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                        input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                        input({'class': 'span1 btn danger', 'type': 'button', 'tabindex': 3, 'value': 'd'})
-                                    )
-                                )
-                            ),
-
-                            span({'class': 'help-block'},  '')
-                        )
-                    ),
-
-                    h3('Accept'),
-
-                    div({'class': 'row'},
-                        div({'class': 'span8'},
                             div({'class': 'clearfix'},
-                                label({'for': 'accept'}, 'Content-Type'),
+                                label({'for': 'accept'}, a({'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1', 'target': '_blank'}, 'Content-Type')),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: text/plain', 'list': 'mimetypes', 'disabled': true})
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Accept', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: text/plain', 'list': 'mimetypes', 'disabled': true})
                                     ),
                                     span({'class': 'help-block'}, 'Content-Types that are acceptable.')
                                 )
                             ),
 
                             div({'class': 'clearfix disabled'},
-                                label({'for': 'charset'}, 'Charset'),
+                                label({'for': 'charset'}, a({'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2', 'target': '_blank'}, 'Charset')),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Charset', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'charset', 'disabled': true})
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Accept-Charset', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'charset', 'disabled': true})
                                     ),
                                     span({'class': 'help-block'}, 'Character sets that are acceptable.')
                                 )
                             ),
 
                             div({'class': 'clearfix disabled'},
-                                label({'for': 'encoding'}, 'Encoding'),
+                                label({'for': 'encoding'}, a({'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3', 'target': '_blank'}, 'Encoding')),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Encoding', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: identity', 'list': 'encoding', 'disabled': true})
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Accept-Encoding', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: identity', 'list': 'encoding', 'disabled': true})
                                     ),
-                                    span({'class': 'help-block'}, 'Acceptable encodings.', a({'href': 'http://en.wikipedia.org/wiki/HTTP_compression', 'target': '_blank'}, 'See HTTP compression.'))
+                                    span({'class': 'help-block'}, 'Acceptable encodings.')
                                 )
                             ),
 
                             div({'class': 'clearfix'},
-                                label({'for': 'language'}, 'Language'),
+                                label({'for': 'language'}, a({'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.4', 'target': '_blank'}, 'Language')),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Language', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: en-US', 'list': 'language', 'disabled': true})
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Accept-Language', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: en-US', 'list': 'language', 'disabled': true})
                                     ),
                                     span({'class': 'help-block'}, 'Acceptable languages for response.')
+                                )
+                            )
+                        ),
+
+                        div({'class': 'span10 clearfix'},
+                            h3('Query String'),
+
+                            label({'for': 'query'}, 'Key => Value pairs'),
+
+                            div({'class': 'input pairs'},
+                                ul({'class': 'unstyled query'},
+                                    li({'class': 'clearfix row'},
+                                        input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                        button({'class': 'span1 btn danger'})
+                                    )
+                                )
+                            ),
+
+                            span({'class': 'help-block'},  '')
+                        )
+                    )
+                )
+            )
+        }),
+
+        'body': new Template(function(data) {
+            section({'id': 'main'},
+                header(
+                    img({'src': 'images/minimize.png'}),
+                    h2('Body')
+                ),
+
+                h3('Request Payload'),
+
+                form({
+                    'class': 'form-stacked',
+                    'novalidate': true
+                    },
+
+                    div({'class': 'row'},
+                        div({'class': 'span10 clearfix'},
+                            ul({
+                                'class': 'tabs',
+                                'events': {
+                                    'click:relay(li a)': function(event) {
+                                        event.preventDefault();
+
+                                        var tabs = this.getParent('ul');
+                                        var content = tabs.getNext('.tabs-content');
+
+                                        // switch tabs
+                                        tabs.getElement('.active').removeClass('active');
+                                        this.getParent('li').addClass('active');
+
+                                        content.getElement('.active').removeClass('active');
+                                        content.getChildren()[this.dataset.target].addClass('active');
+                                    },
+                                }},
+                                li({'class': 'active'}, a({'data-target': 0}, 'Key / Value Pairs')),
+                                li(a({'data-target': 1}, 'Raw'))
+                            ),
+
+                            ul({'class': 'unstyled tabs-content'},
+                                li({'class': 'active'},
+                                    div({'class': 'input pairs'},
+                                        ul({'class': 'unstyled query'},
+                                            li({'class': 'clearfix row'},
+                                                input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                                input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                                button({'class': 'span1 btn danger'})
+                                            )
+                                        )
+                                    ),
+
+                                    span({'class': 'help-block'},  'Remember to set the Content-Type header.')
+                                ),
+
+                                li(
+                                    div({'class': 'span8'},
+                                        div({'class': 'clearfix'},
+                                            label({'for': 'raw'}, 'RAW Body'),
+                                            div({'class': 'input'},
+                                                div({'class': 'input-prepend'},
+                                                    label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                                    textarea({'class': 'span7', 'name': 'raw', 'rows': 5, 'tabindex': 5, 'placeholder': 'ex: XML, JSON, etc ...', 'disabled': true})
+                                                ),
+                                                span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
+                                            )
+                                        )
+                                    )
                                 )
                             )
                         )
                     )
                 )
             )
-        }),
+        })
     },
 
     initialize: function() {
@@ -745,19 +833,20 @@ var App = new Class({
 
 // error messages
 Error = function(title, text, element) {
-    var messages = document.getElement('.messages').removeClass('hide');
-    var message = messages.getElement('.alert-message.error').removeClass('hide');
-    message.getElement('p').set('html', '<strong>{0}</strong> {1}'.substitute([title, text]));
-    message.getElement('a').fireEvent('click', event, 3000);
+    //var messages = document.getElement('.messages').removeClass('hide');
+    //var message = messages.getElement('.alert-message.error').removeClass('hide');
+    //message.getElement('p').set('html', '<strong>{0}</strong> {1}'.substitute([title, text]));
+    //message.getElement('a').fireEvent('click', event, 3000);
 
-    if (element) {
-        element.getParent('.clearfix').addClass('error');
-    }
+    //if (element) {
+     //   element.getParent('.clearfix').addClass('error');
+   // }
 };
 
 // add events
 window.addEvent('domready', function() {
     return;
+
     // enable smooth scrolling
     new Fx.SmoothScroll({
         'offset': { 'y': -50 },
@@ -774,7 +863,7 @@ window.addEvent('domready', function() {
         var element = form.getElement('.actions');
 
         if (scroll - 200 <= coordinates.top || scroll >= coordinates.bottom) {
-            element.removeClass('fixed');
+            //element.removeClass('fixed');
         } else {
             element.addClass('fixed');
         }

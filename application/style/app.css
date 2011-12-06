@@ -10,6 +10,40 @@ body {
     user-select: none;
 }
 
+input[disabled] {
+    background-color: #DDD;
+    border: 1px solid #CCC;
+}
+
+.tabs > li a {
+    cursor: pointer;
+}
+
+.tabs-content > li {
+    display: none;
+}
+
+.tabs-content li.active {
+    display: list-item;
+}
+
+button.span1 {
+    margin-left: 0;
+}
+
+.pairs button {
+    width: 30px;
+    height: 29px;
+    position: relative;
+}
+
+.pairs button:before {
+    content: url('/images/delete.png');
+    position: absolute;
+    top: 6.5px;
+    left: 6.5px;
+}
+
 header.topbar .brand {
     padding-top: 4px;
     padding-bottom: 4px;
@@ -76,7 +110,7 @@ section form .row {
     margin-left: 0px;
 }
 
-section form .row [class*="span"]:first-of-type {
+section form .row [class*="span"]:first-child {
     margin-left: 0px;
 }
 
@@ -84,7 +118,7 @@ ul.query li {
     margin-bottom: 10px;
 }
 
-ul.query li:last-of-type input[type="button"] {
+ul.query li:last-child button {
     display: none;
 }
 
