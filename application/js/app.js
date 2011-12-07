@@ -453,18 +453,84 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
+            div({'class': 'container-fluid'},
+                this.renderTemplate('sidebar'),
+                this.renderTemplate('content')
+            )
+        }),
+
+        'sidebar': new Template(function(data) {
+            section({'class': 'sidebar'},
+                div({'class': 'page'},
+                    h5('Services'),
+
+                    select({'class': 'span3'},
+                        option('Twitter'),
+                        option('Facebook'),
+                        option('LinkedIn')
+                    ),
+
+                    h5('History'),
+                    p('Coming Soon...'),
+
+                    br()
+                )
+            )
+        }),
+
+        'content': new Template(function(data) {
             div({
-                'class': 'container-fluid',
+                'class': 'content',
                 'events': {
+                    'initInputs': function() {
+                        this.getElements('.input-prepend input[type="text"]').each(function(input) {
+                            var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
+                            var storage = localStorage.getItem('input-disabled:' + input.get('name'));
+
+                            if (storage != null) {
+                                if (storage == 'true') {
+                                    input.set('disabled', true);
+                                    checkbox.set('checked', false);
+                                } else {
+                                    input.set('disabled', false);
+                                    checkbox.set('checked', true);
+                                }
+                            }
+                        });
+                    },
+
                     // global enable / disable action on input fields
                     'click:relay(.input-prepend input[type="checkbox"])': function(event) {
                         var input = this.getParent('.input-prepend').getLast();
+                        var disabled = input.get('disabled');
 
-                        if (input.get('disabled')) {
+                        if (disabled) {
                             input.set('disabled', false).focus();
                         } else {
                             input.set('disabled', true);
                         }
+
+                        localStorage.setItem('input-disabled:' + input.get('name'), input.get('disabled'));
+                    },
+
+                    'click:relay(section header img)': function(event) {
+                        var section = this.getParent('section');
+                        section.toggleClass('hidden')
+                        localStorage.setItem('section-hidden:' + section.get('id'), section.hasClass('hidden'));
+                    },
+
+                    'initSections': function() {
+                        this.getElements('section').each(function(section) {
+                            var storage = localStorage.getItem('section-hidden:' + section.get('id'));
+
+                            if (storage != null) {
+                                section.removeClass('hidden');
+
+                                if (storage == 'true') {
+                                    section.addClass('hidden');
+                                }
+                            }
+                        });
                     },
 
                     // start pairs
@@ -505,52 +571,65 @@ var App = new Class({
                             clone.inject(row, 'before');
                             clone.getElement('input').focus();
                         }
-                    }
+                    },
                     // end pairs
+
+                    'click:relay(ul.tabs li a)': function(event) {
+                        event.preventDefault();
+
+                        var tabs = this.getParent('ul');
+                        var content = tabs.getNext('.tabs-content');
+                        var index = tabs.getChildren().indexOf(this.getParent('li'));
+
+                        // switch tabs
+                        tabs.getElement('.active').removeClass('active');
+                        this.getParent('li').addClass('active');
+
+                        content.getElement('.active').removeClass('active');
+                        content.getChildren()[index].addClass('active');
+                    }
                 }},
-                this.renderTemplate('sidebar'),
-                this.renderTemplate('content')
-            )
-        }),
 
-        'sidebar': new Template(function(data) {
-            div({'class': 'sidebar'},
-                div({'class': 'page'},
-                    h5('Services'),
-
-                    select({'class': 'span3'},
-                        option('Twitter'),
-                        option('Facebook'),
-                        option('LinkedIn')
-                    ),
-
-                    h5('History'),
-                    p('Coming Soon...'),
-
-                    br()
-                )
-            )
-        }),
-
-        'content': new Template(function(data) {
-            div({'class': 'content'},
-                //~ this.renderTemplate('options'),
+                this.renderTemplate('options'),
                 this.renderTemplate('target'),
-                this.renderTemplate('body')
-            )
+                this.renderTemplate('body'),
+                this.renderTemplate('authorization'),
+                this.renderTemplate('headers'),
+                this.renderTemplate('response')
+            ).fireEvent('initSections').fireEvent('initInputs')
         }),
 
         'options': new Template(function(data) {
-            section({'id': 'options'},
+            section({'id': 'options', 'class': 'hidden'},
                 header(
-                    a({'href': '#', 'class': 'minimize'}, img({'src': 'images/minimize.png'})),
-                    h1('Options')
+                    img({'src': 'images/minimize.png'}),
+                    h2('Options')
                 ),
 
                 form({
                     'class': 'form-stacked',
-                    'novalidate': true
-                    },
+                    'novalidate': true,
+                    'events': {
+                        'change:relay(input[type="checkbox"])': function(event) {
+                            localStorage.setItem('options:' + this.get('name'), this.get('checked'));
+                        },
+
+                        'init': function() {
+                            this.getElements('input[type="checkbox"]').each(function(checkbox) {
+                                var storage = localStorage.getItem('options:' + checkbox.get('name'));
+
+                                if (storage != null) {
+                                    if (storage == 'true') {
+                                        checkbox.set('checked', true);
+                                    } else {
+                                        checkbox.set('checked', false);
+                                    }
+                                }
+
+                                checkbox.fireEvent('change');
+                            });
+                        }
+                    }},
 
                     div({'class': 'row'},
                         div({'class': 'span8'},
@@ -560,7 +639,19 @@ var App = new Class({
                                     ul({'class': 'inputs-list'},
                                         li(
                                             label(
-                                                input({'type': 'checkbox', 'name': 'help'}),
+                                                input({
+                                                    'type': 'checkbox',
+                                                    'name': 'help',
+                                                    'events': {
+                                                        'change': function(event) {
+                                                            if (this.get('checked')) {
+                                                                document.body.addClass('no-help');
+                                                            } else {
+                                                                document.body.removeClass('no-help');
+                                                            }
+                                                        }
+                                                    }
+                                                }),
                                                 span('Hide Help Lines')
                                             )
                                         ),
@@ -624,7 +715,7 @@ var App = new Class({
                             )
                         )
                     )
-                )
+                ).fireEvent('init')
             )
         }),
 
@@ -635,12 +726,12 @@ var App = new Class({
                     h2('Main')
                 ),
 
-                h3('Target'),
-
                 form({
                     'class': 'form-stacked',
                     'novalidate': true
                     },
+
+                    h3('Target'),
 
                     div({'class': 'row'},
                         div({'class': 'span10'},
@@ -746,13 +837,11 @@ var App = new Class({
         }),
 
         'body': new Template(function(data) {
-            section({'id': 'main'},
+            section({'id': 'body', 'class': 'hidden'},
                 header(
                     img({'src': 'images/minimize.png'}),
                     h2('Body')
                 ),
-
-                h3('Request Payload'),
 
                 form({
                     'class': 'form-stacked',
@@ -760,26 +849,70 @@ var App = new Class({
                     },
 
                     div({'class': 'row'},
+                        div({'class': 'span6'},
+                            div({'class': 'clearfix'},
+                                label({'for': 'Content-Type'}, 'Content-Type'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Content-Type', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: application/x-www-form-urlencoded', 'list': 'mimetypes', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'The mime type of the body of the request')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'encoding'}, 'Encoding'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'encoding', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'encoding', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Acceptable encodings')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'Content-Length'}, 'Content-Length'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Content-Length', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: 348', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'The length of the request body in octets (8-bit bytes).')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'Cookie'}, 'Cookie'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Cookie', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'an HTTP cookie previously sent by the server')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'Content-MD5'}, 'Content-MD5'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Content-MD5', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'A Base64-encoded binary MD5 sum of the content of the request body.')
+                                )
+                            )
+                        ),
+
                         div({'class': 'span10 clearfix'},
-                            ul({
-                                'class': 'tabs',
-                                'events': {
-                                    'click:relay(li a)': function(event) {
-                                        event.preventDefault();
+                            h3('Request Payload'),
 
-                                        var tabs = this.getParent('ul');
-                                        var content = tabs.getNext('.tabs-content');
-
-                                        // switch tabs
-                                        tabs.getElement('.active').removeClass('active');
-                                        this.getParent('li').addClass('active');
-
-                                        content.getElement('.active').removeClass('active');
-                                        content.getChildren()[this.dataset.target].addClass('active');
-                                    },
-                                }},
-                                li({'class': 'active'}, a({'data-target': 0}, 'Key / Value Pairs')),
-                                li(a({'data-target': 1}, 'Raw'))
+                            ul({'class': 'tabs'},
+                                li({'class': 'active'}, a('Key / Value Pairs')),
+                                li(a('Raw')),
+                                li(a('Attachments'))
                             ),
 
                             ul({'class': 'unstyled tabs-content'},
@@ -798,15 +931,26 @@ var App = new Class({
                                 ),
 
                                 li(
-                                    div({'class': 'span8'},
-                                        div({'class': 'clearfix'},
-                                            label({'for': 'raw'}, 'RAW Body'),
-                                            div({'class': 'input'},
-                                                div({'class': 'input-prepend'},
-                                                    label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                                    textarea({'class': 'span7', 'name': 'raw', 'rows': 5, 'tabindex': 5, 'placeholder': 'ex: XML, JSON, etc ...', 'disabled': true})
-                                                ),
-                                                span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
+                                    div({'class': 'clearfix'},
+                                        div({'class': 'input'},
+                                            div({'class': 'input-prepend'},
+                                                label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                                textarea({'class': 'span9', 'name': 'raw', 'rows': 5, 'tabindex': 5, 'placeholder': 'ex: XML, JSON, etc ...', 'disabled': true})
+                                            ),
+                                            span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
+                                        )
+                                    )
+                                ),
+
+                                li(
+                                    div({'class': 'clearfix'},
+                                        div({'class': 'input pairs'},
+                                            ul({'class': 'unstyled query'},
+                                                li({'class': 'clearfix row'},
+                                                    input({'class': 'span4', 'type': 'text', 'name': 'file_key', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                    input({'class': 'span5', 'name': 'files', 'type': 'file', 'multiple': false}),
+                                                    button({'class': 'span1 btn danger'})
+                                                )
                                             )
                                         )
                                     )
@@ -814,6 +958,378 @@ var App = new Class({
                             )
                         )
                     )
+                )
+            )
+        }),
+
+        'headers': new Template(function(data) {
+            section({'id': 'headers', 'class': 'hidden'},
+                header(
+                    img({'src': 'images/minimize.png'}),
+                    h2('Headers')
+                ),
+
+                form({
+                    'class': 'form-stacked',
+                    'novalidate': true
+                    },
+
+                    div({'class': 'row'},
+                        div({'class': 'span8'},
+                            h3('Standard Headers'),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'date'}, 'Date'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Date', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'The date and time that the message was sent')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'connection'}, 'Connection'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Connection', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: keep-alive', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'What type of connection the user-agent would prefer')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'expect'}, 'Expect'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Expect', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: 100-continue', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Indicates that particular server behaviors are by the client')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'forwards'}, 'Max-Forwards'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Max-Forwards', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: 10', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Limit the number of times the message can be forwarded through proxies or gateways.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'range'}, 'Range'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Range', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: bytes=500-999', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Request only part of an entity. Bytes are numbered from 0.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'referer'}, 'Referer'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Referer', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: http://www.restconsole.com/', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'This address of the previous web page from which a link to the currently requested page was followed.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'agent'}, 'User-Agent'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'User-Agent', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'The user agent string of the user agent.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'From'}, 'From'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'From', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: user@example.com', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'The email address of the user making the request.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'via'}, 'Via'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Via', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Informs the server of proxies through which the request was sent.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'Proxy-Authorization'}, 'Proxy-Authorization'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Proxy-Authorization', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Authorization credentials for connecting to a proxy.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'TE'}, 'Transfer-Encoding'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'TE', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: trailers, deflate', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'The transfer encodings the user agent is willing to accept.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix disabled'},
+                                label({'for': 'Upgrade'}, 'Upgrade'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Upgrade', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Ask the server to upgrade to another protocol.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'Warning'}, 'Warning'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Warning', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: 199 Miscellaneous warning', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'A general warning about possible problems with the entity body.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'pragma'}, 'Pragma'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Pragma', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: no-cache', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Implementation-specific headers that may have various effects anywhere along the request-response chain.')
+                                )
+                            )
+                        ),
+
+                        div({'class': 'span8'},
+                            h3('Cache'),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'cache'}, 'Cache-Control'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Cache-Control', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: no-cache', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Used to specify directives that MUST be obeyed by all caching mechanisms along the request/response chain')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'match'}, 'If-Match'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'If-Match', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Only perform the action if the client supplied entity matches the same entity on the server.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'url'}, 'If-None-Match'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'If-None-Match', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Allows a 304 Not Modified to be returned if content is unchanged')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'url'}, 'If-Modified-Since'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'If-Modified-Since', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Allows a 304 Not Modified to be returned if content is unchanged')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'url'}, 'If-Unmodified-Since'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'If-Unmodified-Since', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Only send the response if the entity has not been modified since a specific time.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'url'}, 'If-Range'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'If-Range', 'tabindex': 6, 'autocomplete': false, 'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'If the entity is unchanged, send me the part(s) that I am missing; otherwise, send me the entire new entity')
+                                )
+                            ),
+
+                            h3('Common non-standard request headers'),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'X-HTTP-Method-Override'}, 'X-HTTP-Method-Override'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'X-HTTP-Method-Override', 'tabindex': 7, 'autocomplete': false, 'placeholder': 'ex: PUT', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'mainly used bypass firewalls and browsers limitations.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'X-Requested-With'}, 'X-Requested-With'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'X-Requested-With', 'tabindex': 7, 'autocomplete': false, 'placeholder': 'ex: XMLHttpRequest', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'mainly used to identify Ajax requests.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'X-Do-Not-Track'}, 'X-Do-Not-Track'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'X-Do-Not-Track', 'tabindex': 7, 'autocomplete': false, 'placeholder': 'ex: 1', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Requests a web application to disable their tracking of a user.')
+                                )
+                            ),
+
+                            div({'class': 'clearfix'},
+                                label({'for': 'DNT'}, 'DNT'),
+
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'DNT', 'tabindex': 7, 'autocomplete': false, 'placeholder': 'ex: 1', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header')
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }),
+
+        'authorization': new Template(function(data) {
+            section({'id': 'authorization', 'class': 'hidden'},
+                header(
+                    img({'src': 'images/minimize.png'}),
+                    h2('Authorization')
+                ),
+
+                form({
+                    'class': 'form-stacked',
+                    'novalidate': true
+                    },
+
+                    div({'class': 'clearfix'},
+                        div({'class': 'input row'},
+                            div({'class': 'input-prepend span10'},
+                                label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                input({'class': 'span9', 'type': 'text', 'name': 'Authorization', 'tabindex': 7, 'autocomplete': true, 'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="', 'disabled': true})
+                            ),
+
+                            input({'class': 'span2 btn info', 'type': 'button', 'data-action': 'basic-auth', 'value': 'Basic'}),
+                            input({'class': 'span2 btn info', 'type': 'button', 'data-action': 'basic-digest', 'value': 'Digest'}),
+                            input({'class': 'span2 btn info', 'type': 'button', 'data-action': 'oauth-setup', 'value': 'oAuth'}),
+
+                            span({'class': 'help-block'}, 'Authentication credentials for HTTP authentication.')
+                        )
+                    )
+                )
+            )
+        }),
+
+        'response': new Template(function(data) {
+            section({'id': 'response', 'class': 'hidden'},
+                header(
+                    img({'src': 'images/minimize.png'}),
+                    h2('Response')
+                ),
+
+                ul({'class': 'tabs'},
+                    li({'class': 'active'}, a({'data-target': 'body'}, 'Response Body')),
+                    li(a('RAW Body')),
+                    li(a('Response Headers')),
+                    li(a('Response Preview')),
+                    li(a('Request Body')),
+                    li(a('Request Headers')),
+                    li(a('HTTP Archive (HAR)'))
+                ),
+
+                ul({'class': 'unstyled tabs-content'},
+                    li({'class': 'active'}, pre({'id': 'body', 'class': 'prettyprint'})),
+                    li(pre({'id': 'raw-body'})),
+                    li(pre({'id': 'headers', 'class': 'prettyprint'})),
+                    li(div({'id': 'preview'})),
+                    li(pre({'id': 'request-body', 'class': 'prettyprint'})),
+                    li(pre({'id': 'request-headers', 'class': 'prettyprint'})),
+                    li(pre({'id': 'har', 'class': 'prettyprint lang-json'}))
                 )
             )
         })

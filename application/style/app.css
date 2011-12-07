@@ -10,9 +10,18 @@ body {
     user-select: none;
 }
 
-input[disabled] {
+body.no-help .help-block {
+    display: none;
+}
+
+input[disabled],
+textarea[disabled] {
     background-color: #DDD;
     border: 1px solid #CCC;
+}
+
+select {
+    background-color: #EEE;
 }
 
 .tabs > li a {
@@ -74,6 +83,13 @@ header.topbar .nav a span {
     margin: 0px auto;
 }
 
+
+.container-fluid > .sidebar {
+    position: fixed;
+    width: 190px;
+    top: 60px;
+}
+
 section {
     padding: 15px;
     margin-bottom: 20px;
@@ -112,6 +128,10 @@ section form .row {
 
 section form .row [class*="span"]:first-child {
     margin-left: 0px;
+}
+
+section.hidden form {
+    display: none;
 }
 
 ul.query li {
@@ -193,9 +213,6 @@ pre:empty:before {
     display: none;
 }
 
-.sidebar {
-    position: fixed;
-}
 
 .container-fluid > .content {
     margin-left: 240px;
