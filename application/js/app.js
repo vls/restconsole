@@ -272,6 +272,8 @@ var App = new Class({
             'DELETE',
             'TRACE',
             'OPTIONS',
+            'LINK',
+            'UNLINK',
             'CONNET',
             'PATCH'
         ],
@@ -440,12 +442,12 @@ var App = new Class({
                         ),
 
                         ul({'class': 'nav'},
-                            li(a({'href': '#options', 'scroll': true}, span('O'), 'ptions')),
-                            li(a({'href': '#target', 'scroll': true}, span('T'), 'arget')),
-                            li(a({'href': '#body', 'scroll': true}, span('B'), 'ody')),
-                            li(a({'href': '#authorization', 'scroll': true}, span('A'), 'uthorization')),
-                            li(a({'href': '#headers', 'scroll': true}, span('H'), 'eaders')),
-                            li(a({'href': '#response', 'scroll': true}, span('R'), 'esponse'))
+                            li(a({'href': '#options'}, span('O'), 'ptions')),
+                            li(a({'href': '#main'}, span('M'), 'ain')),
+                            li(a({'href': '#body'}, span('B'), 'ody')),
+                            li(a({'href': '#authorization'}, span('A'), 'uthorization')),
+                            li(a({'href': '#headers'}, span('H'), 'eaders')),
+                            li(a({'href': '#response'}, span('R'), 'esponse'))
                         )
                     )
                 )
@@ -474,7 +476,8 @@ var App = new Class({
                     p('Coming Soon...'),
 
                     br()
-                )
+                ),
+                a('license')
             )
         }),
 
@@ -501,7 +504,7 @@ var App = new Class({
 
                     // global enable / disable action on input fields
                     'click:relay(.input-prepend input[type="checkbox"])': function(event) {
-                        var input = this.getParent('.input-prepend').getLast();
+                        var input = this.getParent('.input-prepend').getElement('input[type="text"]');
                         var disabled = input.get('disabled');
 
                         if (disabled) {
@@ -1332,18 +1335,52 @@ var App = new Class({
                     li(pre({'id': 'har', 'class': 'prettyprint lang-json'}))
                 )
             )
+        }),
+
+        'controls': new Template(function(data) {
+            div({'id': 'controls'},
+                section(
+                    button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
+                    button({'data-action': 'get', 'class': 'btn'}, 'GET'),
+                    button({'data-action': 'post', 'class': 'btn'}, 'POST'),
+                    button({'data-action': 'put', 'class': 'btn'}, 'PUT'),
+                    button({'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
+
+                    div({'class': 'pull-right'},
+                        button({'data-action': 'save', 'class': 'btn success'}, 'Save Request'),
+                        button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop')
+                    )
+                )
+            )
         })
     },
 
-    initialize: function() {
+    'initialize': function() {
         var body = document.body;
 
+        // render the body content
         body.adopt(this.renderTemplate('header'));
         body.adopt(this.renderTemplate('container'));
+        body.adopt(this.renderTemplate('controls'));
 
         Object.each(this.datalists, function(datalist, id) {
+            datalist.sort();
             body.adopt(this.renderTemplate('datalist', {'id': id, 'values': datalist}));
         }.bind(this));
+
+        // enable smooth scrolling
+        new Fx.SmoothScroll({
+            'offset': {
+                'y': -50
+            },
+            'links': '.topbar a[href^="#"]',
+            'wheelStops': true
+        });
+
+        // setup autocomplete
+        if ('options' in document.createElement('datalist') == false) {
+            new AutoComplete();
+        }
     }
 });
 
@@ -1362,76 +1399,6 @@ Error = function(title, text, element) {
 // add events
 window.addEvent('domready', function() {
     return;
-
-    // enable smooth scrolling
-    new Fx.SmoothScroll({
-        'offset': { 'y': -50 },
-        'links': 'a[scroll][href^="#"]',
-        'wheelStops': true
-    });
-
-    // special scroll listener for the request form actions bar
-    window.addEvent('scroll', function(event) {
-        var scroll = window.getSize().y + window.getScroll().y;
-        var form = document.getElement('form[name="request"]');
-        var coordinates = form.getCoordinates();
-
-        var element = form.getElement('.actions');
-
-        if (scroll - 200 <= coordinates.top || scroll >= coordinates.bottom) {
-            //element.removeClass('fixed');
-        } else {
-            element.addClass('fixed');
-        }
-    });
-
-    // sections
-    document.getElements('a.minimize').addEvent('click', function(event) {
-        event.preventDefault();
-
-        var section = this.getParent('.page').getElement('section');
-
-        if (section.isDisplayed()) {
-            section.hide();
-        } else {
-            section.show();
-        }
-    });
-
-    // setup autocomplete
-    if ('options' in document.createElement('datalist') == false) {
-        new AutoComplete();
-    }
-
-    // pills actions
-    document.getElements('ul.pills li a').addEvent('click', function(event) {
-        event.preventDefault();
-
-        var ul = this.getParent('ul');
-
-        ul.getElements('.active').removeClass('active');
-        this.getParent().addClass('active');
-
-        // hide all then show the selected one
-        ul.getNext('ul').getElements(' > li').addClass('hide');
-        ul.getNext('ul').getElement(this.get('href')).getParent().removeClass('hide');
-
-        _gaq.push(['_trackEvent', this.get('text'), 'clicked']);
-    });
-
-    // remove errors
-    document.addEvent('blur:relay(.error)', function(event) {
-        this.removeClass('error');
-    });
-
-    // show/hide help blocks
-    document.getElement('form[name="options"] input[name="help"]').addEvent('change', function(event) {
-        if (this.get('checked')) {
-            document.getElements('.help-block').addClass('hide');
-        } else {
-            document.getElements('.help-block').removeClass('hide');
-        }
-    });
 
     // show/hide line numbers
     document.getElement('form[name="options"] input[name="lines"]').addEvent('change', function(event) {

@@ -12,49 +12,68 @@ var AutoComplete = new Class({
         this.setOptions(options);
 
         document.getElements('input[list]').each(function(input) {
-            var options = document.id(input.get('list')).getElements('option');
-            var values = options.get('value');
-            var labels = options.get('text');
+            var datalist = document.getElement('datalist#' + input.get('list'));
 
-            var children = [];
+            if (datalist) {
+                var options = datalist.getElements('option');
+                var values = options.get('value');
+                var labels = options.get('text');
 
-            values.each(function(value, index) {
-                children.push(new Element('div', { 'data-value': value, 'text': labels[index] }));
-            });
+                var children = [];
 
-            var list = new Element('div', {
-                'class':  'autocomplete',
-                'for': input.get('name'),
-                'data-current': 0,
-                'styles': {
-                    'display': 'none',
-                    'width': input.getWidth() - 2
-                },
+                values.each(function(value, index) {
+                    child = new Element('div', {
+                        'data-value': value,
+                        'text': labels[index]
+                    });
 
-                'events': {
-                    'click:relay(div)': function(event) {
-                        event.stopPropagation();
+                    children.push(child);
+                });
 
-                        var list = this.getParent().hide();
-                        list.dataset.current = -1;
-                        var input = list.getPrevious('[name={0}]'.substitute([list.get('for')]));
-                        input.set('value', this.dataset.value);
+                var list = new Element('div', {
+                    'class':  'autocomplete',
+                    'for': input.get('name'),
+                    'data-current': 0,
+                    'styles': {
+                        'display': 'none',
+                        'width': input.getWidth() - 2
+                    },
+
+                    'events': {
+                        'click:relay(div)': function(event) {
+                            event.stopPropagation();
+
+                            var list = this.getParent();
+
+                            list.hide();
+                            list.dataset.current = -1;
+
+                            var input = list.getPrevious('[name={0}]'.substitute([list.get('for')]));
+
+                            input.set('value', this.dataset.value);
+                        }
                     }
-                }
-            });
+                });
 
-            list.adopt(children).inject(input, 'after');
+                list.adopt(children).inject(input, 'after');
 
-            list.position({
-                'relativeTo': input,
-                'position': 'bottomLeft',
-                'edge': 'upperLeft'
-            });
+                list.position({
+                    'relativeTo': input,
+                    'position': 'bottomLeft',
+                    'edge': 'upperLeft'
+                });
+            }
+        });
+
+        document.getElements('input').addEvent('focus', function(event) {
+            document.getElements('.autocomplete').hide();
         });
 
         document.getElements('input[list]').addEvents({
             'focus': function(event) {
-                var list = this.getNext('[for={0}]'.substitute([this.get('name')])).show().scrollTo(0, 0);
+                var list = this.getNext('[for={0}]'.substitute([this.get('name')]));
+
+                list.hide().scrollTo(0, 0);
 
                 // reposition the list
                 list.position({
@@ -67,9 +86,16 @@ var AutoComplete = new Class({
                 list.getElements('div').hide().removeClass('enabled').removeClass('active');
 
                 if (this.get('value').length > 0) {
-                    list.getElements('div[data-value*="{0}"]'.substitute([this.get('value')])).show().addClass('enabled');
+                    var value = this.get('value');
+                    var suggestions = list.getElements('div[data-value*="{0}"]'.substitute([value]));
+
+                    if (suggestions.length > 0 && suggestions[0].dataset.value != value) {
+                        console.log('here');
+                        list.show();
+                        suggestions.show().addClass('enabled');
+                    }
                 } else {
-                    list.getElements('div').show().addClass('enabled');
+                    list.show().getElements('div').show().addClass('enabled');
                 }
             },
 

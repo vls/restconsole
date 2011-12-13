@@ -8,67 +8,87 @@ body {
     -ms-user-select: none;
     -o-user-select: none;
     user-select: none;
+
+    &.no-help {
+        .help-block {
+            display: none;
+        }
+    }
 }
 
-body.no-help .help-block {
-    display: none;
-}
-
-input[disabled],
-textarea[disabled] {
-    background-color: #DDD;
-    border: 1px solid #CCC;
+input,
+textarea {
+    &[disabled] {
+        background-color: #DDD;
+        border: 1px solid #CCC;
+    }
 }
 
 select {
     background-color: #EEE;
 }
 
-.tabs > li a {
-    cursor: pointer;
+.tabs {
+    > li {
+        a {
+            cursor: pointer;
+        }
+    }
 }
 
-.tabs-content > li {
-    display: none;
+.tabs-content {
+    > li {
+        display: none;
+
+        &.active {
+            display: list-item;
+        }
+    }
 }
 
-.tabs-content li.active {
-    display: list-item;
+button {
+    .span1 {
+        margin-left: 0;
+    }
 }
 
-button.span1 {
-    margin-left: 0;
+.pairs {
+    button {
+        width: 30px;
+        height: 29px;
+        position: relative;
+
+        &:before {
+            content: url('/images/delete.png');
+            position: absolute;
+            top: 6.5px;
+            left: 6.5px;
+        }
+    }
 }
 
-.pairs button {
-    width: 30px;
-    height: 29px;
-    position: relative;
-}
+.topbar {
+    .brand {
+        padding-top: 4px;
+        padding-bottom: 4px;
 
-.pairs button:before {
-    content: url('/images/delete.png');
-    position: absolute;
-    top: 6.5px;
-    left: 6.5px;
-}
+        img {
+            margin-right: 4px;
+        }
 
-header.topbar .brand {
-    padding-top: 4px;
-    padding-bottom: 4px;
-}
+        small {
+            display:block;
+            font-size: 10px;
+        }
+    }
 
-header.topbar .brand img {
-    margin-right: 4px;
-}
-
-header.topbar .brand small {
-    display:block;
-    font-size: 10px;
-}
-
-header.topbar .nav a span {
-    border-bottom: 1px solid #BFBFBF;
+    .nav {
+        a {
+            span {
+                border-bottom: 1px solid #BFBFBF;
+            }
+        }
+    }
 }
 
 .messages {
@@ -76,18 +96,20 @@ header.topbar .nav a span {
     position: fixed;
     width: 100%;
     margin-top: 10px;
+
+    .alert-message {
+        width: 500px;
+        margin: 0px auto;
+    }
 }
 
-.messages .alert-message {
-    width: 500px;
-    margin: 0px auto;
-}
 
-
-.container-fluid > .sidebar {
-    position: fixed;
-    width: 190px;
-    top: 60px;
+.container-fluid {
+    > .sidebar {
+        position: fixed;
+        width: 190px;
+        top: 60px;
+    }
 }
 
 section {
@@ -111,78 +133,109 @@ section {
     -webkit-background-clip: padding-box;
     -moz-background-clip: padding-box;
     background-clip: padding-box;
+
+    &#response {
+        margin-bottom: 80px;
+    }
+
+    &.hidden {
+        form {
+            display: none;
+        }
+    }
+
+    header {
+        img {
+            float: right;
+            cursor: pointer;
+        }
+    }
+
+    form {
+        &.form-stacked {
+            margin:0px -15px;
+        }
+
+        .row {
+            margin-left: 0px;
+
+            [class*="span"]:first-child {
+                margin-left: 0px;
+            }
+        }
+    }
 }
 
-section header img {
-    float: right;
-    cursor: pointer;
+ul {
+    &.query {
+        li {
+            margin-bottom: 10px;
+
+            &:last-child {
+                button {
+                    display: none;
+                }
+            }
+
+            &.error {
+                input[type="button"] {
+                    color: white;
+                    border-color: #C43C35 #C43C35 #882A25;
+                    border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+                }
+            }
+        }
+    }
 }
 
-section form.form-stacked {
-    margin:0px -15px;
+#controls {
+    position: fixed;
+    bottom: 0px;
+    width: 100%;
+    z-index: 10;
+
+    section {
+        margin: 0px 20px 0px 260px;
+
+        -webkit-border-radius: 6px 6px 0px 0px;
+        -moz-border-radius: 6px 6px 0px 0px;
+        border-radius: 6px 6px 0px 0px;
+    }
 }
 
-section form .row {
-    margin-left: 0px;
-}
 
-section form .row [class*="span"]:first-child {
-    margin-left: 0px;
-}
+.autocomplete {
+    z-index: 99;
 
-section.hidden form {
-    display: none;
-}
+    -webkit-box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    -moz-box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 
-ul.query li {
-    margin-bottom: 10px;
-}
+    border: 1px solid #CCC;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
 
-ul.query li:last-child button {
-    display: none;
-}
+    min-height: 19px;
+    max-height: 100px;
 
-ul.query li.error input[type="button"] {
-    color: white;
-    border-color: #C43C35 #C43C35 #882A25;
-    border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+    background-color: white;
+
+    overflow-y: scroll;
+
+    div {
+        padding: 3px;
+
+        &.active,
+        &:hover {
+            color: white;
+            background-color: #3875D7;
+            cursor: pointer;
+        }
+    }
 }
 
 /*
-ul.params li,
-ul.headers li {
-    margin-bottom: 5px;
-}
-
-ul.params li .btn,
-ul.headers li .btn {
-    padding: 5px 3px 5px 3px;
-}
-
-ul.params li .btn.success,
-ul.headers li .btn.success {
-    display: none;
-}
-
-ul.params li:last-of-type .btn.success,
-ul.headers li:last-of-type .btn.success {
-    display: inline-block;
-}
-
-ul.params li:last-of-type .btn.danger,
-ul.headers li:last-of-type .btn.danger {
-    display: none;
-}
-
-textarea {
-    min-width: 390px;
-    max-width: 390px;
-}
-
-.help-block.hide {
-    display: none;
-}
-
 pre {
     -webkit-user-select: text;
     -khtml-user-select: text;
@@ -290,36 +343,7 @@ font-size: 12px;
     border: none;
 }
 
-.autocomplete {
-    z-index: 99;
 
-    -webkit-box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    -moz-box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-
-    border: 1px solid #CCC;
-    -webkit-border-radius: 3px;
-    -moz-border-radius: 3px;
-    border-radius: 3px;
-
-    min-height: 19px;
-    max-height: 100px;
-
-    background-color: white;
-
-    overflow-y: scroll;
-}
-
-.autocomplete div {
-    padding: 3px;
-}
-
-.autocomplete div.active,
-.autocomplete div:hover {
-    color: white;
-    background-color: #3875D7;
-    cursor: pointer;
-}
 
 .form-stacked label span {
     font-weight: normal;
