@@ -23,6 +23,7 @@ var AutoComplete = new Class({
 
                 values.each(function(value, index) {
                     child = new Element('div', {
+                        'data-match': value.toLowerCase(),
                         'data-value': value,
                         'text': labels[index]
                     });
@@ -51,6 +52,10 @@ var AutoComplete = new Class({
                             var input = list.getPrevious('[name={0}]'.substitute([list.get('for')]));
 
                             input.set('value', this.dataset.value);
+
+                            // this part is custom to the REST console
+                            event.target = input;
+                            input.getParent('.content').fireEvent('change', event);
                         }
                     }
                 });
@@ -71,7 +76,7 @@ var AutoComplete = new Class({
 
         document.getElements('input[list]').addEvents({
             'focus': function(event) {
-                var list = this.getNext('[for={0}]'.substitute([this.get('name')]));
+                var list = this.getNext('.autocomplete[for={0}]'.substitute([this.get('name')]));
 
                 list.hide().scrollTo(0, 0);
 
@@ -87,10 +92,9 @@ var AutoComplete = new Class({
 
                 if (this.get('value').length > 0) {
                     var value = this.get('value');
-                    var suggestions = list.getElements('div[data-value*="{0}"]'.substitute([value]));
+                    var suggestions = list.getElements('div[data-match*="{0}"]'.substitute([value.toLowerCase()]));
 
                     if (suggestions.length > 0 && suggestions[0].dataset.value != value) {
-                        console.log('here');
                         list.show();
                         suggestions.show().addClass('enabled');
                     }
@@ -200,6 +204,11 @@ var AutoComplete = new Class({
 
                     if (list.dataset.current > -1) {
                         this.set('value', suggestions[list.dataset.current].dataset.value);
+
+                        // this part is custom to the REST console
+                        event.target = this;
+                        this.getParent('.content').fireEvent('change', event);
+
                         list.dataset.current = -1;
                     }
 
@@ -209,7 +218,7 @@ var AutoComplete = new Class({
         });
 
         document.body.addEvent('click', function(event) {
-            document.getElements('.autocomplete').hide()
+            document.getElements('.autocomplete').hide();
         });
     }
 });

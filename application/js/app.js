@@ -26,8 +26,29 @@ DOMEvent.definePseudo('input', function(split, fn, args) {
     fn.apply(this, args);
 });
 
+/**
+ * Main App logic
+ */
 var App = new Class({
     'Implements': [Events, Mooml.Templates],
+
+    // unsecure headers:
+    'unsafe': [
+        'accept-charset',
+        'accept-encoding',
+        'content-length',
+        'cookie',
+        'date',
+        'origin',
+        'connection',
+        'expect',
+        'referer',
+        'user-agent',
+        'via',
+        'proxy-authorization',
+        'te',
+        'upgrade'
+    ],
 
     'datalists': {
         'mimetypes': [
@@ -444,7 +465,7 @@ var App = new Class({
                         ul({'class': 'nav'},
                             li(a({'href': '#options'}, span('O'), 'ptions')),
                             li(a({'href': '#main'}, span('M'), 'ain')),
-                            li(a({'href': '#body'}, span('B'), 'ody')),
+                            li(a({'href': '#payload'}, span('P'), 'ayload')),
                             li(a({'href': '#authorization'}, span('A'), 'uthorization')),
                             li(a({'href': '#headers'}, span('H'), 'eaders')),
                             li(a({'href': '#response'}, span('R'), 'esponse'))
@@ -485,13 +506,18 @@ var App = new Class({
             div({
                 'class': 'content',
                 'events': {
+                    // load inputs defaults
                     'initInputs': function() {
+                        this.getElements('.input:not(.pairs) input[type="text"], .input input[type="number"], textarea').each(function(input) {
+                            input.set('value', localStorage.getItem('input-value:' + input.get('name')));
+                        });
+
                         this.getElements('.input-prepend input[type="text"]').each(function(input) {
                             var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
-                            var storage = localStorage.getItem('input-disabled:' + input.get('name'));
+                            var disabled = localStorage.getItem('input-disabled:' + input.get('name'));
 
-                            if (storage != null) {
-                                if (storage == 'true') {
+                            if (disabled != null) {
+                                if (disabled == 'true') {
                                     input.set('disabled', true);
                                     checkbox.set('checked', false);
                                 } else {
@@ -500,28 +526,31 @@ var App = new Class({
                                 }
                             }
                         });
+
+                        // process pairs
+                        this.getElements('.pairs').getParent('form').each(function(form) {
+                            var data = localStorage.getItem('pairs-' + form.get('name'));
+
+                            if (data != null) {
+                                data = data.parseQueryString();
+                                Object.each(data, function(value, key) {
+                                    // construct fake event object
+                                    var event = DOMEvent;
+                                    event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+
+                                    // trigger focus event to insert more rows
+                                    this.fireEvent('focus', event);
+
+                                    var last = form.getElement('.pairs li:nth-last-child(-n+2)');
+
+                                    last.getElement('input[type="text"]:first-of-type').set('value', key);
+                                    last.getElement('input[type="text"]:last-of-type').set('value', value);
+                                }.bind(this));
+                            }
+                        }.bind(this));
                     },
 
-                    // global enable / disable action on input fields
-                    'click:relay(.input-prepend input[type="checkbox"])': function(event) {
-                        var input = this.getParent('.input-prepend').getElement('input[type="text"]');
-                        var disabled = input.get('disabled');
-
-                        if (disabled) {
-                            input.set('disabled', false).focus();
-                        } else {
-                            input.set('disabled', true);
-                        }
-
-                        localStorage.setItem('input-disabled:' + input.get('name'), input.get('disabled'));
-                    },
-
-                    'click:relay(section header img)': function(event) {
-                        var section = this.getParent('section');
-                        section.toggleClass('hidden')
-                        localStorage.setItem('section-hidden:' + section.get('id'), section.hasClass('hidden'));
-                    },
-
+                    // load section defaults
                     'initSections': function() {
                         this.getElements('section').each(function(section) {
                             var storage = localStorage.getItem('section-hidden:' + section.get('id'));
@@ -536,7 +565,50 @@ var App = new Class({
                         });
                     },
 
-                    // start pairs
+                    // global enable / disable action on input fields
+                    'click:relay(.input-prepend input[type="checkbox"])': function(event) {
+                        var input = this.getParent('.input-prepend').getElement('input[type="text"]');
+                        var disabled = input.get('disabled');
+
+                        if (disabled) {
+                            input.set('disabled', false).fireEvent('focus').focus();
+                            event.stopPropagation();
+                        } else {
+                            input.set('disabled', true);
+                        }
+
+                        localStorage.setItem('input-disabled:' + input.get('name'), input.get('disabled'));
+                    },
+
+                    // store input values
+                    'change:relay(.input:not(.pairs) input[type="text"], .input input[type="number"], textarea)': function(event) {
+                        localStorage.setItem('input-value:' + this.get('name'), this.get('value'));
+                    },
+
+                    // section hide toggle
+                    'click:relay(section header img)': function(event) {
+                        var section = this.getParent('section');
+                        section.toggleClass('hidden')
+                        localStorage.setItem('section-hidden:' + section.get('id'), section.hasClass('hidden'));
+                    },
+
+                    // store pairs values
+                    'change:relay(form[name="main"] input[type="text"], form[name="payload"] input[type="text"])': function(event) {
+                        var form = this.getParent('form');
+                        var data = form.toQueryString().parseQueryString();
+
+                        var storage = {};
+
+                        data.key.each(function(key, index) {
+                            if (key.length > 0) {
+                                storage[key] = data.value[index];
+                            }
+                        });
+
+                        localStorage.setItem('pairs-' + form.get('name'), Object.toQueryString(storage));
+                    },
+
+                    // pairs delete button
                     'click:relay(.pairs button)': function(event) {
                         var row = this.getParent('li');
                         var next = row.getNext();
@@ -546,12 +618,18 @@ var App = new Class({
                         }
 
                         row.destroy();
+
+                        var event = new DOMEvent;
+                        event.target = next.getFirst();
+                        next.getParent('.content').fireEvent('change', event);
                     },
 
+                    // clear error highlight on pairs
                     'keyup:input:relay(.pairs li.error input[type="text"]:first-child)': function(event) {
                         event.target.getParent('li').removeClass('error');
                     },
 
+                    // check for empty keys on pairs
                     'blur:relay(.pairs li:not(:last-child) input[type="text"]:first-child)': function(event) {
                         var value = this.get('value').trim();
 
@@ -562,10 +640,11 @@ var App = new Class({
                         }
                     },
 
+                    // focus jump on pairs
                     'focus:relay(.pairs li:last-of-type input[type="text"])': function(event) {
                         var row = this.getParent('li');
                         var previous = row.getPrevious();
-                        var index = row.getChildren().indexOf(this);
+                        var index = row.getChildren().indexOf(event.target);
 
                         if (previous && previous.getChildren()[0].get('value') == '') {
                             previous.addClass('error').getFirst().focus();
@@ -575,8 +654,8 @@ var App = new Class({
                             clone.getElement('input').focus();
                         }
                     },
-                    // end pairs
 
+                    // tabs navigation
                     'click:relay(ul.tabs li a)': function(event) {
                         event.preventDefault();
 
@@ -588,14 +667,21 @@ var App = new Class({
                         tabs.getElement('.active').removeClass('active');
                         this.getParent('li').addClass('active');
 
-                        content.getElement('.active').removeClass('active');
-                        content.getChildren()[index].addClass('active');
+                        content.getElement('.active').removeClass('active').getElements('input, textarea').set('disabled', true);
+                        content.getChildren()[index].addClass('active').getElements('input, textarea').set('disabled', false);
+                    },
+
+                    // prevent enter key from triggering any buttons on the page
+                    'keydown:keys(enter):relay(form)': function(event) {
+                        event.stop();
+
+                        // TODO fire send event
                     }
                 }},
 
                 this.renderTemplate('options'),
-                this.renderTemplate('target'),
-                this.renderTemplate('body'),
+                this.renderTemplate('main'),
+                this.renderTemplate('payload'),
                 this.renderTemplate('authorization'),
                 this.renderTemplate('headers'),
                 this.renderTemplate('response')
@@ -610,6 +696,7 @@ var App = new Class({
                 ),
 
                 form({
+                    'name': 'options',
                     'class': 'form-stacked',
                     'novalidate': true,
                     'events': {
@@ -722,7 +809,7 @@ var App = new Class({
             )
         }),
 
-        'target': new Template(function(data) {
+        'main': new Template(function(data) {
             section({'id': 'main'},
                 header(
                     img({'src': 'images/minimize.png'}),
@@ -730,6 +817,7 @@ var App = new Class({
                 ),
 
                 form({
+                    'name': 'main',
                     'class': 'form-stacked',
                     'novalidate': true
                     },
@@ -741,7 +829,23 @@ var App = new Class({
                             div({'class': 'clearfix'},
                                 label({'for': 'uri'}, 'URI'),
                                 div({'class': 'input'},
-                                    input({'class': 'span10', 'type': 'text', 'name': 'uri', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: http://example.com/resources/ef7d-xj36p', 'required': true}),
+                                    input({
+                                        'class': 'span10',
+                                        'type': 'text',
+                                        'name': 'uri',
+                                        'tabindex': 2,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: http://example.com/resources/ef7d-xj36p',
+                                        'required': true,
+                                        'events': {
+                                            'change': function(event) {
+                                                var value = this.get('value');
+                                                if (value.length && value.substr(0, 4) != 'http') {
+                                                    this.set('value', 'http://' + value);
+                                                }
+                                            }
+                                        }
+                                    }),
                                     span({'class': 'help-block'}, 'Universal Resource Identifier. ex: https://www.sample.com:9000')
                                 )
                             )
@@ -783,7 +887,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'charset'}, a({'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2', 'target': '_blank'}, 'Charset')),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
@@ -794,7 +898,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'encoding'}, a({'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3', 'target': '_blank'}, 'Encoding')),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
@@ -810,7 +914,7 @@ var App = new Class({
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span5', 'type': 'text', 'name': 'Accept-Language', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: en-US', 'list': 'language', 'disabled': true})
+                                        input({'class': 'span5', 'type': 'text', 'name': 'Accept-Language', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: en-US', 'list': 'languages', 'disabled': true})
                                     ),
                                     span({'class': 'help-block'}, 'Acceptable languages for response.')
                                 )
@@ -839,14 +943,15 @@ var App = new Class({
             )
         }),
 
-        'body': new Template(function(data) {
-            section({'id': 'body', 'class': 'hidden'},
+        'payload': new Template(function(data) {
+            section({'id': 'payload', 'class': 'hidden'},
                 header(
                     img({'src': 'images/minimize.png'}),
-                    h2('Body')
+                    h2('Payload')
                 ),
 
                 form({
+                    'name': 'payload',
                     'class': 'form-stacked',
                     'novalidate': true
                     },
@@ -865,17 +970,17 @@ var App = new Class({
                             ),
 
                             div({'class': 'clearfix'},
-                                label({'for': 'encoding'}, 'Encoding'),
+                                label({'for': 'encoding'}, 'Content-Type Encoding'),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span5', 'type': 'text', 'name': 'encoding', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'encoding', 'disabled': true})
+                                        input({'class': 'span5', 'type': 'text', 'name': 'content-encoding', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'charset', 'disabled': true})
                                     ),
                                     span({'class': 'help-block'}, 'Acceptable encodings')
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'Content-Length'}, 'Content-Length'),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
@@ -886,7 +991,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'Cookie'}, 'Cookie'),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
@@ -918,7 +1023,54 @@ var App = new Class({
                                 li(a('Attachments'))
                             ),
 
-                            ul({'class': 'unstyled tabs-content'},
+                            ul({
+                                'class': 'unstyled tabs-content',
+                                'events': {
+                                    'change:relay(textarea)': function(event) {
+                                        var form = this.getParent('form');
+                                        var data = form.toQueryString().parseQueryString();
+
+                                        this.getParent('form').getElements('.pairs li:nth-last-of-type(n+2)').destroy();
+
+                                        if (data['Content-Type'] && data['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
+                                            data = data.raw.parseQueryString();
+
+                                            Object.each(data, function(value, key) {
+                                                // construct fake event object
+                                                var event = DOMEvent;
+                                                event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+
+                                                // trigger focus event to insert more rows
+                                                this.getParent('.content').fireEvent('focus', event);
+
+                                                var last = form.getElement('.pairs li:nth-last-child(-n+2)');
+
+                                                last.getElement('input[type="text"]:first-of-type').set('value', key);
+                                                last.getElement('input[type="text"]:last-of-type').set('value', value);
+                                            }.bind(this));
+                                        } else {
+                                            localStorage.removeItem('pairs-payload');
+                                        }
+                                    },
+
+                                    'change:relay(input[type="text"])': function(event) {
+                                        var form = this.getParent('form').toQueryString().parseQueryString();
+
+                                        if (form['Content-Type'] && form['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
+                                            var raw = {};
+
+                                            // set payload params
+                                            Array.from(form.key).each(function(key, index) {
+                                                if (key.length > 0) {
+                                                    raw[key] = Array.from(form.value)[index];
+                                                }
+                                            });
+
+                                            this.getParent('form').getElement('textarea[name="raw"]').set('value', Object.toQueryString(raw));
+                                        }
+                                    }
+                                }},
+
                                 li({'class': 'active'},
                                     div({'class': 'input pairs'},
                                         ul({'class': 'unstyled query'},
@@ -936,10 +1088,7 @@ var App = new Class({
                                 li(
                                     div({'class': 'clearfix'},
                                         div({'class': 'input'},
-                                            div({'class': 'input-prepend'},
-                                                label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                                textarea({'class': 'span9', 'name': 'raw', 'rows': 5, 'tabindex': 5, 'placeholder': 'ex: XML, JSON, etc ...', 'disabled': true})
-                                            ),
+                                            textarea({'class': 'span9', 'name': 'raw', 'rows': 5, 'tabindex': 5, 'placeholder': 'ex: XML, JSON, etc ...', 'disabled': true}),
                                             span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
                                         )
                                     )
@@ -950,8 +1099,8 @@ var App = new Class({
                                         div({'class': 'input pairs'},
                                             ul({'class': 'unstyled query'},
                                                 li({'class': 'clearfix row'},
-                                                    input({'class': 'span4', 'type': 'text', 'name': 'file_key', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
-                                                    input({'class': 'span5', 'name': 'files', 'type': 'file', 'multiple': false}),
+                                                    input({'class': 'span4', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                    input({'class': 'span5', 'name': 'file', 'type': 'file', 'multiple': false}),
                                                     button({'class': 'span1 btn danger'})
                                                 )
                                             )
@@ -973,6 +1122,7 @@ var App = new Class({
                 ),
 
                 form({
+                    'name': 'headers',
                     'class': 'form-stacked',
                     'novalidate': true
                     },
@@ -981,7 +1131,7 @@ var App = new Class({
                         div({'class': 'span8'},
                             h3('Standard Headers'),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'date'}, 'Date'),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
@@ -992,7 +1142,18 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
+                                label({'for': 'origin'}, 'Origin'),
+                                div({'class': 'input'},
+                                    div({'class': 'input-prepend'},
+                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
+                                        input({'class': 'span7', 'type': 'text', 'name': 'Origin', 'tabindex': 5, 'autocomplete': false, 'placeholder': 'ex: chrome-extension', 'disabled': true})
+                                    ),
+                                    span({'class': 'help-block'}, '')
+                                )
+                            ),
+
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'connection'}, 'Connection'),
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
@@ -1003,7 +1164,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'expect'}, 'Expect'),
 
                                 div({'class': 'input'},
@@ -1039,7 +1200,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'referer'}, 'Referer'),
 
                                 div({'class': 'input'},
@@ -1051,7 +1212,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'agent'}, 'User-Agent'),
 
                                 div({'class': 'input'},
@@ -1075,7 +1236,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'via'}, 'Via'),
 
                                 div({'class': 'input'},
@@ -1087,7 +1248,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'Proxy-Authorization'}, 'Proxy-Authorization'),
 
                                 div({'class': 'input'},
@@ -1099,7 +1260,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'TE'}, 'Transfer-Encoding'),
 
                                 div({'class': 'input'},
@@ -1111,7 +1272,7 @@ var App = new Class({
                                 )
                             ),
 
-                            div({'class': 'clearfix disabled'},
+                            div({'class': 'clearfix hide'},
                                 label({'for': 'Upgrade'}, 'Upgrade'),
 
                                 div({'class': 'input'},
@@ -1286,6 +1447,7 @@ var App = new Class({
                 ),
 
                 form({
+                    'name': 'authorization',
                     'class': 'form-stacked',
                     'novalidate': true
                     },
@@ -1339,7 +1501,12 @@ var App = new Class({
 
         'controls': new Template(function(data) {
             div({'id': 'controls'},
-                section(
+                section({'events': {
+                        'click:relay(button)': function(event) {
+                            this.send();
+                        }.bind(this)
+                    }},
+
                     button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
                     button({'data-action': 'get', 'class': 'btn'}, 'GET'),
                     button({'data-action': 'post', 'class': 'btn'}, 'POST'),
@@ -1381,7 +1548,371 @@ var App = new Class({
         if ('options' in document.createElement('datalist') == false) {
             new AutoComplete();
         }
-    }
+    },
+
+    'send': function() {
+        var data = {
+            'main': {},
+            'payload': {},
+            'headers': {},
+            'authorization': {}
+        };
+
+        var error = false;
+
+        var forms = document.getElements('form[name="main"], form[name="payload"], form[name="authorization"], form[name="headers"]');
+
+        forms.each(function(form) {
+            data[form.get('name')] = {};
+
+            var string = form.toQueryString();
+
+            if (string != '') {
+                data[form.get('name')] = string.parseQueryString()
+            }
+        });
+
+        console.log(data);
+
+        var options = {
+            'url': data.main.uri,
+            'query': {},
+            'payload': {},
+            'files': {},
+            'headers': Object.merge({}, data.main, data.payload, data.authorization, data.headers),
+            'async': true,
+            'method': data.main.method,
+            'link': 'ignore',
+            'isSuccess': null,
+            'emulation': false,
+            'urlEncoded': false,
+            'encoding': 'utf-8',
+            'evalScripts': false,
+            'evalResponse': false,
+            'timeout': data.main.timeout * 1000,
+            'noCache': false,
+
+            'onRequest': function() {
+                // replace buttons with animation
+                //document.getElement('form[name="request"] .actions').addClass('progress');
+            },
+
+            'onProgress': function(event, xhr){
+                //var loaded = event.loaded, total = event.total;
+            },
+
+            'onTimeout': function() {
+                // TODO replace with notice
+                Error('Error', 'Connection Timed-out');
+
+                // remove loading animation
+                //document.getElement('form[name="request"] .actions').removeClass('progress');
+            },
+
+            'onCancel': function() {
+                //this.fireEvent('stop');
+            }.bind(this),
+
+            'onComplete': function() {
+            }
+        };
+
+        // special condition for encoding
+        if (options.headers['content-encoding'] != '') {
+            options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.headers['content-encoding'];
+        }
+
+        // cleanup
+        delete options.headers.uri;
+        delete options.headers.method;
+        delete options.headers.timeout;
+        delete options.headers.key;
+        delete options.headers.value;
+        delete options.headers.raw;
+        delete options.headers.name;
+        delete options.headers.files;
+        delete options.headers['content-encoding'];
+
+        // set query string params
+        Array.from(data.main.key).each(function(key, index) {
+            if (key.length > 0) {
+                options.query[key] = Array.from(data.main.value)[index];
+            }
+        });
+
+        // set payload params
+        Array.from(data.payload.key).each(function(key, index) {
+            if (key.length > 0) {
+                options.payload[key] = Array.from(data.payload.value)[index];
+            }
+        });
+
+        // set custom headers
+        if (data.headers.key) {
+            data.headers.key.each(function(key, index) {
+                //validate header
+                if (this.unsafe.contains(key.toLowerCase())) {
+                    Error('Unsafe Header', 'Refused to set unsafe header "' + key + '"', this.getElement('ul.headers input[name="key"]:nth-of-type(' + (index + 1) + ')'));
+                    error = true;
+                } else if (key.length > 0) {
+                    options.headers[key] = data.headers.value[index];
+                }
+            }.bind(this));
+        }
+
+        // check for required fields
+        document.getElements('*[required]').each(function(element) {
+            if (element.get('value').length == 0) {
+                Error('Missing Data', 'Please Fill out all the required fields', element);
+                error = true;
+            }
+        });
+
+
+        console.log(options);
+
+        if (error) {
+            // stop on error
+            return false;
+        } else {
+            if (options.files.length) {
+                //delete options.headers['Content-Type'];
+            }
+
+            window.XHR = new Request(options).send();
+
+            return;
+
+            var options = {
+                'url': request.uri,
+                'method': request.method,
+                'encoding': request.encoding,
+                'timeout': request.timeout * 1000,
+                'raw': request.raw,
+                'data': request.data,
+                'files': this.getElement('input[name="files"]').files,
+                'file_key': request.file_key,
+                'headers': headers,
+
+                'onRequest': function() {
+                    // replace buttons with animation
+                    document.getElement('form[name="request"] .actions').addClass('progress');
+                },
+
+                'onProgress': function(event, xhr){
+                    //var loaded = event.loaded, total = event.total;
+                },
+
+                'onTimeout': function() {
+                    // TODO replace with notice
+                    Error('Error', 'Connection Timed-out');
+
+                    // remove loading animation
+                    document.getElement('form[name="request"] .actions').removeClass('progress');
+                },
+
+                'onCancel': function() {
+                    this.fireEvent('stop');
+                }.bind(this),
+
+                'onComplete': function() {
+                    // for non-success
+                    var responseText = this.xhr.responseText;
+                    var responseXML = this.xhr.responseXML;
+
+                    // rest response fields
+                    //document.id('har').empty();
+                    document.id('rawBody').empty().set('class');
+                    document.id('responseBody').empty().set('class', 'prettyprint');
+                    document.id('responseHeaders').empty().set('class', 'prettyprint');
+                    document.id('responsePreview').empty();
+                    document.id('requestBody').empty().set('class', 'prettyprint');
+                    document.id('requestHeaders').empty().set('class', 'prettyprint');
+
+                    // trigger show/hide line numbers
+                    document.getElement('form[name="options"] input[name="lines"]').fireEvent('change');
+
+                    if (this.xhr.status == 0) {
+                        Error('Connection Failed!', 'Check your connectivity and try again');
+
+                        document.getElement('form[name="request"]').fireEvent('stop');
+                    } else {
+                        // construct request text
+                        var requestText = 'Request Url: {0}\nRequest Method: {1}\nStatus Code: {2}\n'.substitute([this.options.url, this.options.method, this.xhr.status]);
+
+                        // uploaded files?
+                        if (this.options.files.length > 0) {
+                            requestText += 'Files: {0}\n'.substitute([beautify.js(JSON.encode(this.options.files))]);
+                        }
+
+                        // data
+                        if (this.options.data != '') {
+                            switch (typeOf(this.options.data)) {
+                                case 'string':
+                                    requestText += 'Params: ' + this.options.data;
+                                    break;
+
+                                case 'object':
+                                    requestText += 'Params: ' + beautify.js(JSON.encode(this.options.data));
+                                    break;
+                            }
+                        }
+
+                        var requestHeaders = '';
+
+                        Object.each(this.options.headers, function(value, key) {
+                            requestHeaders += key + ': ' + value + "\n";
+                        });
+
+                        var defaultHeaders = {
+                            'Accept': '*/\*',
+                            //'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+                            //'Accept-Encoding': 'gzip,deflate,sdch',
+                            //'Accept-Language': 'en-US,en;q=0.8',
+                            'Connection': 'keep-alive',
+                            //'Content-Length': '34',
+                            'Content-Type': 'application/xml',
+                            //'Cookie': '__qca=P0-2074128619-1316995740016; __utma=71985868.1147819601.1316995740.1317068965.1317073948.4; __utmc=71985868; __utmz=71985868.1316995740.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
+                            //'Host': 'www.codeinchaos.com',
+                            'Origin': 'chrome-extension: //rest-console-id',
+                            'User-Agent': navigator.userAgent
+                        };
+
+                        Object.each(defaultHeaders, function(value, key) {
+                            if (this.options.headers[key] == undefined) {
+                                requestHeaders += key + ': ' + value + "\n";
+                            }
+                        }.bind(this));
+
+                        var responseHeaders = 'Status Code: {0}\n{1}'.substitute([this.xhr.status, this.xhr.getAllResponseHeaders()]);
+
+                        // setup response area
+                        document.id('rawBody').set('text', responseText)
+                        document.id('responseBody').set('text', responseText);
+                        document.id('responseHeaders').set('text', responseHeaders).store('unstyled', responseHeaders);
+                        document.id('requestBody').set('text', requestText).store('unstyled', requestText);
+                        document.id('requestHeaders').set('text', requestHeaders).store('unstyled', requestHeaders);
+
+                        // extract content type
+                        var contentType = this.xhr.getResponseHeader('Content-Type');
+
+                        if (contentType != null) {
+                            var index = contentType.indexOf(';');
+
+                            if (index > 1) {
+                                contentType = contentType.slice(0, index);
+                            }
+                        }
+
+                        var style = 'auto';
+
+                        switch (contentType) {
+                            case 'text/css':
+                                style = 'css';
+
+                                responseText = beautify.css(responseText);
+                                document.id('responseBody').set('text', responseText);
+                                break;
+
+                            case 'application/ecmascript':
+                            case 'application/javascript':
+                            case 'application/json':
+                                style = 'js';
+
+                                responseText = beautify.js(responseText);
+                                document.id('responseBody').set('text', responseText);
+                                break;
+
+                            case 'application/atom+xml':
+                            case 'application/atomcat+xml':
+                            case 'application/atomserv+xml':
+                            case 'application/beep+xml':
+                            case 'application/davmount+xml':
+                            case 'application/docbook+xml':
+                            case 'application/rdf+xml':
+                            case 'application/rss+xml':
+                            case 'application/xml':
+                            case 'application/xspf+xml':
+                            case 'application/vnd.google-earth.kml+xml':
+                            case 'application/vnd.mozilla.xul+xml':
+                            case 'image/svg+xml':
+                            case 'text/xml':
+                                style = 'xml';
+
+                                var declaration = responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
+
+                                responseText = declaration[2] + "\n" + beautify.xml(responseXML).firstChild.nodeValue;
+
+                                document.id('responseBody').set('text', responseText);
+                                break;
+
+                            case 'text/html':
+                            case 'application/xhtml+xml':
+                                style = 'html';
+
+                                document.id('responseBody').set('text', responseText);
+                                document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
+
+                                // create and inject the iframe object
+                                var iframe = new IFrame();
+                                document.id('responsePreview').adopt(iframe);
+
+                                // start writing
+                                var doc = iframe.contentWindow.document;
+                                doc.open();
+                                doc.write(responseText);
+                                doc.close();
+                                break;
+/*
+* requires xhr.responseType to be set BEFORE the request is sent
+* this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
+
+                            case 'image/jpeg':
+                                // create and inject the iframe object
+                                var iframe = new IFrame();
+                                document.id('responsePreview').adopt(iframe);
+
+                                // render the image blob
+                                var bb = new window.WebKitBlobBuilder();
+                                bb.append(this.xhr.response);
+
+                                // if using arraybuffer do this
+                                // other wise just use blob method
+                                // but its not currently implemented in chrome
+                                var blob = bb.getBlob('image/png');
+
+                                //~ var img = document.createElement('img');
+                                //~ img.onload = function(e) {
+                                  //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
+                                //~ };
+                                var src = window.webkitURL.createObjectURL(blob);
+
+                                // start writing
+                                var doc = iframe.contentWindow.document;
+                                doc.open();
+                                doc.write('<img src="' + src + '"/>');
+                                doc.close();
+                                break;
+*/
+                        }
+
+                        // store the text for later use
+                        document.id('responseBody').store('unstyled', responseText);
+
+                        // trigger syntax highlighting
+                        document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
+
+                        // scroll to the response area
+                        document.getElement('a[href="#response"]').fireEvent('click', new DOMEvent());
+
+                        // remove loading animation
+                        document.getElement('form[name="request"] .actions').removeClass('progress');
+                    }
+                }
+            };
+
+        }
+    },
 });
 
 // error messages
@@ -1424,79 +1955,6 @@ window.addEvent('domready', function() {
         document.head.getElementById('theme').set('href', 'style/prettify/' + this.get('value') + '.css');
 
         _gaq.push(['_trackEvent', 'Theme Swap', this.get('value')]);
-    });
-
-    // options form
-    document.getElement('form[name="options"]').addEvents({
-        'click:relay(input[type="button"], input[type="submit"], input[type="reset"])': function(event) {
-            event.preventDefault();
-
-            this.getParent('form').fireEvent(this.dataset.action, event);
-        },
-
-        'submit': function(event) {
-            var data = this.toQueryString().parseQueryString();
-            localStorage.setItem('options', JSON.encode(data));
-        },
-
-        'reset': function(event) {
-            var defaults = JSON.decode(localStorage.getItem('options'));
-
-            Object.each(defaults, function(value, key) {
-                var input = document.getElement('input[name="{0}"]:not([type="radio"]), input[type="radio"][name="{0}"][value="{1}"]'.substitute([key, value]));
-
-                switch (input.get('type')) {
-                    case 'checkbox':
-                        input.set('checked', value == 'on' ? true : false).fireEvent('change');
-                        break;
-
-                    case 'radio':
-                        input.set('checked', true).fireEvent('change');
-                        break;
-                }
-            });
-        }
-    }).fireEvent('reset', new DOMEvent);
-
-    // messages close action
-    document.getElements('.messages .alert-message a.close').addEvent('click', function(event) {
-        event.preventDefault();
-
-        this.getParent('.messages').addClass('hide').getElements('.alert-message').addClass('hide');
-    });
-
-    // modals backdrop action
-    document.getElements('.modals .modal-backdrop').addEvent('click', function(event) {
-        this.getParent('.modals').addClass('hide').getElements('.modal').addClass('hide');
-    });
-
-    // modals close action
-    document.getElements('.modals .modal-header a.close').addEvent('click', function(event) {
-        event.preventDefault();
-
-        this.getParent('.modals').getElement('.modal-backdrop').fireEvent('click');
-    });
-
-    // field checkboxes
-    document.getElements('div.input-prepend > label.add-on > input[type="checkbox"]').addEvent('change', function(event) {
-        this.getParent('div.input-prepend > input, div.input-prepend > textarea').set('disabled', !this.get('checked'));
-    }).fireEvent('change');
-
-    // headers & params
-    document.getElements('ul.params, ul.headers').addEvents({
-        'click:relay(.btn.success)': function(event) {
-            event.preventDefault();
-
-            row = this.getParent().clone();
-            this.getParent().grab(row, 'before');
-            row.getElements('input').set('disabled', false)[0].focus();
-        },
-
-        'click:relay(.btn.danger)': function(event) {
-            event.preventDefault();
-
-            this.getParent().dispose();
-        }
     });
 
     // basic auth submit event
@@ -1734,6 +2192,7 @@ window.addEvent('domready', function() {
         }
     });
 
+    // clicks within the response body
     document.id('responseBody').addEvent('click:relay(a[href])', function(event) {
         event.preventDefault();
 
@@ -1742,23 +2201,8 @@ window.addEvent('domready', function() {
         document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
     });
 
-    document.getElement('form[name="request"] input[name="uri"]').addEvent('change', function(event) {
-        if (this.get('value').length > 0 && this.get('value').substr(0, 4) != 'http') {
-            this.set('value', 'http://' + this.get('value'));
-        }
-    });
-
     // request form actions
     document.getElement('form[name="request"]').addEvents({
-        'click:relay(input[type="button"], input[type="submit"], input[type="reset"])': function(event) {
-            event.preventDefault();
-
-            if (this.dataset.action) {
-                this.getParent('form').fireEvent(this.dataset.action, event);
-
-                _gaq.push(['_trackEvent', 'Request Form', this.dataset.action]);
-            }
-        },
 
         'basic-auth': function(event) {
             document.getElement('.modals').removeClass('hide').getElement('.modal.authorization.basic').removeClass('hide');
@@ -1876,331 +2320,6 @@ window.addEvent('domready', function() {
                 row.getElements('input').set('disabled', false);
                 row.inject(container, 'top');
             });
-        },
-
-        'submit': function(event) {
-            event.preventDefault();
-
-            var error = false;
-
-            // get all form data
-            var request = this.toQueryString().parseQueryString();
-
-            // extract the headers
-            var headers = Object.clone(request);
-
-            // delete none headers
-            delete headers.uri;
-            delete headers.method;
-            delete headers.timeout;
-            delete headers.raw;
-            delete headers.encoding;
-            delete headers.key;
-            delete headers.value;
-            delete headers.file_key;
-
-            // unsecure headers:
-            var unsafe = [
-                'accept-charset',
-                'accept-encoding',
-                'content-length',
-                'cookie',
-                'date',
-                'connection',
-                'expect',
-                'referer',
-                'user-agent',
-                'via',
-                'proxy-authorization',
-                'te',
-                'upgrade'
-            ];
-
-            // get custom fields
-            var custom = {
-                'headers': {
-                    'keys': this.getElements('ul.headers input[name="key"]').get('value'),
-                    'values': this.getElements('ul.headers input[name="value"]').get('value')
-                },
-
-                'data': {
-                    'keys': this.getElements('ul.params input[name="key"]').get('value'),
-                    'values': this.getElements('ul.params input[name="value"]').get('value')
-                }
-            }
-
-            // init variables
-            request.data = {};
-
-            // set custom params data
-            custom.data.keys.each(function(key, index) {
-                if (key.length > 0) {
-                    request.data[key] = custom.data.values[index];
-                }
-            });
-
-            // validate headers
-            custom.headers.keys.each(function(key, index) {
-                if (unsafe.contains(key.toLowerCase())) {
-                    Error('Unsafe Header', 'Refused to set unsafe header "' + key +'"', this.getElement('ul.headers input[name="key"]:nth-of-type(' + (index + 1) + ')'));
-                    error = true;
-                } else if (key.length > 0) {
-                    headers[key] = custom.headers.values[index];
-                }
-            }.bind(this));
-
-            // check for required fields
-            this.getElements('*[required]').each(function(element) {
-                if (element.get('value').length == 0) {
-                    Error('Missing Data', 'Please Fill out all the required fields', element);
-                    error = true;
-                }
-            });
-
-            if (error) {
-                // stop on error
-                return false;
-            } else {
-                // special condition for encoding
-                if (request.encoding) {
-                    request['Content-Type'] = request['Content-Type'] + '; charset=' + request.encoding;
-                }
-
-                var options = {
-                    'url': request.uri,
-                    'method': request.method,
-                    'encoding': request.encoding,
-                    'timeout': request.timeout * 1000,
-                    'raw': request.raw,
-                    'data': request.data,
-                    'files': this.getElement('input[name="files"]').files,
-                    'file_key': request.file_key,
-                    'headers': headers,
-
-                    'onRequest': function() {
-                        // replace buttons with animation
-                        document.getElement('form[name="request"] .actions').addClass('progress');
-                    },
-
-                    'onProgress': function(event, xhr){
-                        //var loaded = event.loaded, total = event.total;
-                    },
-
-                    'onTimeout': function() {
-                        // TODO replace with notice
-                        Error('Error', 'Connection Timed-out');
-
-                        // remove loading animation
-                        document.getElement('form[name="request"] .actions').removeClass('progress');
-                    },
-
-                    'onCancel': function() {
-                        this.fireEvent('stop');
-                    }.bind(this),
-
-                    'onComplete': function() {
-                        // for non-success
-                        var responseText = this.xhr.responseText;
-                        var responseXML = this.xhr.responseXML;
-
-                        // rest response fields
-                        //document.id('har').empty();
-                        document.id('rawBody').empty().set('class');
-                        document.id('responseBody').empty().set('class', 'prettyprint');
-                        document.id('responseHeaders').empty().set('class', 'prettyprint');
-                        document.id('responsePreview').empty();
-                        document.id('requestBody').empty().set('class', 'prettyprint');
-                        document.id('requestHeaders').empty().set('class', 'prettyprint');
-
-                        // trigger show/hide line numbers
-                        document.getElement('form[name="options"] input[name="lines"]').fireEvent('change');
-
-                        if (this.xhr.status == 0) {
-                            Error('Connection Failed!', 'Check your connectivity and try again');
-
-                            document.getElement('form[name="request"]').fireEvent('stop');
-                        } else {
-                            // construct request text
-                            var requestText = 'Request Url: {0}\nRequest Method: {1}\nStatus Code: {2}\n'.substitute([this.options.url, this.options.method, this.xhr.status]);
-
-                            // uploaded files?
-                            if (this.options.files.length > 0) {
-                                requestText += 'Files: {0}\n'.substitute([beautify.js(JSON.encode(this.options.files))]);
-                            }
-
-                            // data
-                            if (this.options.data != '') {
-                                switch (typeOf(this.options.data)) {
-                                    case 'string':
-                                        requestText += 'Params: ' + this.options.data;
-                                        break;
-
-                                    case 'object':
-                                        requestText += 'Params: ' + beautify.js(JSON.encode(this.options.data));
-                                        break;
-                                }
-                            }
-
-                            var requestHeaders = '';
-
-                            Object.each(this.options.headers, function(value, key) {
-                                requestHeaders += key + ': ' + value + "\n";
-                            });
-
-                            var defaultHeaders = {
-                                'Accept': '*/\*',
-                                //'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-                                //'Accept-Encoding': 'gzip,deflate,sdch',
-                                //'Accept-Language': 'en-US,en;q=0.8',
-                                'Connection': 'keep-alive',
-                                //'Content-Length': '34',
-                                'Content-Type': 'application/xml',
-                                //'Cookie': '__qca=P0-2074128619-1316995740016; __utma=71985868.1147819601.1316995740.1317068965.1317073948.4; __utmc=71985868; __utmz=71985868.1316995740.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
-                                //'Host': 'www.codeinchaos.com',
-                                'Origin': 'chrome-extension: //rest-console-id',
-                                'User-Agent': navigator.userAgent
-                            };
-
-                            Object.each(defaultHeaders, function(value, key) {
-                                if (this.options.headers[key] == undefined) {
-                                    requestHeaders += key + ': ' + value + "\n";
-                                }
-                            }.bind(this));
-
-                            var responseHeaders = 'Status Code: {0}\n{1}'.substitute([this.xhr.status, this.xhr.getAllResponseHeaders()]);
-
-                            // setup response area
-                            document.id('rawBody').set('text', responseText)
-                            document.id('responseBody').set('text', responseText);
-                            document.id('responseHeaders').set('text', responseHeaders).store('unstyled', responseHeaders);
-                            document.id('requestBody').set('text', requestText).store('unstyled', requestText);
-                            document.id('requestHeaders').set('text', requestHeaders).store('unstyled', requestHeaders);
-
-                            // extract content type
-                            var contentType = this.xhr.getResponseHeader('Content-Type');
-
-                            if (contentType != null) {
-                                var index = contentType.indexOf(';');
-
-                                if (index > 1) {
-                                    contentType = contentType.slice(0, index);
-                                }
-                            }
-
-                            var style = 'auto';
-
-                            switch (contentType) {
-                                case 'text/css':
-                                    style = 'css';
-
-                                    responseText = beautify.css(responseText);
-                                    document.id('responseBody').set('text', responseText);
-                                    break;
-
-                                case 'application/ecmascript':
-                                case 'application/javascript':
-                                case 'application/json':
-                                    style = 'js';
-
-                                    responseText = beautify.js(responseText);
-                                    document.id('responseBody').set('text', responseText);
-                                    break;
-
-                                case 'application/atom+xml':
-                                case 'application/atomcat+xml':
-                                case 'application/atomserv+xml':
-                                case 'application/beep+xml':
-                                case 'application/davmount+xml':
-                                case 'application/docbook+xml':
-                                case 'application/rdf+xml':
-                                case 'application/rss+xml':
-                                case 'application/xml':
-                                case 'application/xspf+xml':
-                                case 'application/vnd.google-earth.kml+xml':
-                                case 'application/vnd.mozilla.xul+xml':
-                                case 'image/svg+xml':
-                                case 'text/xml':
-                                    style = 'xml';
-
-                                    var declaration = responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
-
-                                    responseText = declaration[2] + "\n" + beautify.xml(responseXML).firstChild.nodeValue;
-
-                                    document.id('responseBody').set('text', responseText);
-                                    break;
-
-                                case 'text/html':
-                                case 'application/xhtml+xml':
-                                    style = 'html';
-
-                                    document.id('responseBody').set('text', responseText);
-                                    document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
-
-                                    // create and inject the iframe object
-                                    var iframe = new IFrame();
-                                    document.id('responsePreview').adopt(iframe);
-
-                                    // start writing
-                                    var doc = iframe.contentWindow.document;
-                                    doc.open();
-                                    doc.write(responseText);
-                                    doc.close();
-                                    break;
-/*
- * requires xhr.responseType to be set BEFORE the request is sent
- * this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
-
-                                case 'image/jpeg':
-                                    // create and inject the iframe object
-                                    var iframe = new IFrame();
-                                    document.id('responsePreview').adopt(iframe);
-
-                                    // render the image blob
-                                    var bb = new window.WebKitBlobBuilder();
-                                    bb.append(this.xhr.response);
-
-                                    // if using arraybuffer do this
-                                    // other wise just use blob method
-                                    // but its not currently implemented in chrome
-                                    var blob = bb.getBlob('image/png');
-
-                                    //~ var img = document.createElement('img');
-                                    //~ img.onload = function(e) {
-                                      //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
-                                    //~ };
-                                    var src = window.webkitURL.createObjectURL(blob);
-
-                                    // start writing
-                                    var doc = iframe.contentWindow.document;
-                                    doc.open();
-                                    doc.write('<img src="' + src + '"/>');
-                                    doc.close();
-                                    break;
- */
-                            }
-
-                            // store the text for later use
-                            document.id('responseBody').store('unstyled', responseText);
-
-                            // trigger syntax highlighting
-                            document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
-
-                            // scroll to the response area
-                            document.getElement('a[href="#response"]').fireEvent('click', new DOMEvent());
-
-                            // remove loading animation
-                            document.getElement('form[name="request"] .actions').removeClass('progress');
-                        }
-                    }
-                };
-
-                // don't force the content-type header
-                if (options.files.length > 0) {
-                    delete options.headers['Content-Type'];
-                }
-
-                window.XHR = new RESTRequest(options).send();
-            }
         },
 
         'get': function(event) {

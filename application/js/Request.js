@@ -1,20 +1,48 @@
+/*
+---
+
+name: Request
+
+description: Powerful all purpose Request Class. Uses XMLHTTPRequest.
+
+license: MIT-style license.
+
+requires: [Object, Element, Chain, Events, Options, Browser]
+
+provides: Request
+
+...
+*/
+
 (function(){
 
 var empty = function(){},
     progressSupport = ('onprogress' in new Browser.Request);
 
-var RESTRequest = this.RESTRequest = new Class({
+var Request = this.Request = new Class({
 
     Implements: [Chain, Events, Options],
 
-    options: {
+    options: {/*
+        onRequest: function(){},
+        onLoadstart: function(event, xhr){},
+        onProgress: function(event, xhr){},
+        onComplete: function(){},
+        onCancel: function(){},
+        onSuccess: function(responseText, responseXML){},
+        onFailure: function(xhr){},
+        onException: function(headerName, value){},
+        onTimeout: function(){},
+        user: '',
+        password: '',*/
         url: '',
-        raw: '',
-        data: {},
-        files: [],
-        headers: {},
+        query: {},
+        payload: {},
+        files: {},
+        headers: {
+            'Accept': 'application/json'
+        },
         async: true,
-        format: false,
         method: 'get',
         link: 'ignore',
         isSuccess: null,
@@ -63,6 +91,7 @@ var RESTRequest = this.RESTRequest = new Class({
     },
 
     processScripts: function(text){
+        if (this.options.evalResponse && (/(ecma|java)script/).test(this.getHeader('Content-type'))) return Browser.exec(text);
         return text.stripScripts(this.options.evalScripts);
     },
 
@@ -114,56 +143,53 @@ var RESTRequest = this.RESTRequest = new Class({
         return false;
     },
 
-    'send': function(options){
+    send: function(options){
         if (!this.check(options)) return this;
 
         this.options.isSuccess = this.options.isSuccess || this.isSuccess;
         this.running = true;
 
-        var type = typeOf(options);
-        if (type == 'string' || type == 'element') options = {data: options};
+        var query = this.options.query, payload = this.options.payload, url = String(this.options.url), method = this.options.method.toLowerCase();
 
-        var old = this.options;
-        options = Object.append({data: old.data, url: old.url, method: old.method}, options);
-        var data = options.data, url = String(options.url), method = options.method.toLowerCase();
-
-        switch (typeOf(data)){
-            case 'element': data = document.id(data).toQueryString(); break;
-            case 'object': case 'hash': data = Object.toQueryString(data);
-        }
-
-        if (this.options.format){
-            var format = 'format=' + this.options.format;
-            data = (data) ? format + '&' + data : format;
-        }
-
-        if (this.options.emulation && !['get', 'post'].contains(method)){
-            var _method = '_method=' + method;
-            data = (data) ? _method + '&' + data : _method;
-            method = 'post';
-        }
-
-        if (this.options.urlEncoded && ['post', 'put'].contains(method)){
+        if (this.options.urlEncoded) {
             var encoding = (this.options.encoding) ? '; charset=' + this.options.encoding : '';
             this.headers['Content-type'] = 'application/x-www-form-urlencoded' + encoding;
         }
 
-        if (!url) url = document.location.pathname;
+        switch (typeOf(payload)){
+            case 'element':
+                payload = document.id(payload).toQueryString();
+                break;
+
+            case 'object':
+            case 'hash':
+                payload = Object.toQueryString(payload);
+                break;
+        }
+
+        if (!url) {
+            url = document.location.pathname;
+        }
 
         var trimPosition = url.lastIndexOf('/');
         if (trimPosition > -1 && (trimPosition = url.indexOf('#')) > -1) url = url.substr(0, trimPosition);
 
-        if (this.options.noCache)
-            url += (url.contains('?') ? '&' : '?') + String.uniqueID();
+        if (this.options.noCache) {
+            //url += (url.contains('?') ? '&' : '?') + String.uniqueID();
+            // TODO set cache headers
+        }
 
-        // REST Console: if RAW data is present, treat `data` as query string
-        if (data && (method == 'get' || this.options.raw != undefined)) {
-            url += (url.contains('?') ? '&' : '?') + data;
-            data = null;
+        if (['object', 'hash'].contains(typeOf(query))) {
+            query = Object.toQueryString(query);
+        }
+
+        if (query.length) {
+            url += (url.contains('?') ? '&' : '?') + query;
         }
 
         var xhr = this.xhr;
-        if (progressSupport){
+
+        if (progressSupport) {
             xhr.onloadstart = this.loadstart.bind(this);
             xhr.onprogress = this.progress.bind(this);
         }
@@ -183,29 +209,30 @@ var RESTRequest = this.RESTRequest = new Class({
 
         this.fireEvent('request');
 
-        // REST Console: special handling of files
+        // special handling of files
         if (this.options.files.length > 0) {
-            var upload = new FormData();
+            // make sure the content-type header is reset
+            delete this.options.headers['Content-Type'];
+
+            var data = new FormData();
 
             // restructure the upload object with the request params
-            Object.each(this.options.data, function(value, key) {
-                upload.append(key, value);
-            });
+            if (['object', 'hash'].contains(typeOf(payload))) {
+                Object.each(payload, function(value, key) {
+                    data.append(key, value);
+                });
+            } else {
+                data.append(payload);
+            }
 
             // add files
-            for (var i = 0, file; file = this.options.files[i]; ++i) {
-                if (this.options.file_key) {
-                    upload.append(this.options.file_key, file);
-                } else {
-                    upload.append(file.name, file);
-                }
-            };
+            Object.each(this.options.files, function(file, name) {
+                data.append(name, file);
+            });
 
-            xhr.send(upload);
-        } else if (this.options.raw != undefined) {
-            xhr.send(this.options.raw);
-        } else {
             xhr.send(data);
+        } else {
+            xhr.send(payload);
         }
 
         if (!this.options.async) this.onStateChange();
@@ -225,6 +252,51 @@ var RESTRequest = this.RESTRequest = new Class({
         this.fireEvent('cancel');
         return this;
     }
+
+});
+
+var methods = {};
+['get', 'post', 'put', 'delete', 'GET', 'POST', 'PUT', 'DELETE'].each(function(method){
+    methods[method] = function(data){
+        var object = {
+            method: method
+        };
+        if (data != null) object.data = data;
+        return this.send(object);
+    };
+});
+
+Request.implement(methods);
+
+Element.Properties.send = {
+
+    set: function(options){
+        var send = this.get('send').cancel();
+        send.setOptions(options);
+        return this;
+    },
+
+    get: function(){
+        var send = this.retrieve('send');
+        if (!send){
+            send = new Request({
+                data: this, link: 'cancel', method: this.get('method') || 'post', url: this.get('action')
+            });
+            this.store('send', send);
+        }
+        return send;
+    }
+
+};
+
+Element.implement({
+
+    send: function(url){
+        var sender = this.get('send');
+        sender.send({data: this, url: url || sender.options.url});
+        return this;
+    }
+
 });
 
 })();
