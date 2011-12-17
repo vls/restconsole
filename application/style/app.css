@@ -100,6 +100,26 @@ body {
         }
     }
 
+    .span8 {
+        .input-prepend {
+            input {
+                &.span8 {
+                    width: 450px - 27px;
+                }
+            }
+        }
+    }
+
+    .span9 {
+        .input-prepend {
+            input {
+                &.span9 {
+                    width: 510px - 27px;
+                }
+            }
+        }
+    }
+
     section {
         padding: 15px;
         margin-bottom: 20px;
@@ -142,6 +162,33 @@ body {
         form {
             &.form-stacked {
                 margin:0px -15px;
+            }
+
+            .clearfix {
+                label {
+                    height: 20px;
+                    line-height: 20px;
+
+                    a {
+                        display: block;
+                        float: left;
+                        width: 16px;
+                        height: 20px;
+                        margin-right: 5px;
+                        background-image: url('/images/w3-gray.png');
+                        background-position: 50% 50%;
+                        background-repeat: no-repeat;
+                        cursor: pointer;
+                    }
+                }
+
+                &:hover {
+                    label {
+                        a {
+                            background-image: url('/images/w3.png');
+                        }
+                    }
+                }
             }
 
             .row {
