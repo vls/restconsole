@@ -26,6 +26,37 @@ DOMEvent.definePseudo('input', function(split, fn, args) {
     fn.apply(this, args);
 });
 
+var Storage = new Class({
+    'name': false,
+
+    'initialize': function(item) {
+        this.item = item;
+        this.data = JSON.decode(localStorage.getItem(this.item));
+
+        if (this.data == null) {
+            this.data = {};
+        }
+    },
+
+    'save': function() {
+        localStorage.setItem(this.item, JSON.encode(this.data));
+    },
+
+    'get': function(key) {
+        return this.data[key];
+    },
+
+    'set': function(key, value) {
+        this.data[key] = value;
+        this.save();
+    },
+
+    'remove': function(key) {
+        delete this.data[key];
+        this.save();
+    }
+});
+
 /**
  * Main App logic
  */
@@ -487,6 +518,14 @@ var App = new Class({
                 div({'class': 'page'},
                     h5('Services'),
 
+                    a({'events': {
+                        'click': function(event) {
+                            event.preventDefault();
+
+                            chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
+                        }
+                    }}, 'Install Extension'),
+
                     select({'class': 'span3'},
                         option('Twitter'),
                         option('Facebook'),
@@ -506,65 +545,6 @@ var App = new Class({
             div({
                 'class': 'content',
                 'events': {
-                    // load inputs defaults
-                    'initInputs': function() {
-                        this.getElements('.input:not(.pairs) input[type="text"], .input input[type="number"], textarea').each(function(input) {
-                            input.set('value', localStorage.getItem('input-value:' + input.get('name')));
-                        });
-
-                        this.getElements('.input-prepend input[type="text"]').each(function(input) {
-                            var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
-                            var disabled = localStorage.getItem('input-disabled:' + input.get('name'));
-
-                            if (disabled != null) {
-                                if (disabled == 'true') {
-                                    input.set('disabled', true);
-                                    checkbox.set('checked', false);
-                                } else {
-                                    input.set('disabled', false);
-                                    checkbox.set('checked', true);
-                                }
-                            }
-                        });
-
-                        // process pairs
-                        this.getElements('.pairs').getParent('form').each(function(form) {
-                            var data = localStorage.getItem('pairs-' + form.get('name'));
-
-                            if (data != null) {
-                                data = data.parseQueryString();
-                                Object.each(data, function(value, key) {
-                                    // construct fake event object
-                                    var event = DOMEvent;
-                                    event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
-
-                                    // trigger focus event to insert more rows
-                                    this.fireEvent('focus', event);
-
-                                    var last = form.getElement('.pairs li:nth-last-child(-n+2)');
-
-                                    last.getElement('input[type="text"]:first-of-type').set('value', key);
-                                    last.getElement('input[type="text"]:last-of-type').set('value', value);
-                                }.bind(this));
-                            }
-                        }.bind(this));
-                    },
-
-                    // load section defaults
-                    'initSections': function() {
-                        this.getElements('section').each(function(section) {
-                            var storage = localStorage.getItem('section-hidden:' + section.get('id'));
-
-                            if (storage != null) {
-                                section.removeClass('hidden');
-
-                                if (storage == 'true') {
-                                    section.addClass('hidden');
-                                }
-                            }
-                        });
-                    },
-
                     // global enable / disable action on input fields
                     'click:relay(.input-prepend input[type="checkbox"])': function(event) {
                         var input = this.getParent('.input-prepend').getElement('input[type="text"]');
@@ -577,23 +557,23 @@ var App = new Class({
                             input.set('disabled', true);
                         }
 
-                        localStorage.setItem('input-disabled:' + input.get('name'), input.get('disabled'));
+                        new Storage('input-status').set(input.get('name'), disabled);
                     },
 
                     // store input values
                     'change:relay(.input:not(.pairs) input[type="text"], .input input[type="number"], textarea)': function(event) {
-                        localStorage.setItem('input-value:' + this.get('name'), this.get('value'));
+                        new Storage('input-values').set(this.get('name'), this.get('value'));
                     },
 
                     // section hide toggle
                     'click:relay(section header img)': function(event) {
                         var section = this.getParent('section');
                         section.toggleClass('hidden')
-                        localStorage.setItem('section-hidden:' + section.get('id'), section.hasClass('hidden'));
+                        new Storage('sections').set(section.get('id'), !section.hasClass('hidden'));
                     },
 
                     // store pairs values
-                    'change:relay(form[name="main"] input[type="text"], form[name="payload"] input[type="text"])': function(event) {
+                    'change:relay(form[name="main"] .pairs input[type="text"], form[name="headers"] .pairs input[type="text"])': function(event) {
                         var form = this.getParent('form');
                         var data = form.toQueryString().parseQueryString();
 
@@ -605,7 +585,7 @@ var App = new Class({
                             }
                         });
 
-                        localStorage.setItem('pairs-' + form.get('name'), Object.toQueryString(storage));
+                        new Storage('pairs').set(form.get('name'), storage);
                     },
 
                     // pairs delete button
@@ -613,8 +593,12 @@ var App = new Class({
                         var row = this.getParent('li');
                         var next = row.getNext();
 
+                        // don't focus on the next row if its the last
+                        // otherwise you get stuck in a loop
                         if (next != row.getParent('ul').getLast()) {
                             next.getFirst().focus();
+                        } else {
+                            row.getPrevious().getFirst().focus();
                         }
 
                         row.destroy();
@@ -667,8 +651,8 @@ var App = new Class({
                         tabs.getElement('.active').removeClass('active');
                         this.getParent('li').addClass('active');
 
-                        content.getElement('.active').removeClass('active').getElements('input, textarea').set('disabled', true);
-                        content.getChildren()[index].addClass('active').getElements('input, textarea').set('disabled', false);
+                        content.getElement('.active').removeClass('active');
+                        content.getChildren()[index].addClass('active');
                     },
 
                     // prevent enter key from triggering any buttons on the page
@@ -685,7 +669,7 @@ var App = new Class({
                 this.renderTemplate('authorization'),
                 this.renderTemplate('headers'),
                 this.renderTemplate('response')
-            ).fireEvent('initSections').fireEvent('initInputs')
+            )
         }),
 
         'options': new Template(function(data) {
@@ -701,15 +685,15 @@ var App = new Class({
                     'novalidate': true,
                     'events': {
                         'change:relay(input[type="checkbox"])': function(event) {
-                            localStorage.setItem('options:' + this.get('name'), this.get('checked'));
+                            new Storage('options').set(this.get('name'), this.get('checked'));
                         },
 
                         'init': function() {
                             this.getElements('input[type="checkbox"]').each(function(checkbox) {
-                                var storage = localStorage.getItem('options:' + checkbox.get('name'));
+                                var data = new Storage('options').get(checkbox.get('name'));
 
-                                if (storage != null) {
-                                    if (storage == 'true') {
+                                if (data != null) {
+                                    if (data == true) {
                                         checkbox.set('checked', true);
                                     } else {
                                         checkbox.set('checked', false);
@@ -963,7 +947,29 @@ var App = new Class({
                                 div({'class': 'input'},
                                     div({'class': 'input-prepend'},
                                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span5', 'type': 'text', 'name': 'Content-Type', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: application/x-www-form-urlencoded', 'list': 'mimetypes', 'disabled': true})
+                                        input({
+                                            'class': 'span5',
+                                            'type': 'text',
+                                            'name': 'Content-Type',
+                                            'tabindex': 4,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: application/x-www-form-urlencoded',
+                                            'list': 'mimetypes',
+                                            'disabled': true,
+                                            'events': {
+                                                'change': function(event) {
+                                                    var tab = this.getParent('form').getElement('li.urlencoded');
+                                                    var textarea = this.getParent('form').getElement('textarea');
+
+                                                    if (this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                        tab.addClass('true');
+                                                        textarea.fireEvent('change');
+                                                    } else {
+                                                        tab.removeClass('true');
+                                                    }
+                                                }
+                                            }
+                                        })
                                     ),
                                     span({'class': 'help-block'}, 'The mime type of the body of the request')
                                 )
@@ -1015,63 +1021,92 @@ var App = new Class({
                         ),
 
                         div({'class': 'span10 clearfix'},
-                            h3('Request Payload'),
-
                             ul({'class': 'tabs'},
-                                li({'class': 'active'}, a('Key / Value Pairs')),
-                                li(a('Raw')),
+                                li({'class': 'active'}, a('RAW Body')),
+                                li(a('Form Data')),
                                 li(a('Attachments'))
                             ),
 
                             ul({
                                 'class': 'unstyled tabs-content',
                                 'events': {
-                                    'change:relay(textarea)': function(event) {
+                                    'change:relay(input[type="text"])': function(event) {
                                         var form = this.getParent('form');
                                         var data = form.toQueryString().parseQueryString();
-
-                                        this.getParent('form').getElements('.pairs li:nth-last-of-type(n+2)').destroy();
+                                        var textarea = form.getElement('textarea[name="payload"]')
 
                                         if (data['Content-Type'] && data['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
-                                            data = data.raw.parseQueryString();
-
-                                            Object.each(data, function(value, key) {
-                                                // construct fake event object
-                                                var event = DOMEvent;
-                                                event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
-
-                                                // trigger focus event to insert more rows
-                                                this.getParent('.content').fireEvent('focus', event);
-
-                                                var last = form.getElement('.pairs li:nth-last-child(-n+2)');
-
-                                                last.getElement('input[type="text"]:first-of-type').set('value', key);
-                                                last.getElement('input[type="text"]:last-of-type').set('value', value);
-                                            }.bind(this));
-                                        } else {
-                                            localStorage.removeItem('pairs-payload');
-                                        }
-                                    },
-
-                                    'change:relay(input[type="text"])': function(event) {
-                                        var form = this.getParent('form').toQueryString().parseQueryString();
-
-                                        if (form['Content-Type'] && form['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
-                                            var raw = {};
+                                            var payload = {};
 
                                             // set payload params
-                                            Array.from(form.key).each(function(key, index) {
+                                            Array.from(data.key).each(function(key, index) {
                                                 if (key.length > 0) {
-                                                    raw[key] = Array.from(form.value)[index];
+                                                    payload[key] = Array.from(data.value)[index];
                                                 }
                                             });
 
-                                            this.getParent('form').getElement('textarea[name="raw"]').set('value', Object.toQueryString(raw));
+                                            textarea.set('value', Object.toQueryString(payload));
+
+                                            // construct fake event object
+                                            var event = DOMEvent;
+                                            event.target = textarea
+
+                                            // trigger change event to store the resutls
+                                            this.getParent('.content').fireEvent('change', event);
                                         }
                                     }
                                 }},
 
                                 li({'class': 'active'},
+                                    div({'class': 'clearfix'},
+                                        div({'class': 'input'},
+                                            textarea({
+                                                'class': 'span9',
+                                                'name': 'payload',
+                                                'rows': 5,
+                                                'tabindex': 5,
+                                                'placeholder': 'ex: XML, JSON, etc ...',
+                                                'events': {
+                                                    'change': function(event) {
+                                                        var form = this.getParent('form');
+                                                        var type = form.getElement('input[name="Content-Type"]').get('value');
+
+                                                        this.getParent('form').getElements('.pairs li:nth-last-of-type(n+2)').destroy();
+
+                                                        if (type.toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                            var payload = this.get('value');
+
+                                                            if (payload != '') {
+
+                                                                payload = payload.parseQueryString();
+
+                                                                Object.each(payload, function(value, key) {
+                                                                    // construct fake event object
+                                                                    var event = DOMEvent;
+                                                                    event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+
+                                                                    // trigger focus event to insert more rows
+                                                                    this.getParent('.content').fireEvent('focus', event);
+
+                                                                    var last = form.getElement('.pairs li:nth-last-child(-n+2)');
+
+                                                                    last.getElement('input[type="text"]:first-of-type').set('value', key);
+                                                                    last.getElement('input[type="text"]:last-of-type').set('value', value);
+                                                                }.bind(this));
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }),
+
+                                            span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
+                                        )
+                                    )
+                                ),
+
+                                li({'class': 'urlencoded'},
+                                    div({'class': 'info'}, 'blah blah blah'),
+
                                     div({'class': 'input pairs'},
                                         ul({'class': 'unstyled query'},
                                             li({'class': 'clearfix row'},
@@ -1083,15 +1118,6 @@ var App = new Class({
                                     ),
 
                                     span({'class': 'help-block'},  'Remember to set the Content-Type header.')
-                                ),
-
-                                li(
-                                    div({'class': 'clearfix'},
-                                        div({'class': 'input'},
-                                            textarea({'class': 'span9', 'name': 'raw', 'rows': 5, 'tabindex': 5, 'placeholder': 'ex: XML, JSON, etc ...', 'disabled': true}),
-                                            span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
-                                        )
-                                    )
                                 ),
 
                                 li(
@@ -1306,10 +1332,8 @@ var App = new Class({
                                     ),
                                     span({'class': 'help-block'}, 'Implementation-specific headers that may have various effects anywhere along the request-response chain.')
                                 )
-                            )
-                        ),
+                            ),
 
-                        div({'class': 'span8'},
                             h3('Cache'),
 
                             div({'class': 'clearfix'},
@@ -1382,8 +1406,10 @@ var App = new Class({
                                     ),
                                     span({'class': 'help-block'}, 'If the entity is unchanged, send me the part(s) that I am missing; otherwise, send me the entire new entity')
                                 )
-                            ),
+                            )
+                        ),
 
+                        div({'class': 'span8'},
                             h3('Common non-standard request headers'),
 
                             div({'class': 'clearfix'},
@@ -1432,6 +1458,22 @@ var App = new Class({
                                     ),
                                     span({'class': 'help-block'}, 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header')
                                 )
+                            ),
+
+                            h3('Custom Headers'),
+
+                            label({'for': 'headers'}, 'Key => Value pairs'),
+
+                            div({'class': 'clearfix'},
+                                div({'class': 'input pairs'},
+                                    ul({'class': 'unstyled query'},
+                                        li({'class': 'clearfix row'},
+                                            input({'class': 'span3', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                            input({'class': 'span4', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                            button({'class': 'span1 btn danger'})
+                                        )
+                                    )
+                                )
                             )
                         )
                     )
@@ -1479,21 +1521,17 @@ var App = new Class({
 
                 ul({'class': 'tabs'},
                     li({'class': 'active'}, a({'data-target': 'body'}, 'Response Body')),
-                    li(a('RAW Body')),
-                    li(a('Response Headers')),
+                    li(a('RAW Response')),
                     li(a('Response Preview')),
-                    li(a('Request Body')),
-                    li(a('Request Headers')),
+                    li(a('RAW Request')),
                     li(a('HTTP Archive (HAR)'))
                 ),
 
                 ul({'class': 'unstyled tabs-content'},
-                    li({'class': 'active'}, pre({'id': 'body', 'class': 'prettyprint'})),
-                    li(pre({'id': 'raw-body'})),
-                    li(pre({'id': 'headers', 'class': 'prettyprint'})),
-                    li(div({'id': 'preview'})),
-                    li(pre({'id': 'request-body', 'class': 'prettyprint'})),
-                    li(pre({'id': 'request-headers', 'class': 'prettyprint'})),
+                    li({'class': 'active'}, pre({'id': 'response-body', 'class': 'prettyprint'})),
+                    li(pre({'id': 'response-raw'})),
+                    li(div({'id': 'response-preview'})),
+                    li(pre({'id': 'request-raw'})),
                     li(pre({'id': 'har', 'class': 'prettyprint lang-json'}))
                 )
             )
@@ -1525,11 +1563,12 @@ var App = new Class({
     'initialize': function() {
         var body = document.body;
 
-        // render the body content
+        // render the body templates
         body.adopt(this.renderTemplate('header'));
         body.adopt(this.renderTemplate('container'));
         body.adopt(this.renderTemplate('controls'));
 
+        // add the datalists
         Object.each(this.datalists, function(datalist, id) {
             datalist.sort();
             body.adopt(this.renderTemplate('datalist', {'id': id, 'values': datalist}));
@@ -1537,12 +1576,16 @@ var App = new Class({
 
         // enable smooth scrolling
         new Fx.SmoothScroll({
-            'offset': {
-                'y': -50
-            },
+            'offset': {'y': -60},
             'links': '.topbar a[href^="#"]',
             'wheelStops': true
         });
+
+        // load default values
+        this.loadDefaults();
+
+        // display the page
+        body.addClass('loaded');
 
         // setup autocomplete
         if ('options' in document.createElement('datalist') == false) {
@@ -1550,7 +1593,67 @@ var App = new Class({
         }
     },
 
+    'loadDefaults': function() {
+        var pairs       = new Storage('pairs');
+        var values      = new Storage('input-values');
+        var sections    = new Storage('sections');
+        var statuses    = new Storage('input-status');
+        var container   = document.getElement('.content');
+
+        // input fields and textareas
+        document.getElements('.input:not(.pairs) input[type="text"], .input input[type="number"], textarea').each(function(input) {
+            input.set('value', values.get(input.get('name'))).fireEvent('change');
+        });
+
+        // input fields with checkboxes
+        document.getElements('.input-prepend input[type="text"]').each(function(input) {
+            var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
+            var enabled = statuses.get(input.get('name'));
+
+            if (enabled) {
+                input.set('disabled', !enabled);
+                checkbox.set('checked', enabled);
+            }
+        });
+
+        // process pairs
+        document.getElements('.pairs').getParent('form').each(function(form) {
+            var storage = pairs.get(form.get('name'));
+
+            Object.each(storage, function(value, key) {
+                // construct fake event object
+                var event = DOMEvent;
+                event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+
+                // trigger focus event on container to insert more rows
+                container.fireEvent('focus', event);
+
+                // get the newly inserted row
+                var row = form.getElement('.pairs li:nth-last-child(-n+2)');
+
+                // finally, assign the values to the row input fields
+                row.getElement('input[type="text"]:first-of-type').set('value', key);
+                row.getElement('input[type="text"]:last-of-type').set('value', value);
+            }.bind(this));
+        }.bind(this));
+
+        // sections
+        document.getElements('section').each(function(section) {
+            var data = sections.get(section.get('id'));
+
+            if (data != null) {
+                section.removeClass('hidden');
+
+                if (data == false) {
+                    section.addClass('hidden');
+                }
+            }
+        });
+    },
+
     'send': function() {
+        var error = false;
+
         var data = {
             'main': {},
             'payload': {},
@@ -1558,21 +1661,27 @@ var App = new Class({
             'authorization': {}
         };
 
-        var error = false;
-
-        var forms = document.getElements('form[name="main"], form[name="payload"], form[name="authorization"], form[name="headers"]');
+        var forms = document.getElements('form[name="main"], form[name="payload"], form[name="headers"], form[name="authorization"]');
 
         forms.each(function(form) {
             data[form.get('name')] = {};
 
             var string = form.toQueryString();
 
+            // sanity check
             if (string != '') {
                 data[form.get('name')] = string.parseQueryString()
             }
         });
 
-        console.log(data);
+        // ensure the following are all arrays
+        data.main.key = Array.from(data.main.key);
+        data.main.value = Array.from(data.main.value);
+
+        data.headers.key = Array.from(data.headers.key);
+        data.headers.value = Array.from(data.headers.value);
+
+        console.log('plain data', data);
 
         var options = {
             'url': data.main.uri,
@@ -1585,8 +1694,7 @@ var App = new Class({
             'link': 'ignore',
             'isSuccess': null,
             'emulation': false,
-            'urlEncoded': false,
-            'encoding': 'utf-8',
+            'encoding': data.payload['content-encoding'],
             'evalScripts': false,
             'evalResponse': false,
             'timeout': data.main.timeout * 1000,
@@ -1613,11 +1721,10 @@ var App = new Class({
                 //this.fireEvent('stop');
             }.bind(this),
 
-            'onComplete': function() {
-            }
+            'onComplete': this.processResponse
         };
 
-        // special condition for encoding
+        // modify Content-Type header based on encoding charset
         if (options.headers['content-encoding'] != '') {
             options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.headers['content-encoding'];
         }
@@ -1628,24 +1735,24 @@ var App = new Class({
         delete options.headers.timeout;
         delete options.headers.key;
         delete options.headers.value;
-        delete options.headers.raw;
+        delete options.headers.payload;
         delete options.headers.name;
         delete options.headers.files;
         delete options.headers['content-encoding'];
 
         // set query string params
-        Array.from(data.main.key).each(function(key, index) {
+        data.main.key.each(function(key, index) {
             if (key.length > 0) {
-                options.query[key] = Array.from(data.main.value)[index];
+                options.query[key] = data.main.value[index];
             }
         });
 
-        // set payload params
-        Array.from(data.payload.key).each(function(key, index) {
-            if (key.length > 0) {
-                options.payload[key] = Array.from(data.payload.value)[index];
-            }
-        });
+        // set payload
+        if (data.payload['Content-Type'] == 'application/x-www-form-urlencoded') {
+            options.payload = data.payload.payload.parseQueryString();
+        } else {
+            options.payload = data.payload.payload;
+        };
 
         // set custom headers
         if (data.headers.key) {
@@ -1668,8 +1775,7 @@ var App = new Class({
             }
         });
 
-
-        console.log(options);
+        console.log('request options', options);
 
         if (error) {
             // stop on error
@@ -1680,239 +1786,245 @@ var App = new Class({
             }
 
             window.XHR = new Request(options).send();
+        }
+    },
 
-            return;
+    'processResponse': function() {
+        var defaults = {
+            'Accept': '*/\*',
+            //'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+            //'Accept-Encoding': 'gzip,deflate,sdch',
+            //'Accept-Language': 'en-US,en;q=0.8',
+            'Connection': 'keep-alive',
+            //'Content-Length': '34',
+            'Content-Type': 'application/xml',
+            //'Cookie': '__qca=P0-2074128619-1316995740016; __utma=71985868.1147819601.1316995740.1317068965.1317073948.4; __utmc=71985868; __utmz=71985868.1316995740.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
+            //'Host': 'www.codeinchaos.com',
+            'Origin': 'chrome-extension://bjdlekdiiieofkpjfhpcmlhalmbnpjnh',
+            'User-Agent': navigator.userAgent
+        };
 
-            var options = {
-                'url': request.uri,
-                'method': request.method,
-                'encoding': request.encoding,
-                'timeout': request.timeout * 1000,
-                'raw': request.raw,
-                'data': request.data,
-                'files': this.getElement('input[name="files"]').files,
-                'file_key': request.file_key,
-                'headers': headers,
+        var codes = {
+            100: 'Continue',
+            101: 'Switching Protocols',
+            200: 'OK',
+            201: 'Created',
+            202: 'Accepted',
+            203: 'Non-Authoritative Information',
+            204: 'No Content',
+            205: 'Reset Content',
+            206: 'Partial Content',
+            300: 'Multiple Choices',
+            301: 'Moved Permanently',
+            302: 'Found',
+            303: 'See Other',
+            304: 'Not Modified',
+            305: 'Use Proxy',
+            307: 'Temporary Redirect',
+            400: 'Bad Request',
+            401: 'Unauthorized',
+            402: 'Payment Required',
+            403: 'Forbidden',
+            404: 'Not Found',
+            405: 'Method Not Allowed',
+            406: 'Not Acceptable',
+            407: 'Proxy Authentication Required',
+            408: 'Request Timeout',
+            409: 'Conflict',
+            410: 'Gone',
+            411: 'Length Required',
+            412: 'Precondition Failed',
+            413: 'Request Entity Too Large',
+            414: 'Request-URI Too Long',
+            415: 'Unsupported Media Type',
+            416: 'Requested Range Not Satisfiable',
+            417: 'Expectation Failed',
+            500: 'Internal Server Error',
+            501: 'Not Implemented',
+            502: 'Bad Gateway',
+            503: 'Service Unavailable',
+            504: 'Gateway Timeout',
+            505: 'HTTP Version Not Supported'
+        };
 
-                'onRequest': function() {
-                    // replace buttons with animation
-                    document.getElement('form[name="request"] .actions').addClass('progress');
-                },
+        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
+        var parts = exp.exec(this.options.url);
 
-                'onProgress': function(event, xhr){
-                    //var loaded = event.loaded, total = event.total;
-                },
+        if (parts[3] == undefined) {
+            parts[3] = '/';
+        }
 
-                'onTimeout': function() {
-                    // TODO replace with notice
-                    Error('Error', 'Connection Timed-out');
+        if (Object.getLength(this.options.query)) {
+            parts[4] = '?' + Object.toQueryString(this.options.query);
+        }
 
-                    // remove loading animation
-                    document.getElement('form[name="request"] .actions').removeClass('progress');
-                },
+        var request = [
+            this.options.method + ' {3}{4} HTTP/1.1'.substitute(parts),
+            'HOST: ' + parts[2],
+        ];
 
-                'onCancel': function() {
-                    this.fireEvent('stop');
-                }.bind(this),
+        var response = ['HTTP/1.0 ' + this.xhr.status + ' ' + codes[this.xhr.status]];
 
-                'onComplete': function() {
-                    // for non-success
-                    var responseText = this.xhr.responseText;
-                    var responseXML = this.xhr.responseXML;
+        response.push(this.xhr.getAllResponseHeaders());
 
-                    // rest response fields
-                    //document.id('har').empty();
-                    document.id('rawBody').empty().set('class');
-                    document.id('responseBody').empty().set('class', 'prettyprint');
-                    document.id('responseHeaders').empty().set('class', 'prettyprint');
-                    document.id('responsePreview').empty();
-                    document.id('requestBody').empty().set('class', 'prettyprint');
-                    document.id('requestHeaders').empty().set('class', 'prettyprint');
+        // headers
+        Object.each(this.options.headers, function(value, key) {
+            request.push(key + ': ' + value);
+        });
 
-                    // trigger show/hide line numbers
-                    document.getElement('form[name="options"] input[name="lines"]').fireEvent('change');
+        // loop through default headers and assign them only if applicable
+        Object.each(defaults, function(value, key) {
+            if (this.options.headers[key] == undefined) {
+                request.push(key + ': ' + value);
+            }
+        }.bind(this));
 
-                    if (this.xhr.status == 0) {
-                        Error('Connection Failed!', 'Check your connectivity and try again');
+        // payload
+        switch (typeOf(this.options.payload)) {
+            case 'string':
+                request.push('\n' + this.options.payload);
+                break;
 
-                        document.getElement('form[name="request"]').fireEvent('stop');
-                    } else {
-                        // construct request text
-                        var requestText = 'Request Url: {0}\nRequest Method: {1}\nStatus Code: {2}\n'.substitute([this.options.url, this.options.method, this.xhr.status]);
+            case 'object':
+                request.push('\n' + Object.toQueryString(this.options.payload));
+                break;
+        }
 
-                        // uploaded files?
-                        if (this.options.files.length > 0) {
-                            requestText += 'Files: {0}\n'.substitute([beautify.js(JSON.encode(this.options.files))]);
-                        }
+        // uploaded files?
+        if (this.options.files.length > 0) {
+            //requestText += 'Attachments: {0}\n'.substitute([beautify.js(JSON.encode(this.options.files))]);
+        }
 
-                        // data
-                        if (this.options.data != '') {
-                            switch (typeOf(this.options.data)) {
-                                case 'string':
-                                    requestText += 'Params: ' + this.options.data;
-                                    break;
+        var contentType = this.xhr.getResponseHeader('Content-Type');
 
-                                case 'object':
-                                    requestText += 'Params: ' + beautify.js(JSON.encode(this.options.data));
-                                    break;
-                            }
-                        }
+        if (contentType != null) {
+            var index = contentType.indexOf(';');
 
-                        var requestHeaders = '';
+            if (index > 1) {
+                contentType = contentType.slice(0, index);
+            }
+        }
 
-                        Object.each(this.options.headers, function(value, key) {
-                            requestHeaders += key + ': ' + value + "\n";
-                        });
+        var style = 'auto';
 
-                        var defaultHeaders = {
-                            'Accept': '*/\*',
-                            //'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-                            //'Accept-Encoding': 'gzip,deflate,sdch',
-                            //'Accept-Language': 'en-US,en;q=0.8',
-                            'Connection': 'keep-alive',
-                            //'Content-Length': '34',
-                            'Content-Type': 'application/xml',
-                            //'Cookie': '__qca=P0-2074128619-1316995740016; __utma=71985868.1147819601.1316995740.1317068965.1317073948.4; __utmc=71985868; __utmz=71985868.1316995740.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
-                            //'Host': 'www.codeinchaos.com',
-                            'Origin': 'chrome-extension: //rest-console-id',
-                            'User-Agent': navigator.userAgent
-                        };
+        switch (contentType) {
+            case 'text/css':
+                style = 'css';
 
-                        Object.each(defaultHeaders, function(value, key) {
-                            if (this.options.headers[key] == undefined) {
-                                requestHeaders += key + ': ' + value + "\n";
-                            }
-                        }.bind(this));
+                this.xhr.responseText = beautify.css(this.xhr.responseText);
+                break;
 
-                        var responseHeaders = 'Status Code: {0}\n{1}'.substitute([this.xhr.status, this.xhr.getAllResponseHeaders()]);
+            case 'application/ecmascript':
+            case 'application/javascript':
+            case 'application/json':
+                style = 'js';
 
-                        // setup response area
-                        document.id('rawBody').set('text', responseText)
-                        document.id('responseBody').set('text', responseText);
-                        document.id('responseHeaders').set('text', responseHeaders).store('unstyled', responseHeaders);
-                        document.id('requestBody').set('text', requestText).store('unstyled', requestText);
-                        document.id('requestHeaders').set('text', requestHeaders).store('unstyled', requestHeaders);
+                this.xhr.responseText = beautify.js(this.xhr.responseText);
+                break;
 
-                        // extract content type
-                        var contentType = this.xhr.getResponseHeader('Content-Type');
+            case 'application/atom+xml':
+            case 'application/atomcat+xml':
+            case 'application/atomserv+xml':
+            case 'application/beep+xml':
+            case 'application/davmount+xml':
+            case 'application/docbook+xml':
+            case 'application/rdf+xml':
+            case 'application/rss+xml':
+            case 'application/xml':
+            case 'application/xspf+xml':
+            case 'application/vnd.google-earth.kml+xml':
+            case 'application/vnd.mozilla.xul+xml':
+            case 'image/svg+xml':
+            case 'text/xml':
+                style = 'xml';
 
-                        if (contentType != null) {
-                            var index = contentType.indexOf(';');
+                var declaration = this.xhr.responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
 
-                            if (index > 1) {
-                                contentType = contentType.slice(0, index);
-                            }
-                        }
+                this.xhr.responseText = declaration[2] + "\n" + beautify.xml(this.xhr.responseXML).firstChild.nodeValue;
+                break;
 
-                        var style = 'auto';
+            case 'text/html':
+            case 'application/xhtml+xml':
+                style = 'html';
 
-                        switch (contentType) {
-                            case 'text/css':
-                                style = 'css';
+                //document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
 
-                                responseText = beautify.css(responseText);
-                                document.id('responseBody').set('text', responseText);
-                                break;
+                // create and inject the iframe object
+                var iframe = new IFrame();
+                document.id('response-preview').adopt(iframe);
 
-                            case 'application/ecmascript':
-                            case 'application/javascript':
-                            case 'application/json':
-                                style = 'js';
-
-                                responseText = beautify.js(responseText);
-                                document.id('responseBody').set('text', responseText);
-                                break;
-
-                            case 'application/atom+xml':
-                            case 'application/atomcat+xml':
-                            case 'application/atomserv+xml':
-                            case 'application/beep+xml':
-                            case 'application/davmount+xml':
-                            case 'application/docbook+xml':
-                            case 'application/rdf+xml':
-                            case 'application/rss+xml':
-                            case 'application/xml':
-                            case 'application/xspf+xml':
-                            case 'application/vnd.google-earth.kml+xml':
-                            case 'application/vnd.mozilla.xul+xml':
-                            case 'image/svg+xml':
-                            case 'text/xml':
-                                style = 'xml';
-
-                                var declaration = responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
-
-                                responseText = declaration[2] + "\n" + beautify.xml(responseXML).firstChild.nodeValue;
-
-                                document.id('responseBody').set('text', responseText);
-                                break;
-
-                            case 'text/html':
-                            case 'application/xhtml+xml':
-                                style = 'html';
-
-                                document.id('responseBody').set('text', responseText);
-                                document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
-
-                                // create and inject the iframe object
-                                var iframe = new IFrame();
-                                document.id('responsePreview').adopt(iframe);
-
-                                // start writing
-                                var doc = iframe.contentWindow.document;
-                                doc.open();
-                                doc.write(responseText);
-                                doc.close();
-                                break;
+                // start writing
+                var doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(this.xhr.responseText);
+                doc.close();
+                break;
 /*
 * requires xhr.responseType to be set BEFORE the request is sent
 * this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
 
-                            case 'image/jpeg':
-                                // create and inject the iframe object
-                                var iframe = new IFrame();
-                                document.id('responsePreview').adopt(iframe);
+            case 'image/jpeg':
+                // create and inject the iframe object
+                var iframe = new IFrame();
+                document.id('responsePreview').adopt(iframe);
 
-                                // render the image blob
-                                var bb = new window.WebKitBlobBuilder();
-                                bb.append(this.xhr.response);
+                // render the image blob
+                var bb = new window.WebKitBlobBuilder();
+                bb.append(this.xhr.response);
 
-                                // if using arraybuffer do this
-                                // other wise just use blob method
-                                // but its not currently implemented in chrome
-                                var blob = bb.getBlob('image/png');
+                // if using arraybuffer do this
+                // other wise just use blob method
+                // but its not currently implemented in chrome
+                var blob = bb.getBlob('image/png');
 
-                                //~ var img = document.createElement('img');
-                                //~ img.onload = function(e) {
-                                  //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
-                                //~ };
-                                var src = window.webkitURL.createObjectURL(blob);
+                //~ var img = document.createElement('img');
+                //~ img.onload = function(e) {
+                  //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
+                //~ };
+                var src = window.webkitURL.createObjectURL(blob);
 
-                                // start writing
-                                var doc = iframe.contentWindow.document;
-                                doc.open();
-                                doc.write('<img src="' + src + '"/>');
-                                doc.close();
-                                break;
+                // start writing
+                var doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write('<img src="' + src + '"/>');
+                doc.close();
+                break;
 */
-                        }
-
-                        // store the text for later use
-                        document.id('responseBody').store('unstyled', responseText);
-
-                        // trigger syntax highlighting
-                        document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
-
-                        // scroll to the response area
-                        document.getElement('a[href="#response"]').fireEvent('click', new DOMEvent());
-
-                        // remove loading animation
-                        document.getElement('form[name="request"] .actions').removeClass('progress');
-                    }
-                }
-            };
-
         }
-    },
+
+
+        // setup response area
+        response = response.join("\n") + "\n" + this.xhr.responseText;
+        request = request.join("\n");
+
+        document.id('response-body').set('text', this.xhr.responseText)
+        document.id('response-raw').set('text', response);
+        document.id('request-raw').set('text', request);
+
+        // init google prettify
+        prettyPrint();
+return;
+
+        if (this.xhr.status == 0) {
+            Error('Connection Failed!', 'Check your connectivity and try again');
+
+            //document.getElement('form[name="request"]').fireEvent('stop');
+        } else {
+
+
+            // store the text for later use
+            document.id('responseBody').store('unstyled', responseText);
+
+            // trigger syntax highlighting
+            document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
+
+            // scroll to the response area
+            document.getElement('a[href="#response"]').fireEvent('click', new DOMEvent());
+
+            // remove loading animation
+            document.getElement('form[name="request"] .actions').removeClass('progress');
+        }
+    }
 });
 
 // error messages

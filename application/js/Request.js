@@ -47,7 +47,6 @@ var Request = this.Request = new Class({
         link: 'ignore',
         isSuccess: null,
         emulation: false,
-        urlEncoded: false,
         encoding: 'utf-8',
         evalScripts: false,
         evalResponse: false,
@@ -151,22 +150,6 @@ var Request = this.Request = new Class({
 
         var query = this.options.query, payload = this.options.payload, url = String(this.options.url), method = this.options.method.toLowerCase();
 
-        if (this.options.urlEncoded) {
-            var encoding = (this.options.encoding) ? '; charset=' + this.options.encoding : '';
-            this.headers['Content-type'] = 'application/x-www-form-urlencoded' + encoding;
-        }
-
-        switch (typeOf(payload)){
-            case 'element':
-                payload = document.id(payload).toQueryString();
-                break;
-
-            case 'object':
-            case 'hash':
-                payload = Object.toQueryString(payload);
-                break;
-        }
-
         if (!url) {
             url = document.location.pathname;
         }
@@ -232,6 +215,17 @@ var Request = this.Request = new Class({
 
             xhr.send(data);
         } else {
+            switch (typeOf(payload)){
+                case 'element':
+                    payload = document.id(payload).toQueryString();
+                    break;
+
+                case 'object':
+                case 'hash':
+                    payload = Object.toQueryString(payload);
+                    break;
+            }
+
             xhr.send(payload);
         }
 
