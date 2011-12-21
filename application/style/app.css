@@ -1,6 +1,13 @@
+html {
+    height: 100%;
+}
+
 body {
     background-color: #888;
-    padding-top: 60px;
+    background-image: url('/images/loading.gif');
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    height: 100%;
 
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -22,7 +29,12 @@ body {
     &.loaded {
         > * {
             display: block;
+            background-image: none;
         }
+    }
+
+    ::-webkit-input-placeholder {
+        color:#dfdfdf;
     }
 
     input,
@@ -30,6 +42,11 @@ body {
         &[disabled] {
             background-color: #DDD;
             border: 1px solid #CCC;
+        }
+
+        &[name="method"],
+        &[name="uri"] {
+            font-weight: bold;
         }
     }
 
@@ -98,6 +115,10 @@ body {
             width: 190px;
             top: 60px;
         }
+
+        > .content {
+            padding-top: 60px;
+        }
     }
 
     .span8 {
@@ -121,7 +142,7 @@ body {
     }
 
     section {
-        padding: 15px;
+        padding: 10px;
         margin-bottom: 20px;
 
         background-color: #ffffff;
@@ -142,20 +163,32 @@ body {
         -moz-background-clip: padding-box;
         background-clip: padding-box;
 
-        &#response {
-            margin-bottom: 80px;
-        }
-
         &.hidden {
+            header {
+                margin-bottom: 0px;
+
+                a {
+                    background-image: url('/images/maximize.png');
+                }
+            }
+
             form {
                 display: none;
             }
         }
 
         header {
-            img {
+            margin-bottom: 10px;
+
+            a {
+                display: block;
                 float: right;
+                width: 16px;
+                height: 36px;
                 cursor: pointer;
+                background-image: url('/images/minimize.png');
+                background-position: 50% 50%;
+                background-repeat: no-repeat;
             }
         }
 
@@ -200,6 +233,8 @@ body {
             }
 
             .pairs {
+                margin-left: 0px;
+
                 ul {
                     li {
                         margin-bottom: 10px;
@@ -222,6 +257,19 @@ body {
                         position: absolute;
                         top: 6.5px;
                         left: 6.5px;
+                    }
+                }
+            }
+        }
+
+        &#target {
+            .auth {
+                button {
+                    line-height: 16px;
+
+                    img {
+                        margin-right: 5px;
+                        vertical-align: middle;
                     }
                 }
             }
@@ -252,6 +300,43 @@ body {
                 }
             }
         }
+
+        &#response {
+            margin-bottom: 80px;
+
+/*
+            pre {
+                -webkit-user-select: text;
+                -khtml-user-select: text;
+                -moz-user-select: text;
+                -ms-user-select: text;
+                -o-user-select: text;
+                user-select: text;
+
+                overflow: auto;
+
+                min-width: 1043px;
+                max-width: 900px;
+                min-height: 400px;
+                max-height: 900px;
+
+                white-space: pre;
+                word-wrap: normal;
+
+                &:empty {
+                    &:before {
+                        content: 'No Request Initiated';
+                    }
+                }
+            }
+*/
+
+            header {
+                a {
+                    display:none;
+                }
+            }
+        }
     }
 
     #controls {
@@ -261,6 +346,7 @@ body {
         z-index: 10;
 
         section {
+            height: 30px;
             margin: 0px 20px 0px 260px;
 
             -webkit-border-radius: 6px 6px 0px 0px;
@@ -269,11 +355,39 @@ body {
 
             border-bottom: none;
 
+            img {
+                display: none;
+                vertical-align: middle;
+            }
+
             button {
                 margin-right: 10px;
 
-                &:last-of-type {
+
+                &[data-action="stop"] {
+                    display: none;
+                }
+            }
+
+            .pull-right {
+                button {
                     margin-right: 0px;
+                }
+            }
+        }
+
+        &.progress {
+            img {
+                display: inline-block;
+            }
+
+            button {
+                &[data-action="stop"] {
+                    display: inline-block;
+                }
+
+                &:not([data-action="stop"]) {
+                    display: none;
                 }
             }
         }
@@ -287,9 +401,11 @@ body {
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 
         border: 1px solid #CCC;
-        -webkit-border-radius: 3px;
-        -moz-border-radius: 3px;
-        border-radius: 3px;
+        border-top: none;
+
+        -webkit-border-radius: 0px 0px 3px 3px;
+        -moz-border-radius: 0px 0px 3px 3px;
+        border-radius: 0px 0px 3px 3px;
 
         min-height: 19px;
         max-height: 100px;
@@ -312,65 +428,6 @@ body {
 }
 
 /*
-pre {
-    -webkit-user-select: text;
-    -khtml-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    -o-user-select: text;
-    user-select: text;
-
-    overflow: auto;
-
-    max-width: 900px;
-    max-height: 900px;
-
-    white-space: pre;
-    word-wrap: normal;
-}
-
-pre:empty:before {
-    content: 'No Request Initiated';
-}
-
-.form-stacked div.clearfix.error {
-    padding: 0px 5px 5px 5px;
-    margin: 0px -5px 5px -5px;
-}
-
-.clearfix.disabled {
-    display: none;
-}
-
-
-.container-fluid > .content {
-    margin-left: 240px;
-}
-
-form[name="request"] {
-    position: relative;
-
-    padding-bottom: 50px;
-}
-
-form[name="request"] .actions {
-    height: 30px;
-
-    width: 940px;
-
-}
-
-form[name="request"] .actions.fixed {
-    position: fixed;
-
-    z-index: 100;
-
-    bottom: 0px;
-}
-
-form[name="request"] .actions input.stop {
-    display: none;
-}
 
 form[name="request"] .actions.progress {
     background-image: url('../images/progress.gif');

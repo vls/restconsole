@@ -22,10 +22,12 @@
         }
     },
 
-    "offline_enabled": false,
+    "offline_enabled": true,
 
     "permissions": [
         "tabs",
+        "cookies",
+        "unlimitedStorage",
         "*://*/*"
     ]
 }

@@ -423,7 +423,7 @@ var App = new Class({
 
         'section-header': new Template(function(data) {
             header(
-                img({'src': 'images/minimize.png'}),
+                a(),
                 h2(data)
             )
         }),
@@ -471,9 +471,8 @@ var App = new Class({
 
                         ul({'class': 'nav'},
                             li(a({'href': '#options'}, span('O'), 'ptions')),
-                            li(a({'href': '#main'}, span('M'), 'ain')),
+                            li(a({'href': '#target'}, span('T'), 'arget')),
                             li(a({'href': '#payload'}, span('P'), 'ayload')),
-                            li(a({'href': '#authorization'}, span('A'), 'uthorization')),
                             li(a({'href': '#headers'}, span('H'), 'eaders')),
                             li(a({'href': '#response'}, span('R'), 'esponse'))
                         )
@@ -495,9 +494,15 @@ var App = new Class({
                         var top = ((window.getSize().y - height) / 2).round();
                         var left = ((window.getSize().x - width) / 2).round();
 
-                        var spec = 'width={0},height={1},top={2},left={3},location=yes,menubar=no,resizable=yes,scrollbars=yes,status=no,titlebar=yes,toolbar=no';
-
-                        window.open(this.get('href'), '_blank', spec.substitute([width, height, top, left]), true);
+                        chrome.windows.create({
+                            'url': this.get('href'),
+                            'left': left,
+                            'top': top,
+                            'width': width,
+                            'height': height,
+                            'focused': true,
+                            'type': 'panel'
+                        });
                     },
 
                     // global enable / disable action on input fields
@@ -521,24 +526,26 @@ var App = new Class({
                     },
 
                     // section hide toggle
-                    'click:relay(section header img)': function(event) {
+                    'click:relay(section header a)': function(event) {
                         var section = this.getParent('section');
                         section.toggleClass('hidden')
                         new Storage('sections').set(section.get('id'), !section.hasClass('hidden'));
                     },
 
                     // store pairs values
-                    'change:relay(form[name="main"] .pairs input[type="text"], form[name="headers"] .pairs input[type="text"])': function(event) {
+                    'change:relay(form[name="target"] .pairs input[type="text"], form[name="headers"] .pairs input[type="text"])': function(event) {
                         var form = this.getParent('form');
                         var data = form.toQueryString().parseQueryString();
 
                         var storage = {};
 
-                        data.key.each(function(key, index) {
-                            if (key.length > 0) {
-                                storage[key] = data.value[index];
-                            }
-                        });
+                        if (data.key.length) {
+                            data.key.each(function(key, index) {
+                                if (key.length > 0) {
+                                    storage[key] = data.value[index];
+                                }
+                            });
+                        }
 
                         new Storage('pairs').set(form.get('name'), storage);
                     },
@@ -552,7 +559,7 @@ var App = new Class({
                         // otherwise you get stuck in a loop
                         if (next != row.getParent('ul').getLast()) {
                             next.getFirst().focus();
-                        } else {
+                        } else if (row.getPrevious()) {
                             row.getPrevious().getFirst().focus();
                         }
 
@@ -598,17 +605,19 @@ var App = new Class({
                     'click:relay(ul.tabs li a)': function(event) {
                         event.preventDefault();
 
-                        var tabs = this.getParent('ul');
+                        var tabs = event.target.getParent('ul');
                         var content = tabs.getNext('.tabs-content');
-                        var index = tabs.getChildren().indexOf(this.getParent('li'));
+                        var index = tabs.getChildren().indexOf(event.target.getParent('li'));
 
                         // switch tabs
                         tabs.getElement('.active').removeClass('active');
-                        this.getParent('li').addClass('active');
+                        event.target.getParent('li').addClass('active');
 
                         content.getElement('.active').removeClass('active');
                         content.getChildren()[index].addClass('active');
-                    },
+
+                        this.goTo('response');
+                    }.bind(this),
 
                     // prevent enter key from triggering any buttons on the page
                     'keydown:keys(enter):relay(form)': function(event) {
@@ -654,9 +663,8 @@ var App = new Class({
         'content': new Template(function(data) {
             div({'class': 'content'},
                 this.renderTemplate('options'),
-                this.renderTemplate('main'),
+                this.renderTemplate('target'),
                 this.renderTemplate('payload'),
-                this.renderTemplate('authorization'),
                 this.renderTemplate('headers'),
                 this.renderTemplate('response')
             )
@@ -780,15 +788,13 @@ var App = new Class({
             )
         }),
 
-        'main': new Template(function(data) {
-            section({'id': 'main'},
-                this.renderTemplate('section-header', 'Main'),
+        'target': new Template(function(data) {
+            section({'id': 'target'},
+                this.renderTemplate('section-header', 'Target'),
 
-                form({'name': 'main', 'class': 'form-stacked', 'novalidate': true},
-                    h3('Target'),
-
+                form({'name': 'target', 'class': 'form-stacked', 'novalidate': true},
                     div({'class': 'row'},
-                        div({'class': 'span2 offset1'},
+                        div({'class': 'span2'},
                             this.renderTemplate('input', {
                                 'rfc': '5.1.1',
                                 'label': 'Method',
@@ -806,13 +812,13 @@ var App = new Class({
                             })
                         ),
 
-                        div({'class': 'span10'},
+                        div({'class': 'span13'},
                             this.renderTemplate('input', {
                                 'rfc': '3.2',
                                 'label': 'URI',
                                 'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
                                 'attributes': {
-                                    'class': 'span10',
+                                    'class': 'span13',
                                     'type': 'text',
                                     'name': 'uri',
                                     'tabindex': 2,
@@ -832,7 +838,7 @@ var App = new Class({
                         ),
 
 
-                        div({'class': 'span2 offset1'},
+                        div({'class': 'span2'},
                             this.renderTemplate('input', {
                                 'label': 'Timeout',
                                 'help': 'in seconds',
@@ -850,21 +856,62 @@ var App = new Class({
                         )
                     ),
 
-                    h3('Query String'),
+                    div({'class': 'row'},
+                        div({'class': 'span8'},
+                            label({'for': 'query'}, 'Query String'),
 
-                    label({'for': 'query'}, 'Key => Value pairs'),
-
-                    div({'class': 'input pairs'},
-                        ul({'class': 'unstyled query'},
-                            li({'class': 'clearfix row'},
-                                input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                button({'class': 'span1 btn danger'})
+                            div({'class': 'input pairs'},
+                                ul({'class': 'unstyled query'},
+                                    li({'class': 'clearfix row'},
+                                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                        input({'class': 'span4', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                        button({'class': 'span1 btn danger'})
+                                    )
+                                )
                             )
-                        )
-                    ),
+                        ),
 
-                    span({'class': 'help-block'},  '')
+                        div({'class': 'span9'},
+                            label('Authorization Scheme'),
+
+                            div({'class': 'input row auth'},
+                                button({'class': 'span2 btn info', 'data-action': 'basic-auth'}, img({'src': '/images/settings.png'}), 'Basic'),
+                                button({'class': 'span2 btn info', 'data-action': 'basic-digest'}, img({'src': '/images/settings.png'}), 'Digest'),
+                                button({'class': 'span2 btn info', 'data-action': 'basic-oauth'}, img({'src': '/images/settings.png'}), 'oAuth')
+                            ),
+
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Authorization',
+                                    'help': 'Authentication credentials for HTTP authentication.',
+                                    'attributes': {
+                                        'class': 'span9',
+                                        'type': 'text',
+                                        'name': 'Authorization',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.34',
+                                    'label': 'Proxy-Authorization',
+                                    'help': 'Authorization credentials for connecting to a proxy.',
+                                    'attributes': {
+                                        'class': 'span9',
+                                        'type': 'text',
+                                        'name': 'Proxy-Authorization',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        )
+                    )
                 )
             )
         }),
@@ -873,12 +920,7 @@ var App = new Class({
             section({'id': 'payload', 'class': 'hidden'},
                 this.renderTemplate('section-header', 'Payload'),
 
-                form({
-                    'name': 'payload',
-                    'class': 'form-stacked',
-                    'novalidate': true
-                    },
-
+                form({'name': 'payload', 'class': 'form-stacked', 'novalidate': true},
                     div({'class': 'row'},
                         div({'class': 'span6'},
                             this.renderTemplate('optional-input', [
@@ -1562,51 +1604,8 @@ var App = new Class({
             )
         }),
 
-        'authorization': new Template(function(data) {
-            section({'id': 'authorization', 'class': 'hidden'},
-                this.renderTemplate('section-header', 'Authorization'),
-
-                form({
-                    'name': 'authorization',
-                    'class': 'form-stacked',
-                    'novalidate': true
-                    },
-
-                    div({'class': 'clearfix'},
-                        div({'class': 'input row'},
-                            div({'class': 'input-prepend span10'},
-                                label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                input({'class': 'span9', 'type': 'text', 'name': 'Authorization', 'tabindex': 7, 'autocomplete': true, 'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="', 'disabled': true})
-                            ),
-
-                            input({'class': 'span2 btn info', 'type': 'button', 'data-action': 'basic-auth', 'value': 'Basic'}),
-                            input({'class': 'span2 btn info', 'type': 'button', 'data-action': 'basic-digest', 'value': 'Digest'}),
-                            input({'class': 'span2 btn info', 'type': 'button', 'data-action': 'oauth-setup', 'value': 'oAuth'}),
-
-                            span({'class': 'help-block'}, 'Authentication credentials for HTTP authentication.')
-                        )
-                    ),
-
-                    this.renderTemplate('optional-input', {
-                        'rfc': '14.34',
-                        'label': 'Proxy-Authorization',
-                        'help': 'Authorization credentials for connecting to a proxy.',
-                        'attributes': {
-                            'class': 'span7',
-                            'type': 'text',
-                            'name': 'Proxy-Authorization',
-                            'tabindex': 5,
-                            'autocomplete': false,
-                            'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
-                            'disabled': true
-                        }
-                    })
-                )
-            )
-        }),
-
         'response': new Template(function(data) {
-            section({'id': 'response', 'class': 'hidden'},
+            section({'id': 'response'},
                 this.renderTemplate('section-header', 'Response'),
 
                 ul({'class': 'tabs'},
@@ -1650,6 +1649,8 @@ var App = new Class({
                         }.bind(this)
                     }},
 
+                    img({'src': '/images/loading.gif'}),
+
                     button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
                     button({'data-action': 'get', 'class': 'btn'}, 'GET'),
                     button({'data-action': 'post', 'class': 'btn'}, 'POST'),
@@ -1657,8 +1658,8 @@ var App = new Class({
                     button({'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
 
                     div({'class': 'pull-right'},
-                        button({'data-action': 'save', 'class': 'btn success'}, 'Save Request'),
-                        button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop')
+                        button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
+                        button({'data-action': 'save', 'class': 'btn success'}, 'Save Request')
                     )
                 )
             )
@@ -1760,13 +1761,12 @@ var App = new Class({
         var error = false;
 
         var data = {
-            'main': {},
+            'target': {},
             'payload': {},
-            'headers': {},
-            'authorization': {}
+            'headers': {}
         };
 
-        var forms = document.getElements('form[name="main"], form[name="payload"], form[name="headers"], form[name="authorization"]');
+        var forms = document.getElements('form[name="target"], form[name="payload"], form[name="headers"]');
 
         forms.each(function(form) {
             data[form.get('name')] = {};
@@ -1780,8 +1780,8 @@ var App = new Class({
         });
 
         // ensure the following are all arrays
-        data.main.key = Array.from(data.main.key);
-        data.main.value = Array.from(data.main.value);
+        data.target.key = Array.from(data.target.key);
+        data.target.value = Array.from(data.target.value);
 
         data.headers.key = Array.from(data.headers.key);
         data.headers.value = Array.from(data.headers.value);
@@ -1789,25 +1789,25 @@ var App = new Class({
         console.log('plain data', data);
 
         var options = {
-            'url': data.main.uri,
+            'url': data.target.uri,
             'query': {},
             'payload': {},
             'files': {},
-            'headers': Object.merge({}, data.main, data.payload, data.authorization, data.headers),
+            'headers': Object.merge({}, data.target, data.payload, data.headers),
             'async': true,
-            'method': data.main.method,
+            'method': data.target.method,
             'link': 'ignore',
             'isSuccess': null,
             'emulation': false,
             'encoding': data.payload['content-encoding'],
             'evalScripts': false,
             'evalResponse': false,
-            'timeout': data.main.timeout * 1000,
+            'timeout': data.target.timeout * 1000,
             'noCache': false,
 
             'onRequest': function() {
                 // replace buttons with animation
-                //document.getElement('form[name="request"] .actions').addClass('progress');
+                document.id('controls').addClass('progress');
             },
 
             'onProgress': function(event, xhr){
@@ -1819,7 +1819,7 @@ var App = new Class({
                 Error('Error', 'Connection Timed-out');
 
                 // remove loading animation
-                //document.getElement('form[name="request"] .actions').removeClass('progress');
+                document.id('controls').removeClass('progress');
             },
 
             'onCancel': function() {
@@ -1846,9 +1846,9 @@ var App = new Class({
         delete options.headers['content-encoding'];
 
         // set query string params
-        data.main.key.each(function(key, index) {
+        data.target.key.each(function(key, index) {
             if (key.length > 0) {
-                options.query[key] = data.main.value[index];
+                options.query[key] = data.target.value[index];
             }
         });
 
@@ -2064,6 +2064,10 @@ var App = new Class({
 
         // init google prettify
         prettyPrint();
+
+        $App.goTo('response');
+
+        document.id('controls').removeClass('progress');
 return;
 
         if (this.xhr.status == 0) {
@@ -2085,6 +2089,12 @@ return;
             // remove loading animation
             document.getElement('form[name="request"] .actions').removeClass('progress');
         }
+    },
+
+    'goTo': function(target) {
+        var event = new DOMEvent;
+        event.target = document.getElement('a[href="#' + target + '"]');
+        event.target.fireEvent('click', event);
     }
 });
 

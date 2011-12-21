@@ -85,7 +85,10 @@ var AutoComplete = new Class({
                     'relativeTo': this,
                     'position': 'bottomLeft',
                     'edge': 'upperLeft'
-                });
+                }).setStyle('width', this.getWidth() - 2);
+
+                // remove the bottom right radius
+                //this.setStyle('border-bottom-right-radius', 0);
 
                 list.dataset.current = -1;
                 list.getElements('div').hide().removeClass('enabled').removeClass('active');
