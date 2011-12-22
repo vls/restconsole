@@ -1,0 +1,358 @@
+
+<!--
+        <div class="modals hide">
+            <div class="modal-backdrop"></div>
+
+            <form class="form-stacked modal authorization basic hide" novalidate>
+                <div class="modal-header">
+                    <a class="close">×</a>
+                    <h3>Basic Authorization</h3>
+                </div>
+
+                <div class="modal-body">
+                    <div class="clearfix">
+                        <label for="username">Username</label>
+                        <div class="input">
+                            <input class="span9" type="text" name="username" autocomplete="on" placeholder="ex: username"/>
+                            <span class="help-block"></span>
+                        </div>
+                    </div>
+
+                    <div class="clearfix">
+                        <label for="password">Password</label>
+                        <div class="input">
+                            <input class="span9" type="text" name="password" autocomplete="on" placeholder="ex: password"/>
+                            <span class="help-block"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <input class="btn danger" type="reset" value="Reset"/>
+                    <input class="btn primary" type="submit" value="Set Header"/>
+                </div>
+            </form>
+
+            <form class="form-stacked modal authorization oauth hide" novalidate>
+                <div class="modal-header">
+                    <a class="close">×</a>
+                    <h3>oAuth Authorization</h3>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="span1">
+                            <div class="clearfix">
+                                <label for="version">Version</label>
+                                <div class="input">
+                                    <input class="span1" type="number" name="version" value="1.0" min="1" step="1" autocomplete="on" placeholder="ex: 1.0" required/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span3">
+                            <div class="clearfix">
+                                <label for="signature">Signature Method:</label>
+                                <div class="input">
+                                    <select class="span3" name="signature" tabindex="4">
+                                        <option value="PLAINTEXT">PLAINTEXT</option>
+                                        <option value="HMAC-SHA1" selected>HMAC-SHA1</option>
+                                    </select>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span3">
+                            <div class="clearfix">
+                                <label for="method">Preferred Method:</label>
+                                <div class="input">
+                                    <select class="span3" name="method" tabindex="4">
+                                        <option value="header" selected>Header</option>
+                                        <option value="query">Query Sliing</option>
+                                    </select>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span2">
+                            <div class="clearfix">
+                                <label for="realm">Realm</label>
+                                <div class="input">
+                                    <input class="span2" type="text" name="realm" autocomplete="on" value="" placeholder="ex: ,"/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="span4">
+                            <div class="clearfix">
+                                <label for="consumer_key">Consumer Key</label>
+                                <div class="input">
+                                    <input class="span4" type="text" name="consumer_key" autocomplete="on" placeholder="ex: 737060cd8c284d8af7ad3082f209582d" required/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span5">
+                            <div class="clearfix">
+                                <label for="consumer_secret">Consumer Secret</label>
+                                <div class="input">
+                                    <input class="span5" type="text" name="consumer_secret" autocomplete="on" placeholder="ex: 737060cd8c284d8af7ad3082f209582d" required/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="span4">
+                            <div class="clearfix">
+                                <label for="token_key">Token Key</label>
+                                <div class="input">
+                                    <input class="span4" type="text" name="token_key" autocomplete="on" placeholder="ex: 737060cd8c284d8af7ad3082f209582d"/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span5">
+                            <div class="clearfix">
+                                <label for="token_secret">Token Secret</label>
+                                <div class="input">
+                                    <input class="span5" type="text" name="token_secret" autocomplete="on" placeholder="ex: 737060cd8c284d8af7ad3082f209582d"/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="span4">
+                            <div class="clearfix">
+                                <label for="oauth_verifier">Oauth Verifier</label>
+                                <div class="input">
+                                    <input class="span4" type="text" name="oauth_verifier" autocomplete="on" placeholder="ex: 737060cd8c284d8af7ad3082f209582d"/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span5">
+                            <div class="clearfix">
+                                <label for="oauth_callback">Callback URL</label>
+                                <div class="input">
+                                    <input class="span5" type="text" name="oauth_callback" autocomplete="on" placeholder="ex: https://www.domain.com"/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="span4">
+                            <div class="clearfix">
+                                <label for="request_url">Request token URL</label>
+                                <div class="input">
+                                    <input class="span4" type="text" name="request_url" autocomplete="on" placeholder="ex: https://api.provider.com/oauth/request_token" required-authorize/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span5">
+                            <div class="clearfix">
+                                <label for="access_url">Access token URL</label>
+                                <div class="input">
+                                    <input class="span5" type="text" name="access_url" autocomplete="on" placeholder="ex: https://api.provider.com/oauth/access_token" required-authorize/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="span4">
+                            <div class="clearfix">
+                                <label for="authorize_url">Authorize URL</label>
+                                <div class="input">
+                                    <input class="span4" type="text" name="authorize_url" autocomplete="on" placeholder="ex: https://api.provider.com/oauth/authorize" required-authorize/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="span5">
+                            <div class="clearfix">
+                                <label for="scope">Scope</label>
+                                <div class="input">
+                                    <input class="span5" type="text" name="scope" autocomplete="on" placeholder="ex: "/>
+                                    <span class="help-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <div class="pull-left">
+                        <input class="btn info" type="button" data-action="authorize" value="Authorize"/>
+                        <input class="btn primary" type="submit" data-action="submit" value="Insert"/>
+                    </div>
+
+                    <input class="btn success" type="button" data-action="save" value="Save Defaults"/>
+                    <input class="btn danger" type="reset" data-action="reset" value="Reset"/>
+                </div>
+            </form>
+        </div>
+
+-->
+
+<!--
+
+                div({'class': 'page" id="response'},
+                    div({'class': 'page-header'},
+                        h1(Response)
+                    )
+
+                    ul({'class': 'pills'},
+                        li({'class': 'active"><a href="#responseBody'}, Response Body)
+                        li><a href="#rawBody"(RAW Body)
+<EXCLUDE
+                        li><a href="#har"(HTTP Archive (HAR))
+EXCLUDE>
+                        li><a href="#responseHeaders"(Response Headers)
+                        li><a href="#responsePreview"(Response Preview)
+                        li><a href="#requestBody"(Request Body)
+                        li><a href="#requestHeaders"(Request Headers)
+                    )
+
+                    ul({'class': 'unstyled'},
+                        li(
+                            form({'class': 'form-stacked'},
+                                div({'class': 'row'},
+                                    div({'class': 'span'},
+                                        div({'class': 'clearfix'},
+                                            label for="theme"(Color Theme)
+
+                                            div({'class': 'input'},
+                                                div({'class': 'input-prepend'},
+                                                    select({'class': 'span2" name="theme'},
+                                                        option value="default"(Default)
+                                                        option value="bootstrap"(Bootstrap)
+                                                        option value="desert"(Desert)
+                                                        option value="sunburst"(Sunburst)
+                                                        option value="sons-of-obsidian"(Sons of Obsidian)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+
+                                    div({'class': 'span'},
+                                        div({'class': 'clearfix'},
+                                            label for="theme"(Force Syntax Highlighting)
+                                            span({'class': 'help-block'}, )
+
+                                            div({'class': 'row'},
+                                                div({'class': 'span'},
+                                                    label><input type="radio" name="highlight" value="auto"/> <span(Auto)
+                                                )
+
+                                                div({'class': 'span'},
+                                                    label><input type="radio" name="highlight" value="js"/> <span(JSON)
+                                                )
+
+                                                div({'class': 'span'},
+                                                    label><input type="radio" name="highlight" value="xml"/> <span(XML)
+                                                )
+
+                                                div({'class': 'span'},
+                                                    label><input type="radio" name="highlight" value="html"/> <span(HTML)
+                                                )
+
+                                                div({'class': 'span'},
+                                                    label><input type="radio" name="highlight" value="css"/> <span(CSS)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+
+                            pre id="responseBody"({'class': 'prettyprint'}, )
+                        )
+                        li({'class': 'hide"><pre id="rawBody'}, )
+<EXCLUDE
+                        li class="hide"><pre id="har"({'class': 'prettyprint lang-json'}, )
+EXCLUDE>
+                        li class="hide"><pre id="responseHeaders"({'class': 'prettyprint'}, )
+                        li({'class': 'hide"><div id="responsePreview'}, )
+                        li class="hide"><pre id="requestBody"({'class': 'prettyprint'}, )
+                        li class="hide"><pre id="requestHeaders"({'class': 'prettyprint'}, )
+                    )
+
+                    div({'class': 'clearfix'}, br/()
+                )
+
+                div({'class': 'page" id="donate'},
+                    div({'class': 'page-header'},
+                        h1>Donate <small(Show us you care!)
+                    )
+
+                    div({'class': 'row'},
+                        div({'class': 'span2'},
+                            form action="https://www.paypal.com/cgi-bin/webscr" method="post"(
+                                input type="hidden" name="cmd" value="_s-xclick"/(
+                                input type="hidden" name="hosted_button_id" value="UJ2B2BTK9VLRS"/(
+                                input type="image" class="paypal" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" alt="PayPal - The safer, easier way to pay online!" width="74" height="21"/(
+                                img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1"/(
+                            )
+                        )
+
+                        div({'class': 'span2'},
+                            a href="http://flattr.com/thing/156628/REST-Console" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /()
+                        )
+                    )
+<EXCLUDE
+                    div({'class': 'page-header'},
+                        h1>Share the love! <small(Spread the good news!)
+                    )
+
+                    div({'class': 'row'},
+                        div({'class': 'span2'},
+                            iframe allowtransparency="true" frameborder="0" scrolling="no" src="http://platform.twitter.com/widgets/tweet_button.html?url=https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn&related=CodeInChaos,AhmadNassri&via=RESTConsole&text=I'm using REST Console App for Google Chrome by @CodeInChaos for API development check it out: #REST #API #Chome" style="width:130px; height:20px;"()
+                        )
+
+                        div({'class': 'span2'},
+                            iframe src="http://www.facebook.com/plugins/like.php?href=https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn&amp;send=false&amp;layout=button_count&amp;width=450&amp;show_faces=false&amp;action=like&amp;colorscheme=light&amp;font=verdana&amp;height=21" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:450px; height:21px;" allowTransparency="true"()
+                        )
+
+                        div({'class': 'span2'},
+                            script type="IN/Share" data-url="https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn" data-counter="right"()
+                        )
+
+                        div({'class': 'span'},
+                            div({'class': 'g-plusone" data-annotation="inline" data-size="medium" data-width="170" data-href="https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn'}, )
+                        )
+
+                        div({'class': 'pull-right'},
+                            iframe allowtransparency="true" frameborder="0" scrolling="no" src="http://platform.twitter.com/widgets/follow_button.html?screen_name=RESTConsole" style="width:215px; height:20px;"()
+                        )
+                    )
+EXCLUDE>
+                    div({'class': 'clearfix'}, br/()
+                )
+
+                footer(
+                    p>Developed by <a href="http://www.codeinchaos.com" target="_blank"(Code in Chaos Inc.)
+                    p><a href="https://github.com/codeinchaos/rest-console" target="_blank"(Source Code)
+                )
+            )
+        )
+-->

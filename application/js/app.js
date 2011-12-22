@@ -439,9 +439,9 @@ var App = new Class({
         }),
 
         'input': new Template(function(data) {
-            div({'class': 'clearfix'},
-                label({'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
-                div({'class': 'input'},
+            fieldset({'class': 'control-group'},
+                label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
+                div({'class': 'controls'},
                     input(data.attributes),
                     span({'class': 'help-block'}, data.help)
                 )
@@ -449,9 +449,9 @@ var App = new Class({
         }),
 
         'optional-input': new Template(function(data) {
-            div({'class': 'clearfix'},
-                label({'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
-                div({'class': 'input'},
+            fieldset({'class': 'control-group'},
+                label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
+                div({'class': 'controls'},
                     div({'class': 'input-prepend'},
                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
                         input(data.attributes)
@@ -462,9 +462,9 @@ var App = new Class({
         }),
 
         'header': new Template(function(data) {
-            header({'class': 'topbar'},
-                div({'class': 'fill'},
-                    div({'class': 'container-fluid'},
+            header({'class': 'navbar navbar-fixed'},
+                div({'class': 'navbar-inner'},
+                    div({'class': 'fluid-container'},
                         div({'class': 'brand'},
                             img({'src': 'images/logo/32.png', 'align': 'left'}), 'REST Console', small('version 4.1.0')
                         ),
@@ -484,9 +484,9 @@ var App = new Class({
         'container': new Template(function(data) {
             div({
                 'id': 'container',
-                'class': 'container-fluid',
+                'class': 'fluid-container',
                 'events': {
-                    'click:relay(.clearfix label a)': function(event) {
+                    'click:relay(.control-group .control-label a)': function(event) {
                         event.preventDefault();
 
                         var width = 800;
@@ -528,8 +528,8 @@ var App = new Class({
                     // section hide toggle
                     'click:relay(section header a)': function(event) {
                         var section = this.getParent('section');
-                        section.toggleClass('hidden')
-                        new Storage('sections').set(section.get('id'), !section.hasClass('hidden'));
+                        section.toggleClass('minimize')
+                        new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
                     },
 
                     // store pairs values
@@ -633,7 +633,7 @@ var App = new Class({
         }),
 
         'sidebar': new Template(function(data) {
-            section({'class': 'sidebar'},
+            section({'class': 'fluid-sidebar-left'},
                 div({'class': 'page'},
                     h5('Services'),
 
@@ -661,7 +661,7 @@ var App = new Class({
         }),
 
         'content': new Template(function(data) {
-            div({'class': 'content'},
+            div({'class': 'fluid-content'},
                 this.renderTemplate('options'),
                 this.renderTemplate('target'),
                 this.renderTemplate('payload'),
@@ -671,7 +671,7 @@ var App = new Class({
         }),
 
         'options': new Template(function(data) {
-            section({'id': 'options', 'class': 'hidden'},
+            section({'id': 'options', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Options'),
 
                 form({
@@ -701,35 +701,31 @@ var App = new Class({
                     }},
 
                     div({'class': 'row'},
-                        div({'class': 'span8'},
-                            div({'class': 'clearfix'},
-                                label('General'),
-                                div({'class': 'input'},
-                                    ul({'class': 'inputs-list'},
-                                        li(
-                                            label(
-                                                input({
-                                                    'type': 'checkbox',
-                                                    'name': 'help',
-                                                    'events': {
-                                                        'change': function(event) {
-                                                            if (this.get('checked')) {
-                                                                document.body.addClass('no-help');
-                                                            } else {
-                                                                document.body.removeClass('no-help');
-                                                            }
+                        div({'class': 'span6'},
+                            fieldset({'class': 'control-group'},
+                                label({'class': 'control-label'}, 'General'),
+                                div({'class': 'controls'},
+                                    div({'class': 'control-list'},
+                                        label({'class': 'checkbox'},
+                                            input({
+                                                'type': 'checkbox',
+                                                'name': 'help',
+                                                'events': {
+                                                    'change': function(event) {
+                                                        if (this.get('checked')) {
+                                                            document.body.addClass('no-help');
+                                                        } else {
+                                                            document.body.removeClass('no-help');
                                                         }
                                                     }
-                                                }),
-                                                span('Hide Help Lines')
-                                            )
+                                                }
+                                            }),
+
+                                            'Hide Help Lines'
                                         ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'checkbox', 'name': 'lines'}),
-                                                span('Hide Line Numbers *')
-                                            )
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'checkbox', 'name': 'lines'}), 'Hide Line Numbers *'
                                         )
                                     ),
 
@@ -739,43 +735,32 @@ var App = new Class({
                         ),
 
                         div({'class': 'span'},
-                            div({'class': 'clearfix'},
-                                label('Color Theme'),
-                                div({'class': 'input'},
-                                    ul({'class': 'inputs-list'},
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'default'}),
-                                                span('Default')
-                                            )
+                            fieldset({'class': 'control-group'},
+                                label({'class': 'control-label'}, 'Color Theme'),
+                                div({'class': 'controls'},
+                                    div({'class': 'control-list'},
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
                                         ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}),
-                                                span('Bootstrap')
-                                            )
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}), 'Bootstrap'
                                         ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'desert'}),
-                                                span('Desert')
-                                            )
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap-dark'}), 'Bootstrap Dark'
                                         ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}),
-                                                span('Sunburst')
-                                            )
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'radio', 'name': 'theme', 'value': 'desert'}), 'Desert'
                                         ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}),
-                                                span('Sons of Obsidian')
-                                            )
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}), 'Sunburst'
+                                        ),
+
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}), 'Sons of Obsidian'
                                         )
                                     ),
 
@@ -812,13 +797,13 @@ var App = new Class({
                             })
                         ),
 
-                        div({'class': 'span13'},
+                        div({'class': 'span9'},
                             this.renderTemplate('input', {
                                 'rfc': '3.2',
                                 'label': 'URI',
                                 'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
                                 'attributes': {
-                                    'class': 'span13',
+                                    'class': 'span9',
                                     'type': 'text',
                                     'name': 'uri',
                                     'tabindex': 2,
@@ -838,12 +823,12 @@ var App = new Class({
                         ),
 
 
-                        div({'class': 'span2'},
+                        div({'class': 'span1'},
                             this.renderTemplate('input', {
                                 'label': 'Timeout',
-                                'help': 'in seconds',
+                                'help': 'seconds',
                                 'attributes': {
-                                    'class': 'span2',
+                                    'class': 'span1',
                                     'type': 'number',
                                     'name': 'timeout',
                                     'value': 60,
@@ -857,21 +842,21 @@ var App = new Class({
                     ),
 
                     div({'class': 'row'},
-                        div({'class': 'span8'},
+                        div({'class': 'span6'},
                             label({'for': 'query'}, 'Query String'),
 
                             div({'class': 'input pairs'},
-                                ul({'class': 'unstyled query'},
-                                    li({'class': 'clearfix row'},
-                                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                        input({'class': 'span4', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                        button({'class': 'span1 btn danger'})
+                                ul({'class': 'query'},
+                                    li({'class': 'control-group row'},
+                                        input({'class': 'span2', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                        input({'class': 'span2', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                        button({'class': 'span2 btn danger'})
                                     )
                                 )
                             )
                         ),
 
-                        div({'class': 'span9'},
+                        div({'class': 'span6'},
                             label('Authorization Scheme'),
 
                             div({'class': 'input row auth'},
@@ -885,7 +870,7 @@ var App = new Class({
                                     'label': 'Authorization',
                                     'help': 'Authentication credentials for HTTP authentication.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Authorization',
                                         'tabindex': 7,
@@ -900,7 +885,7 @@ var App = new Class({
                                     'label': 'Proxy-Authorization',
                                     'help': 'Authorization credentials for connecting to a proxy.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Proxy-Authorization',
                                         'tabindex': 5,
@@ -917,7 +902,7 @@ var App = new Class({
         }),
 
         'payload': new Template(function(data) {
-            section({'id': 'payload', 'class': 'hidden'},
+            section({'id': 'payload', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Payload'),
 
                 form({'name': 'payload', 'class': 'form-stacked', 'novalidate': true},
@@ -928,7 +913,7 @@ var App = new Class({
                                     'label': 'Content-Type',
                                     'help': 'The mime type of the body of the request',
                                     'attributes': {
-                                        'class': 'span5',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Content-Type',
                                         'tabindex': 4,
@@ -956,7 +941,7 @@ var App = new Class({
                                     'label': 'Content-Type Encoding',
                                     'help': 'Acceptable encodings',
                                     'attributes': {
-                                        'class': 'span5',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'content-encoding',
                                         'tabindex': 4,
@@ -971,7 +956,7 @@ var App = new Class({
                                     'label': 'Content-Length',
                                     'help': 'The length of the request body in octets (8-bit bytes).',
                                     'attributes': {
-                                        'class': 'span5',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Content-Length',
                                         'tabindex': 4,
@@ -984,12 +969,12 @@ var App = new Class({
                                 {
                                 'label': 'Content-MD5',
                                 'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
-                                'attributes': {'class': 'span5', 'type': 'text', 'name': 'Content-MD5', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==', 'disabled': true}
+                                'attributes': {'class': 'span6', 'type': 'text', 'name': 'Content-MD5', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==', 'disabled': true}
                                 }
                             ])
                         ),
 
-                        div({'class': 'span10 clearfix'},
+                        div({'class': 'span6 clearfix'},
                             ul({'class': 'tabs'},
                                 li({'class': 'active'}, a('RAW Body')),
                                 li(a('Form Data')),
@@ -997,7 +982,7 @@ var App = new Class({
                             ),
 
                             ul({
-                                'class': 'unstyled tabs-content',
+                                'class': 'tabs-content',
                                 'events': {
                                     'change:relay(input[type="text"])': function(event) {
                                         var form = this.getParent('form');
@@ -1030,7 +1015,7 @@ var App = new Class({
                                     div({'class': 'clearfix'},
                                         div({'class': 'input'},
                                             textarea({
-                                                'class': 'span9',
+                                                'class': 'span6',
                                                 'name': 'payload',
                                                 'rows': 5,
                                                 'tabindex': 5,
@@ -1077,7 +1062,7 @@ var App = new Class({
                                     div({'class': 'info'}, 'blah blah blah'),
 
                                     div({'class': 'input pairs'},
-                                        ul({'class': 'unstyled query'},
+                                        ul({'class': 'query'},
                                             li({'class': 'clearfix row'},
                                                 input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
                                                 input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
@@ -1092,7 +1077,7 @@ var App = new Class({
                                 li(
                                     div({'class': 'clearfix'},
                                         div({'class': 'input pairs'},
-                                            ul({'class': 'unstyled query'},
+                                            ul({'class': 'query'},
                                                 li({'class': 'clearfix row'},
                                                     input({'class': 'span4', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
                                                     input({'class': 'span5', 'name': 'file', 'type': 'file', 'multiple': false}),
@@ -1110,7 +1095,7 @@ var App = new Class({
         }),
 
         'headers': new Template(function(data) {
-            section({'id': 'headers', 'class': 'hidden'},
+            section({'id': 'headers', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Headers'),
 
                 form({
@@ -1120,7 +1105,7 @@ var App = new Class({
                     },
 
                     div({'class': 'row'},
-                        div({'class': 'span8'},
+                        div({'class': 'span6'},
                             h3('Standard Headers'),
 
                             this.renderTemplate('optional-input', [
@@ -1129,7 +1114,7 @@ var App = new Class({
                                     'label': 'Accept',
                                     'help': 'Content-Types that are acceptable.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Accept',
                                         'tabindex': 3,
@@ -1145,7 +1130,7 @@ var App = new Class({
                                     'label': 'Accept Charset',
                                     'help': 'Character sets that are acceptable.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Accept-Charset',
                                         'tabindex': 3,
@@ -1161,7 +1146,7 @@ var App = new Class({
                                     'label': 'Accept Encoding',
                                     'help': 'Acceptable encodings.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Accept-Encoding',
                                         'tabindex': 3,
@@ -1177,7 +1162,7 @@ var App = new Class({
                                     'label': 'Accept Language',
                                     'help': 'Acceptable languages for response.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Accept-Language',
                                         'tabindex': 3,
@@ -1193,7 +1178,7 @@ var App = new Class({
                                     'label': 'Connection',
                                     'help': 'What type of connection the user-agent would prefer',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Connection',
                                         'tabindex': 5,
@@ -1207,7 +1192,7 @@ var App = new Class({
                                     'label': 'Cookie',
                                     'help': 'an HTTP cookie previously sent by the server',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Cookie',
                                         'tabindex': 4,
@@ -1222,7 +1207,7 @@ var App = new Class({
                                     'label': 'Date',
                                     'help': 'The date and time that the message was sent',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Date',
                                         'tabindex': 5,
@@ -1237,7 +1222,7 @@ var App = new Class({
                                     'label': 'Expect',
                                     'help': 'Indicates that particular server behaviors are by the client',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Expect',
                                         'tabindex': 5,
@@ -1252,7 +1237,7 @@ var App = new Class({
                                     'label': 'From',
                                     'help': 'The email address of the user making the request.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'From',
                                         'tabindex': 5,
@@ -1267,7 +1252,7 @@ var App = new Class({
                                     'label': 'Max-Forwards',
                                     'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Max-Forwards',
                                         'tabindex': 5,
@@ -1282,7 +1267,7 @@ var App = new Class({
                                     'label': 'Pragma',
                                     'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Pragma',
                                         'tabindex': 6,
@@ -1297,7 +1282,7 @@ var App = new Class({
                                     'label': 'Range',
                                     'help': 'Request only part of an entity. Bytes are numbered from 0.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Range',
                                         'tabindex': 5,
@@ -1312,7 +1297,7 @@ var App = new Class({
                                     'label': 'Referer',
                                     'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Referer',
                                         'tabindex': 5,
@@ -1327,7 +1312,7 @@ var App = new Class({
                                     'label': 'Transfer-Encoding',
                                     'help': 'The transfer encodings the user agent is willing to accept.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'TE',
                                         'tabindex': 5,
@@ -1342,7 +1327,7 @@ var App = new Class({
                                     'label': 'Upgrade',
                                     'help': 'Ask the server to upgrade to another protocol.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Upgrade',
                                         'tabindex': 5,
@@ -1357,7 +1342,7 @@ var App = new Class({
                                     'label': 'User-Agent',
                                     'help': 'The user agent string of the user agent.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'User-Agent',
                                         'tabindex': 5,
@@ -1372,7 +1357,7 @@ var App = new Class({
                                     'label': 'Via',
                                     'help': 'Informs the server of proxies through which the request was sent.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Via',
                                         'tabindex': 5,
@@ -1387,7 +1372,7 @@ var App = new Class({
                                     'label': 'Warning',
                                     'help': 'A general warning about possible problems with the entity body.',
                                     'attributes': {
-                                        'class': 'span8',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Warning',
                                         'tabindex': 5,
@@ -1399,7 +1384,7 @@ var App = new Class({
                             ])
                         ),
 
-                        div({'class': 'span9'},
+                        div({'class': 'span6'},
                             h3('Cache'),
 
                             this.renderTemplate('optional-input', [
@@ -1409,7 +1394,7 @@ var App = new Class({
                                     'label': 'Cache-Control',
                                     'help': 'Used to specify directives that MUST be obeyed by all caching mechanisms along the request/response chain',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Cache-Control',
                                         'tabindex': 6,
@@ -1424,7 +1409,7 @@ var App = new Class({
                                     'label': 'If-Match',
                                     'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Match',
                                         'tabindex': 6,
@@ -1439,7 +1424,7 @@ var App = new Class({
                                     'label': 'If-Modified-Since',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Modified-Since',
                                         'tabindex': 6,
@@ -1454,7 +1439,7 @@ var App = new Class({
                                     'label': 'If-None-Match',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-None-Match',
                                         'tabindex': 6,
@@ -1469,7 +1454,7 @@ var App = new Class({
                                     'label': 'If-Range',
                                     'help': 'If the entity is unchanged, send me the part(s) that I am missing; otherwise, send me the entire new entity',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Range',
                                         'tabindex': 6,
@@ -1484,7 +1469,7 @@ var App = new Class({
                                     'label': 'If-Unmodified-Since',
                                     'help': 'Only send the response if the entity has not been modified since a specific time.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Unmodified-Since',
                                         'tabindex': 6,
@@ -1502,7 +1487,7 @@ var App = new Class({
                                     'label': 'Origin',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Origin',
                                         'tabindex': 5,
@@ -1516,7 +1501,7 @@ var App = new Class({
                                     'label': 'X-HTTP-Method-Override',
                                     'help': 'mainly used bypass firewalls and browsers limitations.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                             'type': 'text',
                                             'name': 'X-HTTP-Method-Override',
                                             'tabindex': 7,
@@ -1530,7 +1515,7 @@ var App = new Class({
                                     'label': 'X-Requested-With',
                                     'help': 'mainly used to identify Ajax requests.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                             'type': 'text',
                                             'name': 'X-Requested-With',
                                             'tabindex': 7,
@@ -1544,7 +1529,7 @@ var App = new Class({
                                     'label': 'X-Forwarded-For',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                             'type': 'text',
                                             'name': 'X-Forwarded-For',
                                             'tabindex': 7,
@@ -1558,7 +1543,7 @@ var App = new Class({
                                     'label': 'X-Do-Not-Track',
                                     'help': 'Requests a web application to disable their tracking of a user.',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                             'type': 'text',
                                             'name': 'X-Do-Not-Track',
                                             'tabindex': 7,
@@ -1572,7 +1557,7 @@ var App = new Class({
                                     'label': 'DNT',
                                     'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
                                     'attributes': {
-                                        'class': 'span9',
+                                        'class': 'span6',
                                             'type': 'text',
                                             'name': 'DNT',
                                             'tabindex': 7,
@@ -1589,10 +1574,10 @@ var App = new Class({
 
                             div({'class': 'clearfix'},
                                 div({'class': 'input pairs'},
-                                    ul({'class': 'unstyled query'},
+                                    ul({'class': 'query'},
                                         li({'class': 'clearfix row'},
                                             input({'class': 'span3', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                            input({'class': 'span4', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                            input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
                                             button({'class': 'span1 btn danger'})
                                         )
                                     )
@@ -1616,7 +1601,7 @@ var App = new Class({
                     li(a('HTTP Archive (HAR)'))
                 ),
 
-                ul({'class': 'unstyled tabs-content'},
+                ul({'class': 'tabs-content'},
                     li({'class': 'active'},
                         pre({
                             'id': 'response-body',
@@ -1691,7 +1676,7 @@ var App = new Class({
         this.loadDefaults();
 
         // display the page
-        body.addClass('loaded');
+        body.set('class', 'loaded');
 
         // setup autocomplete
         if ('options' in document.createElement('datalist') == false) {
@@ -1748,10 +1733,10 @@ var App = new Class({
             var data = sections.get(section.get('id'));
 
             if (data != null) {
-                section.removeClass('hidden');
+                section.removeClass('minimize');
 
                 if (data == false) {
-                    section.addClass('hidden');
+                    section.addClass('minimize');
                 }
             }
         });
