@@ -16,15 +16,6 @@
     width: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1)) - @prepend;
 }
 
-@media screen and (max-width: 1024px) {
-    @gridColumnWidth: 60px;
-    @gridGutterWidth: 20px;
-
-    body {
-        background-color: blue;
-    }
-}
-
 html {
     height: 100%;
 
@@ -38,7 +29,7 @@ html {
         .user-select(none);
 
         &.no-help {
-            .help-block {
+            .help-text {
                 display: none;
             }
         }
@@ -63,8 +54,24 @@ html {
             margin-left: 0px;
         }
 
+        .input-append {
+            input {
+                float: left;
+                .border-radius(3px 0 0 3px);
+
+                &:nth-of-type(2) {
+                    .border-radius(0);
+                    border-left: none;
+                }
+            }
+        }
+
         input,
         textarea {
+            &.span {
+                width: auto;
+            }
+
             &[disabled] {
                 background-color: #DDD;
                 border: 1px solid #CCC;
@@ -84,16 +91,6 @@ html {
             > li {
                 a {
                     cursor: pointer;
-                }
-            }
-        }
-
-        .tabs-content {
-            > li {
-                display: none;
-
-                &.active {
-                    display: list-item;
                 }
             }
         }
@@ -235,6 +232,16 @@ html {
                         }
                     }
 
+                    .controls {
+                        &.error {
+                            input,
+                            textarea {
+                                color: #B94A48;
+                                border-color: #EE5F5B;
+                            }
+                        }
+                    }
+
                     .control-list {
                         label {
                             input {
@@ -247,6 +254,18 @@ html {
                 .row {
                     margin-left: 0px;
 
+                    [class*="offset"] {
+                        .row::before,
+                        .row::after,
+                        .tabs::before,
+                        .tabs::after,
+                        .pills::before,
+                        .pills::after {
+                            display: inline-table;
+                            margin-top: 36px;
+                        }
+                    }
+
                     [class*="span"]:first-child {
                         margin-left: 0px;
                     }
@@ -255,28 +274,35 @@ html {
                 .pairs {
                     margin-left: 0px;
 
-                    ul {
-                        li {
+                    &.control-group {
+                        .controls {
                             margin-bottom: 10px;
 
-                            &:last-child {
-                                button {
-                                    display: none;
+                            .span2 {
+                                .prepend-columns(3, 24);
+                            }
+
+                            .input-append {
+                                .add-on {
+                                    width: 25px;
+
+                                    &.danger {
+                                        background-color: #C43C35;
+
+                                        &:before {
+                                            content: url('/images/delete.png');
+                                        }
+                                    }
+
+                                    &.success {
+                                        background-color: #57A957;
+
+                                        &:before {
+                                            content: url('/images/add.png');
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-
-                    button {
-                        width: 30px;
-                        height: 29px;
-                        position: relative;
-
-                        &:before {
-                            content: url('/images/delete.png');
-                            position: absolute;
-                            top: 6.5px;
-                            left: 6.5px;
                         }
                     }
                 }
@@ -297,7 +323,7 @@ html {
 
             &#payload {
                 .tabs-content {
-                    li {
+                    .tab-pane {
                         &.urlencoded {
                             .info {
                                 display: block;
@@ -442,6 +468,84 @@ html {
                     color: white;
                     background-color: #3875D7;
                     cursor: pointer;
+                }
+            }
+        }
+    }
+}
+
+
+@media screen and (max-width: 1024px) {
+    // Reset grid variables
+    @gridColumnWidth:   30px;
+    @gridGutterWidth:   10px;
+    @siteWidth:         (@gridColumns * @gridColumnWidth) + (@gridGutterWidth * (@gridColumns - 1));
+
+    // Bring grid mixins to recalculate widths
+    .columns(@columns: 1) {
+        width: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1));
+    }
+    .offset(@columns: 1) {
+        margin-left: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1)) + (@gridGutterWidth * 2);
+    }
+
+    .prepend-columns(@columns: 1, @prepend: 36) {
+        width: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1)) - @prepend;
+    }
+
+    html {
+        body {
+            // Default columns
+            .span1     { .columns(1); }
+            .span2     { .columns(2); }
+            .span3     { .columns(3); }
+            .span4     { .columns(4); }
+            .span5     { .columns(5); }
+            .span6     { .columns(6); }
+            .span7     { .columns(7); }
+            .span8     { .columns(8); }
+            .span9     { .columns(9); }
+            .span10    { .columns(10); }
+            .span11    { .columns(11); }
+            .span12    { .columns(12); }
+
+            // Offset column options
+            .offset1   { .offset(1); }
+            .offset2   { .offset(2); }
+            .offset3   { .offset(3); }
+            .offset4   { .offset(4); }
+            .offset5   { .offset(5); }
+            .offset6   { .offset(6); }
+            .offset7   { .offset(7); }
+            .offset8   { .offset(8); }
+            .offset9   { .offset(9); }
+            .offset10  { .offset(10); }
+            .offset11  { .offset(11); }
+            .offset12  { .offset(12); }
+
+            .span6 {
+                .input-prepend {
+                    input {
+                        &.span6 {
+                            .prepend-columns(6);
+                        }
+                    }
+                }
+            }
+
+            section {
+                form {
+                    .pairs {
+                        margin-left: 0px;
+
+                        &.control-group {
+                            .controls {
+                                .span2 {
+                                    .prepend-columns(3, 44);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

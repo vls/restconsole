@@ -26,6 +26,18 @@ DOMEvent.definePseudo('input', function(split, fn, args) {
     fn.apply(this, args);
 });
 
+Element.implement({
+    'getPadding': function() {
+        var size = [this.getStyle('padding-left'), this.getStyle('padding-left'), this.getStyle('border-left-width'), this.getStyle('border-right-width')];
+
+        size.each(function(px, index) {
+            size[index] = parseInt(px);
+        });
+
+        return size.sum();
+    }
+});
+
 var Storage = new Class({
     'name': false,
 
@@ -443,7 +455,7 @@ var App = new Class({
                 label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
                 div({'class': 'controls'},
                     input(data.attributes),
-                    span({'class': 'help-block'}, data.help)
+                    p({'class': 'help-text'}, data.help)
                 )
             )
         }),
@@ -454,9 +466,9 @@ var App = new Class({
                 div({'class': 'controls'},
                     div({'class': 'input-prepend'},
                         label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                        input(data.attributes)
-                    ),
-                    span({'class': 'help-block'}, data.help)
+                        input(data.attributes),
+                        p({'class': 'help-text'}, data.help)
+                    )
                 )
             )
         }),
@@ -521,7 +533,7 @@ var App = new Class({
                     },
 
                     // store input values
-                    'change:relay(.input:not(.pairs) input[type="text"], .input input[type="number"], textarea)': function(event) {
+                    'change:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group textarea)': function(event) {
                         new Storage('input-values').set(this.get('name'), this.get('value'));
                     },
 
@@ -551,52 +563,53 @@ var App = new Class({
                     },
 
                     // pairs delete button
-                    'click:relay(.pairs button)': function(event) {
-                        var row = this.getParent('li');
+                    'click:relay(.pairs .add-on.danger)': function(event) {
+                        var row = this.getParent('.controls');
                         var next = row.getNext();
 
                         // don't focus on the next row if its the last
                         // otherwise you get stuck in a loop
-                        if (next != row.getParent('ul').getLast()) {
-                            next.getFirst().focus();
+                        if (next != row.getParent('.control-group').getLast()) {
+                            next.getElement('input').focus();
                         } else if (row.getPrevious()) {
-                            row.getPrevious().getFirst().focus();
+                            row.getPrevious().getElement('input').focus();
                         }
 
                         row.destroy();
 
                         var event = new DOMEvent;
-                        event.target = next.getFirst();
+                        event.target = next.getElement('input');
                         document.id('container').fireEvent('change', event);
                     },
 
                     // clear error highlight on pairs
-                    'keyup:input:relay(.pairs li.error input[type="text"]:first-child)': function(event) {
-                        event.target.getParent('li').removeClass('error');
+                    'keyup:input:relay(.pairs .controls.error input[type="text"]:first-child)': function(event) {
+                        event.target.getParent('.controls').removeClass('error');
                     },
 
                     // check for empty keys on pairs
-                    'blur:relay(.pairs li:not(:last-child) input[type="text"]:first-child)': function(event) {
+                    'blur:relay(.pairs .controls:not(:last-child) input[type="text"]:first-child)': function(event) {
                         var value = this.get('value').trim();
 
                         if (value == '') {
-                            this.getParent('li').addClass('error');
+                            this.getParent('.controls').addClass('error');
                         } else {
                             this.set('value', value);
                         }
                     },
 
-                    // focus jump on pairs
-                    'focus:relay(.pairs li:last-of-type input[type="text"])': function(event) {
-                        var row = this.getParent('li');
-                        var previous = row.getPrevious();
+                    // clone on focus
+                    'focus:relay(.pairs .controls:last-of-type input[type="text"])': function(event) {
+                        var row = this.getParent('.controls');
+                        var previous = row.getPrevious('.controls');
                         var index = row.getChildren().indexOf(event.target);
 
-                        if (previous && previous.getChildren()[0].get('value') == '') {
-                            previous.addClass('error').getFirst().focus();
+                        if (previous && previous.getElements('input')[0].get('value') == '') {
+                            previous.addClass('error').getElements('input')[0].focus();
                         } else {
                             var clone = row.clone();
                             clone.inject(row, 'before');
+                            clone.getElement('.add-on.success').removeClass('success').addClass('danger');
                             clone.getElement('input').focus();
                         }
                     },
@@ -729,7 +742,7 @@ var App = new Class({
                                         )
                                     ),
 
-                                    span({'class': 'help-block'}, '* will affect next request.')
+                                    p({'class': 'help-text'}, '* will affect next request.')
                                 )
                             )
                         ),
@@ -764,7 +777,7 @@ var App = new Class({
                                         )
                                     ),
 
-                                    span({'class': 'help-block'}, 'Syntax highlighting default color theme')
+                                    p({'class': 'help-text'}, 'Syntax highlighting default color theme')
                                 )
                             )
                         )
@@ -797,13 +810,30 @@ var App = new Class({
                             })
                         ),
 
-                        div({'class': 'span9'},
+                        div({'class': 'span1'},
+                            this.renderTemplate('input', {
+                                'label': 'Timeout',
+                                'help': 'seconds',
+                                'attributes': {
+                                    'class': 'span1',
+                                    'type': 'number',
+                                    'name': 'timeout',
+                                    'value': 60,
+                                    'tabindex': 2,
+                                    'min': 1,
+                                    'step': 1,
+                                    'required': true
+                                }
+                            })
+                        ),
+
+                        div({'class': 'offset3'},
                             this.renderTemplate('input', {
                                 'rfc': '3.2',
                                 'label': 'URI',
                                 'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
                                 'attributes': {
-                                    'class': 'span9',
+                                    'class': 'expand',
                                     'type': 'text',
                                     'name': 'uri',
                                     'tabindex': 2,
@@ -820,43 +850,23 @@ var App = new Class({
                                     }
                                 }
                             })
-                        ),
-
-
-                        div({'class': 'span1'},
-                            this.renderTemplate('input', {
-                                'label': 'Timeout',
-                                'help': 'seconds',
-                                'attributes': {
-                                    'class': 'span1',
-                                    'type': 'number',
-                                    'name': 'timeout',
-                                    'value': 60,
-                                    'tabindex': 2,
-                                    'min': 1,
-                                    'step': 1,
-                                    'required': true
-                                }
-                            })
                         )
                     ),
 
                     div({'class': 'row'},
-                        div({'class': 'span6'},
+                        fieldset({'class': 'control-group span6 pairs'},
                             label({'for': 'query'}, 'Query String'),
 
-                            div({'class': 'input pairs'},
-                                ul({'class': 'query'},
-                                    li({'class': 'control-group row'},
-                                        input({'class': 'span2', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                        input({'class': 'span2', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                        button({'class': 'span2 btn danger'})
-                                    )
+                            div({'class': 'controls'},
+                                div({'class': 'input-append'},
+                                    input({'class': 'span2', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                    input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                    span({'class': 'add-on btn success'})
                                 )
                             )
                         ),
 
-                        div({'class': 'span6'},
+                        div({'class': 'offset6'},
                             label('Authorization Scheme'),
 
                             div({'class': 'input row auth'},
@@ -870,7 +880,7 @@ var App = new Class({
                                     'label': 'Authorization',
                                     'help': 'Authentication credentials for HTTP authentication.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'Authorization',
                                         'tabindex': 7,
@@ -885,7 +895,7 @@ var App = new Class({
                                     'label': 'Proxy-Authorization',
                                     'help': 'Authorization credentials for connecting to a proxy.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'Proxy-Authorization',
                                         'tabindex': 5,
@@ -923,6 +933,7 @@ var App = new Class({
                                         'disabled': true,
                                         'events': {
                                             'change': function(event) {
+                                                return;
                                                 var tab = this.getParent('form').getElement('li.urlencoded');
                                                 var textarea = this.getParent('form').getElement('textarea');
 
@@ -974,111 +985,111 @@ var App = new Class({
                             ])
                         ),
 
-                        div({'class': 'span6 clearfix'},
-                            ul({'class': 'tabs'},
-                                li({'class': 'active'}, a('RAW Body')),
-                                li(a('Form Data')),
-                                li(a('Attachments'))
-                            ),
+                        div({'class': 'offset6'},
+                            div({'class': 'tabbable'},
+                                ul({'class': 'tabs'},
+                                    li({'class': 'active'}, a('RAW Body')),
+                                    li(a('Form Data')),
+                                    li(a('Attachments'))
+                                ),
 
-                            ul({
-                                'class': 'tabs-content',
-                                'events': {
-                                    'change:relay(input[type="text"])': function(event) {
-                                        var form = this.getParent('form');
-                                        var data = form.toQueryString().parseQueryString();
-                                        var textarea = form.getElement('textarea[name="payload"]')
+                                div({
+                                    'class': 'tab-content',
+                                    'events': {
+                                        'change:relay(input[type="text"])': function(event) {
+                                            var form = this.getParent('form');
+                                            var data = form.toQueryString().parseQueryString();
+                                            var textarea = form.getElement('textarea[name="payload"]')
 
-                                        if (data['Content-Type'] && data['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
-                                            var payload = {};
+                                            if (data['Content-Type'] && data['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                var payload = {};
 
-                                            // set payload params
-                                            Array.from(data.key).each(function(key, index) {
-                                                if (key.length > 0) {
-                                                    payload[key] = Array.from(data.value)[index];
-                                                }
-                                            });
+                                                // set payload params
+                                                Array.from(data.key).each(function(key, index) {
+                                                    if (key.length > 0) {
+                                                        payload[key] = Array.from(data.value)[index];
+                                                    }
+                                                });
 
-                                            textarea.set('value', Object.toQueryString(payload));
+                                                textarea.set('value', Object.toQueryString(payload));
 
-                                            // construct fake event object
-                                            var event = DOMEvent;
-                                            event.target = textarea
+                                                // construct fake event object
+                                                var event = DOMEvent;
+                                                event.target = textarea
 
-                                            // trigger change event to store the resutls
-                                            document.id('container').fireEvent('change', event);
+                                                // trigger change event to store the resutls
+                                                document.id('container').fireEvent('change', event);
+                                            }
                                         }
-                                    }
-                                }},
+                                    }},
 
-                                li({'class': 'active'},
-                                    div({'class': 'clearfix'},
-                                        div({'class': 'input'},
-                                            textarea({
-                                                'class': 'span6',
-                                                'name': 'payload',
-                                                'rows': 5,
-                                                'tabindex': 5,
-                                                'placeholder': 'ex: XML, JSON, etc ...',
-                                                'events': {
-                                                    'change': function(event) {
-                                                        var form = this.getParent('form');
-                                                        var type = form.getElement('input[name="Content-Type"]').get('value');
+                                    div({'class': 'tab-pane active'},
+                                        fieldset({'class': 'control-group'},
+                                            div({'class': 'controls'},
+                                                textarea({
+                                                    'class': 'span6',
+                                                    'name': 'payload',
+                                                    'rows': 5,
+                                                    'tabindex': 5,
+                                                    'placeholder': 'ex: XML, JSON, etc ...',
+                                                    'events': {
+                                                        'change': function(event) {
+                                                            var form = this.getParent('form');
+                                                            var type = form.getElement('input[name="Content-Type"]').get('value');
 
-                                                        this.getParent('form').getElements('.pairs li:nth-last-of-type(n+2)').destroy();
+                                                            this.getParent('form').getElements('.pairs li:nth-last-of-type(n+2)').destroy();
 
-                                                        if (type.toLowerCase() == 'application/x-www-form-urlencoded') {
-                                                            var payload = this.get('value');
+                                                            if (type.toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                                var payload = this.get('value');
 
-                                                            if (payload != '') {
+                                                                if (payload != '') {
 
-                                                                payload = payload.parseQueryString();
+                                                                    payload = payload.parseQueryString();
 
-                                                                Object.each(payload, function(value, key) {
-                                                                    // construct fake event object
-                                                                    var event = DOMEvent;
-                                                                    event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+                                                                    Object.each(payload, function(value, key) {
+                                                                        // construct fake event object
+                                                                        var event = DOMEvent;
+                                                                        event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
 
-                                                                    // trigger focus event to insert more rows
-                                                                    document.id('container').fireEvent('focus', event);
+                                                                        // trigger focus event to insert more rows
+                                                                        document.id('container').fireEvent('focus', event);
 
-                                                                    var last = form.getElement('.pairs li:nth-last-child(-n+2)');
+                                                                        var last = form.getElement('.pairs li:nth-last-child(-n+2)');
 
-                                                                    last.getElement('input[type="text"]:first-of-type').set('value', key);
-                                                                    last.getElement('input[type="text"]:last-of-type').set('value', value);
-                                                                }.bind(this));
+                                                                        last.getElement('input[type="text"]:first-of-type').set('value', key);
+                                                                        last.getElement('input[type="text"]:last-of-type').set('value', value);
+                                                                    }.bind(this));
+                                                                }
                                                             }
                                                         }
                                                     }
-                                                }
-                                            }),
+                                                }),
 
-                                            span({'class': 'help-block'}, 'Remember to set the Content-Type header.')
-                                        )
-                                    )
-                                ),
-
-                                li({'class': 'urlencoded'},
-                                    div({'class': 'info'}, 'blah blah blah'),
-
-                                    div({'class': 'input pairs'},
-                                        ul({'class': 'query'},
-                                            li({'class': 'clearfix row'},
-                                                input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                                input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                                button({'class': 'span1 btn danger'})
+                                                p({'class': 'help-text'}, 'Remember to set the Content-Type header.')
                                             )
                                         )
                                     ),
 
-                                    span({'class': 'help-block'},  'Remember to set the Content-Type header.')
-                                ),
+                                    div({'class': 'tab-pane urlencoded'},
+                                        div({'class': 'info'}, 'blah blah blah'),
 
-                                li(
-                                    div({'class': 'clearfix'},
                                         div({'class': 'input pairs'},
                                             ul({'class': 'query'},
-                                                li({'class': 'clearfix row'},
+                                                li({'class': ' row'},
+                                                    input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                                    input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                                    button({'class': 'span1 btn danger'})
+                                                )
+                                            )
+                                        ),
+
+                                        p({'class': 'help-text'},  'Remember to set the Content-Type header.')
+                                    ),
+
+                                    div({'class': 'tab-pane'},
+                                        div({'class': 'input pairs'},
+                                            ul({'class': 'query'},
+                                                li({'class': 'row'},
                                                     input({'class': 'span4', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
                                                     input({'class': 'span5', 'name': 'file', 'type': 'file', 'multiple': false}),
                                                     button({'class': 'span1 btn danger'})
@@ -1384,7 +1395,7 @@ var App = new Class({
                             ])
                         ),
 
-                        div({'class': 'span6'},
+                        div({'class': 'offset6'},
                             h3('Cache'),
 
                             this.renderTemplate('optional-input', [
@@ -1392,9 +1403,9 @@ var App = new Class({
                                 {
                                     'rfc': '14.9',
                                     'label': 'Cache-Control',
-                                    'help': 'Used to specify directives that MUST be obeyed by all caching mechanisms along the request/response chain',
+                                    'help': 'Used to specify caching mechanisms along the request/response chain',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'Cache-Control',
                                         'tabindex': 6,
@@ -1409,7 +1420,7 @@ var App = new Class({
                                     'label': 'If-Match',
                                     'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'If-Match',
                                         'tabindex': 6,
@@ -1424,7 +1435,7 @@ var App = new Class({
                                     'label': 'If-Modified-Since',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'If-Modified-Since',
                                         'tabindex': 6,
@@ -1439,7 +1450,7 @@ var App = new Class({
                                     'label': 'If-None-Match',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'If-None-Match',
                                         'tabindex': 6,
@@ -1452,9 +1463,9 @@ var App = new Class({
                                 {
                                     'rfc': '14.27',
                                     'label': 'If-Range',
-                                    'help': 'If the entity is unchanged, send me the part(s) that I am missing; otherwise, send me the entire new entity',
+                                    'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'If-Range',
                                         'tabindex': 6,
@@ -1469,7 +1480,7 @@ var App = new Class({
                                     'label': 'If-Unmodified-Since',
                                     'help': 'Only send the response if the entity has not been modified since a specific time.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'If-Unmodified-Since',
                                         'tabindex': 6,
@@ -1487,7 +1498,7 @@ var App = new Class({
                                     'label': 'Origin',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                         'type': 'text',
                                         'name': 'Origin',
                                         'tabindex': 5,
@@ -1501,7 +1512,7 @@ var App = new Class({
                                     'label': 'X-HTTP-Method-Override',
                                     'help': 'mainly used bypass firewalls and browsers limitations.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                             'type': 'text',
                                             'name': 'X-HTTP-Method-Override',
                                             'tabindex': 7,
@@ -1515,7 +1526,7 @@ var App = new Class({
                                     'label': 'X-Requested-With',
                                     'help': 'mainly used to identify Ajax requests.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                             'type': 'text',
                                             'name': 'X-Requested-With',
                                             'tabindex': 7,
@@ -1529,7 +1540,7 @@ var App = new Class({
                                     'label': 'X-Forwarded-For',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                             'type': 'text',
                                             'name': 'X-Forwarded-For',
                                             'tabindex': 7,
@@ -1543,7 +1554,7 @@ var App = new Class({
                                     'label': 'X-Do-Not-Track',
                                     'help': 'Requests a web application to disable their tracking of a user.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                             'type': 'text',
                                             'name': 'X-Do-Not-Track',
                                             'tabindex': 7,
@@ -1557,7 +1568,7 @@ var App = new Class({
                                     'label': 'DNT',
                                     'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'expand',
                                             'type': 'text',
                                             'name': 'DNT',
                                             'tabindex': 7,
@@ -1572,14 +1583,12 @@ var App = new Class({
 
                             label({'for': 'headers'}, 'Key => Value pairs'),
 
-                            div({'class': 'clearfix'},
-                                div({'class': 'input pairs'},
-                                    ul({'class': 'query'},
-                                        li({'class': 'clearfix row'},
-                                            input({'class': 'span3', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                            input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                            button({'class': 'span1 btn danger'})
-                                        )
+                            div({'class': 'input pairs'},
+                                ul({'class': 'query'},
+                                    li({'class': 'row'},
+                                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                        button({'class': 'span1 btn danger'})
                                     )
                                 )
                             )
@@ -1651,6 +1660,18 @@ var App = new Class({
         })
     },
 
+    'resizeEvent': function(event) {
+        document.getElements('.expand').each(function(element) {
+            var width = element.getParent('[class*="offset"]').getDimensions().width - element.getPadding();
+
+            if (element.getParent('.input-prepend') != null) {
+                width -= 36;
+            }
+
+            element.setStyle('width', width);
+        });
+    },
+
     'initialize': function() {
         var body = document.body;
 
@@ -1678,6 +1699,9 @@ var App = new Class({
         // display the page
         body.set('class', 'loaded');
 
+        // fix sizing
+        window.addEvent('resize', this.resizeEvent).fireEvent('resize');
+
         // setup autocomplete
         if ('options' in document.createElement('datalist') == false) {
             new AutoComplete();
@@ -1692,7 +1716,7 @@ var App = new Class({
         var container   = document.id('container');
 
         // input fields and textareas
-        document.getElements('.input:not(.pairs) input[type="text"], .input input[type="number"], textarea').each(function(input) {
+        document.getElements('.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group textarea').each(function(input) {
             input.set('value', values.get(input.get('name'))).fireEvent('change');
         });
 
@@ -1714,13 +1738,13 @@ var App = new Class({
             Object.each(storage, function(value, key) {
                 // construct fake event object
                 var event = DOMEvent;
-                event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+                event.target = form.getElement('.pairs .controls:last-of-type input[type="text"]:first-child');
 
                 // trigger focus event on container to insert more rows
                 container.fireEvent('focus', event);
 
                 // get the newly inserted row
-                var row = form.getElement('.pairs li:nth-last-child(-n+2)');
+                var row = form.getElement('.pairs .controls:nth-last-child(-n+2)');
 
                 // finally, assign the values to the row input fields
                 row.getElement('input[type="text"]:first-of-type').set('value', key);
