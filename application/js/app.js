@@ -520,12 +520,15 @@ var App = new Class({
                     // global enable / disable action on input fields
                     'click:relay(.input-prepend input[type="checkbox"])': function(event) {
                         var input = this.getParent('.input-prepend').getElement('input[type="text"]');
+                        var label = this.getParent('.add-on');
                         var disabled = input.get('disabled');
 
                         if (disabled) {
+                            label.addClass('active');
                             input.set('disabled', false).fireEvent('focus').focus();
                             event.stopPropagation();
                         } else {
+                            label.removeClass('active');
                             input.set('disabled', true);
                         }
 
@@ -1728,6 +1731,7 @@ var App = new Class({
             if (enabled) {
                 input.set('disabled', !enabled);
                 checkbox.set('checked', enabled);
+                checkbox.getParent('.add-on').addClass('active');
             }
         });
 
