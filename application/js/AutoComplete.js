@@ -55,7 +55,7 @@ var AutoComplete = new Class({
 
                             // this part is custom to the REST console
                             event.target = input;
-                            input.getParent('.content').fireEvent('change', event);
+                            document.id('container').fireEvent('change', event);
                         }
                     }
                 });
@@ -210,7 +210,7 @@ var AutoComplete = new Class({
 
                         // this part is custom to the REST console
                         event.target = this;
-                        this.getParent('.content').fireEvent('change', event);
+                        document.id('container').fireEvent('change', event);
 
                         list.dataset.current = -1;
                     }

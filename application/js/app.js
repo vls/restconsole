@@ -574,8 +574,8 @@ var App = new Class({
                         // otherwise you get stuck in a loop
                         if (next != row.getParent('.control-group').getLast()) {
                             next.getElement('input').focus();
-                        } else if (row.getPrevious()) {
-                            row.getPrevious().getElement('input').focus();
+                        } else if (row.getPrevious('.controls')) {
+                            row.getPrevious('.controls').getElement('input').focus();
                         }
 
                         row.destroy();
@@ -607,8 +607,8 @@ var App = new Class({
                         var previous = row.getPrevious('.controls');
                         var index = row.getChildren().indexOf(event.target);
 
-                        if (previous && previous.getElements('input')[0].get('value') == '') {
-                            previous.addClass('error').getElements('input')[0].focus();
+                        if (previous && previous.getElement('input').get('value') == '') {
+                            previous.addClass('error').getElement('input').focus();
                         } else {
                             var clone = row.clone();
                             clone.inject(row, 'before');
@@ -618,21 +618,20 @@ var App = new Class({
                     },
 
                     // tabs navigation
-                    'click:relay(ul.tabs li a)': function(event) {
+                    'click:relay(.tabbable .tabs li a)': function(event) {
                         event.preventDefault();
 
-                        var tabs = event.target.getParent('ul');
-                        var content = tabs.getNext('.tabs-content');
+                        var tabbable = event.target.getParent('.tabbable');
+                        var tabs = tabbable.getElement('.tabs');
+                        var content = tabbable.getElements('.tab-content .tab-pane');
                         var index = tabs.getChildren().indexOf(event.target.getParent('li'));
 
                         // switch tabs
                         tabs.getElement('.active').removeClass('active');
                         event.target.getParent('li').addClass('active');
 
-                        content.getElement('.active').removeClass('active');
-                        content.getChildren()[index].addClass('active');
-
-                        this.goTo('response');
+                        content.removeClass('active');
+                        content[index].addClass('active');
                     }.bind(this),
 
                     // prevent enter key from triggering any buttons on the page
@@ -1076,12 +1075,12 @@ var App = new Class({
                                     div({'class': 'tab-pane urlencoded'},
                                         div({'class': 'info'}, 'blah blah blah'),
 
-                                        div({'class': 'input pairs'},
-                                            ul({'class': 'query'},
-                                                li({'class': ' row'},
-                                                    input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                                    input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                                    button({'class': 'span1 btn danger'})
+                                        fieldset({'class': 'control-group span6 pairs'},
+                                            div({'class': 'controls'},
+                                                div({'class': 'input-append'},
+                                                    input({'class': 'span2', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                                    input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                                    span({'class': 'add-on btn success'})
                                                 )
                                             )
                                         ),
@@ -1090,12 +1089,12 @@ var App = new Class({
                                     ),
 
                                     div({'class': 'tab-pane'},
-                                        div({'class': 'input pairs'},
-                                            ul({'class': 'query'},
-                                                li({'class': 'row'},
-                                                    input({'class': 'span4', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
-                                                    input({'class': 'span5', 'name': 'file', 'type': 'file', 'multiple': false}),
-                                                    button({'class': 'span1 btn danger'})
+                                        fieldset({'class': 'control-group span6 pairs'},
+                                            div({'class': 'controls'},
+                                                div({'class': 'input-append'},
+                                                    input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
+                                                    input({'class': 'span2', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                    span({'class': 'add-on btn success'})
                                                 )
                                             )
                                         )
