@@ -1,5 +1,5 @@
 <?php
-class Sandbox_ErrorController extends Sandbox_Library_Controller
+class ErrorController extends App_Controller
 {
     public function errorAction()
     {

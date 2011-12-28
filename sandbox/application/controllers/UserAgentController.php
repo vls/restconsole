@@ -1,5 +1,5 @@
 <?php
-class Sandbox_UserAgentController extends Sandbox_Library_Controller
+class UserAgentController extends App_Controller
 {
     public function indexAction()
     {

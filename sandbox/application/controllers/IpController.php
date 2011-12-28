@@ -1,5 +1,5 @@
 <?php
-class Sandbox_IpController extends Sandbox_Library_Controller
+class IpController extends App_Controller
 {
     public function indexAction()
     {

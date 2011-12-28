@@ -1,5 +1,5 @@
 <?php
-class Sandbox_HeadersController extends Sandbox_Library_Controller
+class HeadersController extends App_Controller
 {
     public function indexAction()
     {

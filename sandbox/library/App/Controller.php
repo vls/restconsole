@@ -1,5 +1,5 @@
 <?php
-abstract class Sandbox_Library_Controller extends REST_Controller
+abstract class App_Controller extends REST_Controller
 {
     public function indexAction()
     {

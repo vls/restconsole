@@ -1,5 +1,5 @@
 <?php
-class Sandbox_EchoController extends Sandbox_Library_Controller
+class EchoController extends App_Controller
 {
     public function indexAction()
     {
