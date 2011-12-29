@@ -315,6 +315,10 @@ html {
 
                             .span2 {
                                 .prepend-columns(3, 24);
+
+                                &.smaller {
+                                    .prepend-columns(3, 55);
+                                }
                             }
 
                             .input-append {
@@ -357,10 +361,12 @@ html {
             }
 
             &#payload {
-                .tabs-content {
+                .tab-content {
+                    min-height: 300px;
+
                     .tab-pane {
                         &.urlencoded {
-                            .info {
+                            .help-text {
                                 display: block;
                             }
 
@@ -370,7 +376,7 @@ html {
                         }
 
                         &.urlencoded.true {
-                            .info {
+                            .help-text {
                                 display: none;
                             }
 

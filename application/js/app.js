@@ -549,16 +549,18 @@ var App = new Class({
                     // global enable / disable action on input fields
                     'click:relay(.input-prepend input[type="checkbox"])': function(event) {
                         var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="number"]');
-                        var label = this.getParent('.add-on');
                         var disabled = input.get('disabled');
 
                         if (disabled) {
-                            label.addClass('active');
+                            event.target = input;
+                            this.getParent('#container').fireEvent('toggle', event);
+
                             input.set('disabled', false).fireEvent('focus').focus();
                             event.stopPropagation();
                         } else {
-                            label.removeClass('active');
                             input.set('disabled', true);
+
+                            this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
                         }
 
                         new Storage('input-status').set(input.get('name'), disabled);
@@ -566,18 +568,42 @@ var App = new Class({
 
                     // store input values
                     'change:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group textarea)': function(event) {
+                        this.getParent('#container').fireEvent('toggle', event);
+
                         new Storage('input-values').set(this.get('name'), this.get('value'));
+                    },
+
+                    // highlight inputs
+                    'toggle:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group textarea)': function(event) {
+                        var group = this.getParent('.control-group');
+                        var value = this.get('value');
+
+                        group.removeClass('success').removeClass('error').removeClass('warning');
+
+                        if (value == '') {
+                            if (this.get('required')) {
+                                group.addClass('error');
+                            } else {
+                                group.addClass('warning');
+                            }
+                        } else {
+                            group.addClass('success');
+                        }
                     },
 
                     // section hide toggle
                     'click:relay(section header a)': function(event) {
                         var section = this.getParent('section');
+
                         section.toggleClass('minimize')
+
                         new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
+
+                        window.fireEvent('resize');
                     },
 
                     // store pairs values
-                    'change:relay(.pairs input[type="text"])': function(event) {
+                    'change:relay(.pairs:not([ignore]) input[type="text"])': function(event) {
                         var group = this.getParent('.control-group');
                         var data = group.toObject();
 
@@ -939,9 +965,9 @@ var App = new Class({
                                         'disabled': true,
                                         'events': {
                                             'change': function(event) {
-                                                return;
-                                                var tab = this.getParent('form').getElement('li.urlencoded');
-                                                var textarea = this.getParent('form').getElement('textarea');
+                                                var form = this.getParent('form');
+                                                var tab = form.getElement('.tab-pane.urlencoded');
+                                                var textarea = form.getElement('textarea');
 
                                                 if (this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
                                                     tab.addClass('true');
@@ -999,70 +1025,38 @@ var App = new Class({
                                     li(a('Attachments'))
                                 ),
 
-                                div({
-                                    'class': 'tab-content',
-                                    'events': {
-                                        'change:relay(input[type="text"])': function(event) {
-                                            return;
-                                            var form = this.getParent('form');
-                                            var data = form.toObject();
-                                            var textarea = form.getElement('textarea[name="payload"]')
-
-                                            if (data['Content-Type'] && data['Content-Type'].toLowerCase() == 'application/x-www-form-urlencoded') {
-                                                var payload = {};
-
-                                                // set payload params
-                                                Array.from(data.key).each(function(key, index) {
-                                                    if (key.length > 0) {
-                                                        payload[key] = Array.from(data.value)[index];
-                                                    }
-                                                });
-
-                                                textarea.set('value', Object.toQueryString(payload));
-
-                                                // construct fake event object
-                                                var event = DOMEvent;
-                                                event.target = textarea
-
-                                                // trigger change event to store the resutls
-                                                document.id('container').fireEvent('change', event);
-                                            }
-                                        }
-                                    }},
-
+                                div({'class': 'tab-content'},
                                     div({'class': 'tab-pane active'},
                                         fieldset({'class': 'control-group'},
                                             div({'class': 'controls'},
                                                 textarea({
-                                                    'class': 'span6',
+                                                    'class': 'expand',
                                                     'name': 'payload',
                                                     'rows': 5,
                                                     'tabindex': 5,
                                                     'placeholder': 'ex: XML, JSON, etc ...',
                                                     'events': {
                                                         'change': function(event) {
-                                                            return;
                                                             var form = this.getParent('form');
-                                                            var type = form.getElement('input[name="Content-Type"]').get('value');
+                                                            var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
 
-                                                            this.getParent('form').getElements('.pairs li:nth-last-of-type(n+2)').destroy();
+                                                            form.getElements('.pairs .controls:nth-last-of-type(n+2)').destroy();
 
-                                                            if (type.toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                            if (type == 'application/x-www-form-urlencoded') {
                                                                 var payload = this.get('value');
 
                                                                 if (payload != '') {
-
                                                                     payload = payload.parseQueryString();
 
                                                                     Object.each(payload, function(value, key) {
                                                                         // construct fake event object
                                                                         var event = DOMEvent;
-                                                                        event.target = form.getElement('.pairs li:last-of-type input[type="text"]:first-child');
+                                                                        event.target = form.getElement('.pairs .controls:last-of-type input[type="text"]:first-child');
 
                                                                         // trigger focus event to insert more rows
                                                                         document.id('container').fireEvent('focus', event);
 
-                                                                        var last = form.getElement('.pairs li:nth-last-child(-n+2)');
+                                                                        var last = form.getElement('.pairs .controls:nth-last-child(-n+2)');
 
                                                                         last.getElement('input[type="text"]:first-of-type').set('value', key);
                                                                         last.getElement('input[type="text"]:last-of-type').set('value', value);
@@ -1079,27 +1073,48 @@ var App = new Class({
                                     ),
 
                                     div({'class': 'tab-pane urlencoded'},
-                                        div({'class': 'info'}, 'blah blah blah'),
+                                        p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
 
-                                        fieldset({'class': 'control-group span6 pairs'},
+                                        fieldset({
+                                            'class': 'control-group pairs',
+                                            'name': 'payload',
+                                            'ignore': true,
+                                            'events': {
+                                                'change:relay(input[type="text"])': function(event) {
+                                                    var form = this.getParent('form');
+                                                    var data = form.getPairs('payload');
+                                                    var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                                    var textarea = form.getElement('textarea[name="payload"]');
+
+                                                    if (type == 'application/x-www-form-urlencoded') {
+                                                        textarea.set('value', Object.toQueryString(data));
+
+                                                        // construct fake event object
+                                                        var event = DOMEvent;
+                                                        event.target = textarea
+
+                                                        // trigger change event to store the resutls
+                                                        document.id('container').fireEvent('change', event);
+                                                    }
+                                                }
+                                            }},
+
                                             div({'class': 'controls'},
                                                 div({'class': 'input-append'},
-                                                    input({'class': 'span2', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                                    input({'class': 'span2 smaller', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
                                                     input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
                                                     span({'class': 'add-on btn success'})
                                                 )
                                             )
-                                        ),
-
-                                        p({'class': 'help-text'},  'Remember to set the Content-Type header.')
+                                        )
                                     ),
 
                                     div({'class': 'tab-pane'},
-                                        fieldset({'class': 'control-group span6 pairs'},
+                                        fieldset({'class': 'control-group pairs'},
                                             div({'class': 'controls'},
                                                 div({'class': 'input-append'},
                                                     input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
-                                                    input({'class': 'span2', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                    input({'class': 'span2 smaller', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
                                                     span({'class': 'add-on btn success'})
                                                 )
                                             )
@@ -2047,18 +2062,24 @@ var App = new Class({
 
         // input fields and textareas
         document.getElements('.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group textarea').each(function(input) {
-            input.set('value', values.get(input.get('name'))).fireEvent('change');
-        });
+            // construct fake event event object
+            var event = new DOMEvent;
+            event.target = input;
 
-        // input fields with checkboxes
-        document.getElements('.input-prepend input[type="text"]').each(function(input) {
-            var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
-            var enabled = statuses.get(input.get('name'));
+            if (input.getParent('.input-prepend')) {
+                var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
+                var enabled = statuses.get(input.get('name'));
 
-            if (enabled) {
-                input.set('disabled', !enabled);
-                checkbox.set('checked', enabled);
-                checkbox.getParent('.add-on').addClass('active');
+                if (enabled) {
+                    input.set('disabled', !enabled);
+                    checkbox.set('checked', enabled);
+
+                    container.fireEvent('toggle', event);
+                }
+            } else {
+                input.set('value', values.get(input.get('name'))).fireEvent('change');
+
+                container.fireEvent('toggle', event);
             }
         });
 
