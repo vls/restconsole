@@ -144,6 +144,16 @@ html {
             }
         }
 
+        .span2 {
+            .input-prepend {
+                input {
+                    &.span2 {
+                        .prepend-columns(2);
+                    }
+                }
+            }
+        }
+
         .span6 {
             .input-prepend {
                 input {
@@ -299,8 +309,6 @@ html {
                 }
 
                 .pairs {
-                    margin-left: 0px;
-
                     &.control-group {
                         .controls {
                             margin-bottom: 10px;
