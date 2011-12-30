@@ -698,7 +698,7 @@ var App = new Class({
                         content[index].addClass('active');
 
                         // store active tab
-                        new Storage('tabs').set(event.target.getParent('form').get('name'), index);
+                        new Storage('tabs').set(tabbable.dataset.name, index);
 
                         // fire resize event to fix hidden field sizes
                         window.fireEvent('resize');
@@ -1030,7 +1030,7 @@ var App = new Class({
                         ),
 
                         div({'class': 'offset6'},
-                            div({'class': 'tabbable'},
+                            div({'class': 'tabbable', 'data-name': 'payload'},
                                 ul({'class': 'tabs'},
                                     li({'class': 'active'}, a('RAW Body')),
                                     li(a('Form Data')),
@@ -1145,7 +1145,7 @@ var App = new Class({
                     'novalidate': true
                     },
 
-                    div({'class': 'tabbable'},
+                    div({'class': 'tabbable', 'data-name': 'authorization'},
                         ul({
                             'class': 'tabs',
                             'events': {
@@ -2126,35 +2126,49 @@ var App = new Class({
             section({'id': 'response'},
                 this.renderTemplate('section-header', 'Response'),
 
-                ul({'class': 'tabs'},
-                    li({'class': 'active'}, a({'data-target': 'body'}, 'Response Body')),
-                    li(a('RAW Response')),
-                    li(a('Response Preview')),
-                    li(a('RAW Request')),
-                    li(a('HTTP Archive (HAR)'))
-                ),
-
-                ul({'class': 'tabs-content'},
-                    li({'class': 'active'},
-                        pre({
-                            'id': 'response-body',
-                            'class': 'prettyprint',
-                            'events': {
-                                // clicks within the response body
-                                'click:relay(a[href])': function(event) {
-                                    event.preventDefault();
-
-                                    document.getElement('input[name="uri"]').set('value', this.get('href'));
-                                    document.getElement('input[name="method"]').set('value', 'GET');
-                                    //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
-                                }
-                            }
-                        })
+                ul({'class': 'tabbable', 'data-name': 'response'},
+                    ul({'class': 'tabs'},
+                        li({'class': 'active'}, a({'data-target': 'body'}, 'Response Body')),
+                        li(a('RAW Response')),
+                        li(a('Response Preview')),
+                        li(a('RAW Request')),
+                        li(a('HTTP Archive (HAR)'))
                     ),
-                    li(pre({'id': 'response-raw', 'class': 'prettyprint'})),
-                    li(div({'id': 'response-preview'})),
-                    li(pre({'id': 'request-raw', 'class': 'prettyprint'})),
-                    li(pre({'id': 'har', 'class': 'prettyprint lang-json'}))
+
+                    div({'class': 'tab-content'},
+                        div({'class': 'tab-pane active'},
+                            pre({
+                                'id': 'response-body',
+                                'class': 'prettyprint',
+                                'events': {
+                                    // clicks within the response body
+                                    'click:relay(a[href])': function(event) {
+                                        event.preventDefault();
+
+                                        document.getElement('input[name="uri"]').set('value', this.get('href'));
+                                        document.getElement('input[name="method"]').set('value', 'GET');
+                                        //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
+                                    }
+                                }
+                            })
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            pre({'id': 'response-raw', 'class': 'prettyprint'})
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            div({'id': 'response-preview'})
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            pre({'id': 'request-raw', 'class': 'prettyprint'})
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            pre({'id': 'har', 'class': 'prettyprint lang-json'})
+                        )
+                    )
                 )
             )
         }),
@@ -2213,7 +2227,7 @@ var App = new Class({
         // enable smooth scrolling
         new Fx.SmoothScroll({
             'offset': {'y': -60},
-            'links': '.topbar a[href^="#"]',
+            'links': '.navbar a[href^="#"]',
             'wheelStops': true
         });
 
@@ -2297,7 +2311,7 @@ var App = new Class({
 
         // tabs
         document.getElements('.tabbable .tabs').each(function(tab) {
-            var index = tabs.get(tab.getParent('form').get('name'));
+            var index = tabs.get(tab.getParent('.tabbable').dataset.name);
 
             var link = tab.getElement('li:nth-of-type({0}) a'.substitute([index + 1]));
 
@@ -2435,7 +2449,7 @@ var App = new Class({
         } else {
             options.payload = data.payload.payload;
         };
-
+/*
         // check for required fields
         document.getElements('*[required]').each(function(element) {
             if (element.get('value').length == 0) {
@@ -2443,7 +2457,7 @@ var App = new Class({
                 error = true;
             }
         });
-
+*/
         console.log('request options', options);
 
         if (error) {
