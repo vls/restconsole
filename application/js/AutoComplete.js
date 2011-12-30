@@ -69,7 +69,7 @@ var AutoComplete = new Class({
             }
         });
 
-        document.getElements('input').addEvent('focus', function(event) {
+        document.getElements('input[type="text"]').addEvent('focus', function(event) {
             document.getElements('.autocomplete').hide();
         });
 

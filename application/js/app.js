@@ -765,13 +765,16 @@ var App = new Class({
                     'class': 'form-stacked',
                     'novalidate': true,
                     'events': {
-                        'change:relay(input[type="checkbox"])': function(event) {
-                            new Storage('options').set(this.get('name'), this.get('checked'));
-                        },
+                        //~ 'change:relay(input[type="checkbox"])': function(event) {
+                            //~ console.log('here');
+                            //~ new Storage('options').set(this.get('name'), this.get('checked'));
+                        //~ },
 
                         'init': function() {
+                            var options = new Storage('options');
+
                             this.getElements('input[type="checkbox"]').each(function(checkbox) {
-                                var data = new Storage('options').get(checkbox.get('name'));
+                                var data = options.get(checkbox.get('name'));
 
                                 if (data != null) {
                                     if (data == true) {
@@ -791,23 +794,19 @@ var App = new Class({
                             fieldset({'class': 'control-group'},
                                 label({'class': 'control-label'}, 'General'),
                                 div({'class': 'controls'},
-                                    div({'class': 'control-list'},
-                                        label({'class': 'checkbox'},
-                                            input({
-                                                'type': 'checkbox',
-                                                'name': 'help',
-                                                'events': {
-                                                    'change': function(event) {
-                                                        if (this.get('checked')) {
-                                                            document.body.addClass('no-help');
-                                                        } else {
-                                                            document.body.removeClass('no-help');
-                                                        }
-                                                    }
+                                    div({
+                                        'class': 'control-list',
+                                        'events': {
+                                            'change:relay(input[name="help"]': function(event) {
+                                                if (this.get('checked')) {
+                                                    document.body.addClass('no-help');
+                                                } else {
+                                                    document.body.removeClass('no-help');
                                                 }
-                                            }),
-
-                                            'Hide Help Lines'
+                                            }
+                                        }},
+                                        label({'class': 'checkbox'},
+                                            input({'type': 'checkbox','name': 'help'}), 'Hide Help Lines'
                                         ),
 
                                         label({'class': 'checkbox'},
@@ -824,7 +823,15 @@ var App = new Class({
                             fieldset({'class': 'control-group'},
                                 label({'class': 'control-label'}, 'Color Theme'),
                                 div({'class': 'controls'},
-                                    div({'class': 'control-list'},
+                                    div({
+                                        'class': 'control-list',
+                                        'events': {
+                                            'change:relay(input)': function(event) {
+                                                if (this.get('checked')) {
+                                                    document.id('theme').set('href', 'style/prettify/{0}.css'.substitute([this.get('value')]));
+                                                }
+                                            }
+                                        }},
                                         label({'class': 'checkbox'},
                                             input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
                                         ),
