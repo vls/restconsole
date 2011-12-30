@@ -51,11 +51,10 @@ var AutoComplete = new Class({
 
                             var input = list.getPrevious('[name={0}]'.substitute([list.get('for')]));
 
-                            input.set('value', this.dataset.value);
+                            input.set('value', this.dataset.value).fireEvent('change');
 
                             // this part is custom to the REST console
-                            event.target = input;
-                            document.id('container').fireEvent('change', event);
+                            document.id('container').fireEvent('change', new FakeEvent(input));
                         }
                     }
                 });
@@ -111,18 +110,20 @@ var AutoComplete = new Class({
             },
 
             'keyup': function(event) {
+                event.stopPropagation();
+
                 if (!['down', 'up', 'left', 'right', 'esc', 'enter'].contains(event.key)) {
-                    this.fireEvent('focus', event);
+                    this.fireEvent('focus');
                 }
             },
 
             'keydown:keys(down)': function(event) {
-                event.stop();
+                event.stopPropagation();
 
                 var list = this.getNext('[for={0}]'.substitute([this.get('name')]));
 
                 if (!list.isDisplayed()) {
-                    this.fireEvent('focus', event);
+                    this.fireEvent('focus');
                 } else {
                     list.show();
                 }
@@ -155,12 +156,12 @@ var AutoComplete = new Class({
             },
 
             'keydown:keys(up)': function(event) {
-                event.stop();
+                event.stopPropagation();
 
                 var list = this.getNext('[for={0}]'.substitute([this.get('name')]));
 
                 if (!list.isDisplayed()) {
-                    this.fireEvent('focus', event);
+                    this.fireEvent('focus');
                 } else {
                     list.show();
                 }
@@ -208,9 +209,9 @@ var AutoComplete = new Class({
                     if (list.dataset.current > -1) {
                         this.set('value', suggestions[list.dataset.current].dataset.value);
 
-                        // this part is custom to the REST console
-                        event.target = this;
-                        document.id('container').fireEvent('change', event);
+                        this.fireEvent('change', new FakeEvent(this));
+
+                        document.id('container').fireEvent('change', new FakeEvent(this));
 
                         list.dataset.current = -1;
                     }

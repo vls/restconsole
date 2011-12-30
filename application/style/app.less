@@ -1,5 +1,6 @@
 @import "/style/bootstrap/bootstrap.less";
 
+@color: #404040;
 @sideBarWidth: 190px;
 @sectionPadding: 10px;
 
@@ -39,9 +40,10 @@ html {
         }
 
         &.loaded {
+            background-image: none;
+
             > * {
                 display: block;
-                background-image: none;
             }
         }
 
@@ -85,6 +87,11 @@ html {
 
         select {
             background-color: #EEE;
+
+            &[disabled] {
+                background-color: #DDD;
+                border: 1px solid #CCC;
+            }
         }
 
         .tabs {
@@ -217,9 +224,18 @@ html {
 
             form {
                 .control-group {
+
+                    &.success {
+                        input,
+                        textarea {
+                            color: gray;
+                        }
+                    }
+
                     .control-label {
                         height: 20px;
                         line-height: 20px;
+                        color: @color;
 
                         a {
                             display: block;
@@ -232,6 +248,7 @@ html {
                             background-repeat: no-repeat;
                             cursor: pointer;
                         }
+
                     }
 
                     &:hover {
