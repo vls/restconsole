@@ -705,7 +705,7 @@ var App = new Class({
                     }.bind(this),
 
                     // prevent enter key from triggering any buttons on the page
-                    'keydown:keys(enter):relay(form)': function(event) {
+                    'keydown:relay(form):keys(enter)': function(event) {
                         event.stop();
 
                         this.send();
@@ -1162,11 +1162,11 @@ var App = new Class({
                                     var content = tabbable.getElements('.tab-content .tab-pane');
                                     var index = tabs.getChildren().indexOf(this.getParent('li'));
 
-                                    content.getElements('input[type="text"]:not([disabled]), input[type="password"]:not([disabled]), input[type="hidden"], select').each(function(elements) {
+                                    content.getElements('input[name="Authorization"], input[type="text"]:not([disabled]), input[type="password"]:not([disabled]), input[type="hidden"], select').each(function(elements) {
                                         elements.set('disabled', true);
                                     });
 
-                                    content[index].getElements('input[type="hidden"], select').set('disabled', false);
+                                    content[index].getElements('input[name="Authorization"], input[type="hidden"], select').set('disabled', false);
 
                                     content[index].getElements('input[type="checkbox"]').each(function(checkbox) {
                                         if (checkbox.get('checked')) {
@@ -1311,104 +1311,30 @@ var App = new Class({
                             ),
 */
                             div({
-                                'class': 'tab-pane',
+                                'class': 'tab-pane oauth',
                                 'events': {
-                                    'keyup:relay(input[type="text"], input[type="number"])': function(event) {
-                                        var data = this.getParent('.tab-pane').toObject();
-
-                                        var request = {
-                                            'query': document.getElement('form[name="target"]').getPairs('query'),
-                                            'target': document.getElement('form[name="target"]').toObjectNoPairs(),
-                                            'payload': document.getElement('form[name="payload"]').toObjectNoPairs()
-                                        };
-
-                                        // start oauth
-                                        var accessor = {
-                                            'consumerKey': data.consumer_key,
-                                            'consumerSecret': data.consumer_secret
-                                        };
-
-                                        var message = {
-                                            'action': request.target.uri,
-                                            'method': request.target.method,
-                                            'parameters': [
-                                                ['oauth_version', data.version],
-                                                ['oauth_signature_method', data.signature]
-                                            ]
-                                        };
-
-                                        // optional params
-                                        if (data.token_key) {
-                                            accessor.token = data.token_key;
-                                        }
-
-                                        if (data.token_secret) {
-                                            accessor.tokenSecret = data.token_secret;
-                                        }
-
-                                        if (data.scope) {
-                                            oauth.parameters.push(['scope', data.scope]);
-                                        }
-
-                                        if (data.oauth_verifier) {
-                                            oauth.parameters.push(['oauth_verifier', data.oauth_verifier]);
-                                        }
-
-                                        // query string params
-                                        Object.each(request.query, function(value, key) {
-                                            message.parameters.push([key, value]);
-                                        });
-
-/*
-                                        // params container
-                                        var container = document.getElement('ul.params');
-
-                                        // remove old rows if any
-                                        container.getElements('li').each(function(row) {
-                                            if (row.dataset.oauth) {
-                                                row.destroy();
-                                            }
-                                        });
-*/
-
-                                        // sign
-                                        OAuth.completeRequest(message, accessor);
-
-                                        if (data.method == 'header') {
-                                            var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
-
-                                            var input = this.getParent('.tab-pane').getElement('input[name="Authorization"]').set('value', header);
-                                        } else {
-                                            OAuth.formEncode(OAuth.getParameterList(message.parameters));
-                                            /*
-                                            var input = this.getParent('.tab-pane').getElement('input[name="Authorization"]').set('value', '');
-
-                                            var oauth_params = oauth.signed_url.replace(request.uri + '?', '').parseQueryString();
-
-                                            Object.each(oauth_params, function(value, key) {
-                                                row = container.getElement('li:last-of-type').clone();
-                                                row.dataset.oauth = true;
-                                                row.getElement('input[name="key"]').set('value', key);
-                                                row.getElement('input[name="value"]').set('value', value);
-                                                row.getElements('input').set('disabled', false);
-                                                row.inject(container, 'top');
-                                            });
-                                            */
-                                        }
-/*
-                                        if (data.oauth_callback && data.oauth_callback.length > 0) {
-                                            row = container.getElement('li:last-of-type').clone();
-                                            row.dataset.oauth = true;
-                                            row.getElement('input[name="key"]').set('value', 'oauth_callback');
-                                            row.getElement('input[name="value"]').set('value', data.oauth_callback);
-                                            row.getElements('input').set('disabled', false);
-                                            row.inject(container, 'top');
-                                        }
-                                        */
-                                    }
+                                    'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
                                 }},
 
-                                input({'name': 'Authorization', 'type': 'hidden', 'disabled': false}),
+                                div({'class': 'row'},
+                                    div({'class': 'span12'},
+                                        this.renderTemplate('input', {
+                                            'label': 'Authorization Header',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span12',
+                                                'type': 'text',
+                                                'name': 'Authorization',
+                                                'tabindex': 7,
+                                                'autocomplete': false,
+                                                'placeholder': 'ex: ',
+                                                'required': false,
+                                                'disabled': false,
+                                                'readonly': true
+                                            }
+                                        })
+                                    )
+                                ),
 
                                 div({'class': 'row'},
                                     div({'class': 'span2'},
@@ -2217,6 +2143,99 @@ var App = new Class({
         });
     },
 
+    'signOAuth': function() {
+        var tab = document.getElement('.tab-pane.oauth');
+        var data = tab.toObject();
+
+        var request = {
+            'query': document.getElement('form[name="target"]').getPairs('query'),
+            'target': document.getElement('form[name="target"]').toObjectNoPairs(),
+            'payload': document.getElement('form[name="payload"]').toObjectNoPairs()
+        };
+
+        // start oauth
+        var accessor = {
+            'consumerKey': data.consumer_key,
+            'consumerSecret': data.consumer_secret
+        };
+
+        var message = {
+            'action': request.target.uri,
+            'method': request.target.method,
+            'parameters': [
+                ['oauth_version', data.version],
+                ['oauth_signature_method', data.signature]
+            ]
+        };
+
+        // optional params
+        if (data.token_key) {
+            accessor.token = data.token_key;
+        }
+
+        if (data.token_secret) {
+            accessor.tokenSecret = data.token_secret;
+        }
+
+        if (data.scope) {
+            oauth.parameters.push(['scope', data.scope]);
+        }
+
+        if (data.oauth_verifier) {
+            oauth.parameters.push(['oauth_verifier', data.oauth_verifier]);
+        }
+
+        // query string params
+        Object.each(request.query, function(value, key) {
+            message.parameters.push([key, value]);
+        });
+
+        if (request.payload['Content-Type'] == 'application/x-www-form-urlencoded' && request.payload.payload.length) {
+            // payload body
+            Object.each(request.payload.payload.parseQueryString(), function(value, key) {
+                message.parameters.push([key, value]);
+            });
+        };
+
+        // sign
+        OAuth.completeRequest(message, accessor);
+
+        // debug
+        console.log(OAuth.SignatureMethod.getBaseString(message));
+
+        if (data.method == 'header') {
+            var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
+
+            var input = tab.getElement('input[name="Authorization"]').set('value', header);
+        } else {
+            OAuth.formEncode(OAuth.getParameterList(message.parameters));
+            /*
+            var input = this.getParent('.tab-pane').getElement('input[name="Authorization"]').set('value', '');
+
+            var oauth_params = oauth.signed_url.replace(request.uri + '?', '').parseQueryString();
+
+            Object.each(oauth_params, function(value, key) {
+                row = container.getElement('li:last-of-type').clone();
+                row.dataset.oauth = true;
+                row.getElement('input[name="key"]').set('value', key);
+                row.getElement('input[name="value"]').set('value', value);
+                row.getElements('input').set('disabled', false);
+                row.inject(container, 'top');
+            });
+            */
+        }
+/*
+        if (data.oauth_callback && data.oauth_callback.length > 0) {
+            row = container.getElement('li:last-of-type').clone();
+            row.dataset.oauth = true;
+            row.getElement('input[name="key"]').set('value', 'oauth_callback');
+            row.getElement('input[name="value"]').set('value', data.oauth_callback);
+            row.getElements('input').set('disabled', false);
+            row.inject(container, 'top');
+        }
+        */
+    },
+
     'initialize': function() {
         var body = document.body;
 
@@ -2331,6 +2350,8 @@ var App = new Class({
     'send': function() {
         var error = false;
 
+        this.signOAuth();
+
         var data = {
             'query': document.getElement('form[name="target"]').getPairs('query'),
             'target': document.getElement('form[name="target"]').toObjectNoPairs(),
@@ -2340,7 +2361,7 @@ var App = new Class({
             'authorization': document.getElement('form[name="authorization"]').toObject()
         };
 
-        console.log('plain data', data);
+        //console.log('plain data', data);
 
         // auth
         /*
@@ -2446,7 +2467,11 @@ var App = new Class({
         delete options.headers.files;
         delete options.headers['content-encoding'];
 
-        if (data.authorization.Authorization != '') {
+        if (data.authorization.Authorization && data.authorization.Authorization != '') {
+            if (data.authorization.Authorization.substring(0, 5) == 'OAuth') {
+                //this.signOAuth();
+            }
+
             options.headers.Authorization = data.authorization.Authorization;
         }
 
@@ -2465,7 +2490,7 @@ var App = new Class({
             }
         });
 */
-        console.log('request options', options);
+        //console.log('request options', options);
 
         if (error) {
             // stop on error
