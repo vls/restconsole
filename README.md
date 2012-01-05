@@ -99,6 +99,14 @@ Copyright 2011 Code in Chaos Inc.
 Licensed under The MIT License (MIT): http://www.opensource.org/licenses/mit-license.php
 
 
+3rd Party Components
+----------------
+
+* MooTools: MIT/GPL license
+* Mooml: MIT/GPL license
+* oAuth JS Library: MIT/GPL license
+* Zend Framework: MIT/GPL license
+
 Donate
 ------
 

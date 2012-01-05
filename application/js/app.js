@@ -719,6 +719,17 @@ var App = new Class({
 
         'sidebar': new Template(function(data) {
             section({'class': 'fluid-sidebar-left'},
+                div({'class': 'well side-nav'},
+                    h6({'class': 'nav-label'}, 'Services'),
+                    ul({'class': 'nav-group'},
+                        li({'class': 'active'}, a({'class': 'nav-item', 'href': '#'}, i({'class': 'home'}), ' Home')),
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'book'}), ' Library')),
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'user'}), ' Profile')),
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'cog'}), ' Settings')),
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'time'}), ' Help'))
+                    )
+                ),
+
                 div({'class': 'page'},
                     h5('Services'),
 
@@ -2107,7 +2118,20 @@ var App = new Class({
         }),
 
         'controls': new Template(function(data) {
-            div({'id': 'controls'},
+            footer({'class': 'navbar navbar-fixed'},
+                div({'class': 'navbar-inner'},
+                    div({'class': 'fluid-container'},
+                        ul({'class': 'nav'},
+                            li(a({'href': '#options'}, span('O'), 'ptions')),
+                            li(a({'href': '#target'}, span('T'), 'arget')),
+                            li(a({'href': '#payload'}, span('P'), 'ayload')),
+                            li(a({'href': '#headers'}, span('H'), 'eaders')),
+                            li(a({'href': '#response'}, span('R'), 'esponse'))
+                        )
+                    )
+                )
+            )
+            /*
                 section({'events': {
                         'click:relay(button)': function(event) {
                             this.send();
@@ -2128,6 +2152,7 @@ var App = new Class({
                     )
                 )
             )
+            */
         })
     },
 
