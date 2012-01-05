@@ -730,7 +730,7 @@ var App = new Class({
                         }
                     }}, 'Install Extension'),
 
-                    select({'class': 'span3'},
+                    select({'class': 'span2'},
                         option('Twitter'),
                         option('Facebook'),
                         option('LinkedIn')
@@ -828,7 +828,7 @@ var App = new Class({
                                         'events': {
                                             'change:relay(input)': function(event) {
                                                 if (this.get('checked')) {
-                                                    document.id('theme').set('href', 'style/prettify/{0}.css'.substitute([this.get('value')]));
+                                                    document.id('theme').set('href', 'css/prettify/{0}.css'.substitute([this.get('value')]));
                                                 }
                                             }
                                         }},
