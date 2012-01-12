@@ -57,7 +57,12 @@ Element.implement({
     },
 
     'getPadding': function() {
-        var size = [this.getStyle('padding-left'), this.getStyle('padding-left'), this.getStyle('border-left-width'), this.getStyle('border-right-width')];
+        var size = [
+            this.getStyle('padding-left'),
+            this.getStyle('padding-left'),
+            this.getStyle('border-left-width'),
+            this.getStyle('border-right-width')
+        ];
 
         size.each(function(px, index) {
             size[index] = parseInt(px);
@@ -464,6 +469,180 @@ var App = new Class({
         ]
     },
 
+    'events': {
+        'click:relay(.control-group .control-label a)': function(event) {
+            event.preventDefault();
+
+            var width = 800;
+            var height = 600;
+            var top = ((window.getSize().y - height) / 2).round();
+            var left = ((window.getSize().x - width) / 2).round();
+
+            chrome.windows.create({
+                'url': this.get('href'),
+                'left': left,
+                'top': top,
+                'width': width,
+                'height': height,
+                'focused': true,
+                'type': 'panel'
+            });
+        },
+
+        // global enable / disable action on input fields
+        'change:relay(.input-prepend input[type="checkbox"])': function(event) {
+            var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+            var disabled = input.get('disabled');
+
+            if (disabled) {
+                document.fireEvent('keyup', new FakeEvent(input));
+
+                input.set('disabled', false).fireEvent('focus').focus();
+                event.stopPropagation();
+            } else {
+                input.set('disabled', true);
+
+                this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
+            }
+
+            new Storage('input-status').set(input.get('name'), disabled);
+        },
+
+        // store input values
+        'change:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea)': function(event) {
+            new Storage('input-values').set(this.get('name'), this.get('value'));
+
+            document.fireEvent('keyup', event);
+        },
+
+        // highlight inputs
+        'keyup:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea)': function(event) {
+            var group = this.getParent('.control-group');
+            var value = this.get('value');
+
+            group.removeClass('success').removeClass('error').removeClass('warning');
+
+            if (value == '') {
+                if (this.get('required')) {
+                    group.addClass('error');
+                } else {
+                    group.addClass('warning');
+                }
+            } else {
+                group.addClass('success');
+            }
+        },
+
+        // section hide toggle
+        'click:relay(section header a)': function(event) {
+            var section = this.getParent('section');
+
+            section.toggleClass('minimize')
+
+            new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
+
+            window.fireEvent('resize');
+        },
+
+        // store pairs values
+        'change:relay(.pairs:not([ignore]) input[type="text"])': function(event) {
+            var group = this.getParent('.control-group');
+            var data = group.toObject();
+
+            var storage = {};
+
+            if (data.key.length) {
+                data.key.each(function(key, index) {
+                    if (key.length > 0) {
+                        storage[key] = data.value[index];
+                    }
+                });
+            }
+
+            new Storage('pairs').set(group.get('name'), storage);
+        },
+
+        // pairs delete button
+        'click:relay(.pairs .add-on.danger)': function(event) {
+            var row = this.getParent('.controls');
+            var next = row.getNext();
+
+            // don't focus on the next row if its the last
+            // otherwise you get stuck in a loop
+            if (next != row.getParent('.control-group').getLast()) {
+                next.getElement('input').focus();
+            } else if (row.getPrevious('.controls')) {
+                row.getPrevious('.controls').getElement('input').focus();
+            }
+
+            row.destroy();
+
+            document.fireEvent('change', new FakeEvent(next.getElement('input')));
+        },
+
+        // clear error highlight on pairs
+        'keyup:input:relay(.pairs .controls.error input[type="text"]:first-child)': function(event) {
+            event.target.getParent('.controls').removeClass('error');
+        },
+
+        // check for empty keys on pairs
+        'blur:relay(.pairs .controls:not(:last-child) input[type="text"]:first-child)': function(event) {
+            var value = this.get('value').trim();
+
+            if (value == '') {
+                this.getParent('.controls').addClass('error');
+            } else {
+                this.set('value', value);
+            }
+        },
+
+        // clone on focus
+        'focus:relay(.pairs .controls:last-of-type input[type="text"])': function(event) {
+            var row = this.getParent('.controls');
+            var previous = row.getPrevious('.controls');
+            var index = row.getChildren().indexOf(event.target);
+
+            if (previous && previous.getElement('input').get('value') == '') {
+                previous.addClass('error').getElement('input').focus();
+            } else {
+                var clone = row.clone();
+                clone.inject(row, 'before');
+                clone.getElement('.add-on.success').removeClass('success').addClass('danger');
+                clone.getElement('input').focus();
+            }
+        },
+
+        // tabs navigation
+        'click:relay(.tabbable .tabs li a)': function(event) {
+            event.preventDefault();
+
+            var tabbable = event.target.getParent('.tabbable');
+            var tabs = tabbable.getElement('.tabs');
+            var content = tabbable.getElements('.tab-content .tab-pane');
+            var index = tabs.getChildren().indexOf(event.target.getParent('li'));
+
+            // switch tabs
+            tabs.getElement('.active').removeClass('active');
+            event.target.getParent('li').addClass('active');
+
+            content.removeClass('active');
+            content[index].addClass('active');
+
+            // store active tab
+            new Storage('tabs').set(tabbable.dataset.name, index);
+
+            // fire resize event to fix hidden field sizes
+            window.fireEvent('resize');
+        }.bind(this),
+
+        // prevent enter key from triggering any buttons on the page
+        'keydown:relay(form):keys(enter)': function(event) {
+            event.stop();
+
+            this.send();
+        }.bind(this)
+    },
+
     'templates': {
         'datalist': new Template(function(data) {
             datalist({'id': data.id}, this.renderTemplate('option', data.values))
@@ -523,8 +702,7 @@ var App = new Class({
                         ),
 
                         ul({'class': 'nav'},
-                            li(a({'href': '#options'}, span('O'), 'ptions')),
-                            li(a({'href': '#target'}, span('T'), 'arget')),
+                            li({'class': 'active'}, a({'href': '#target'}, span('T'), 'arget')),
                             li(a({'href': '#payload'}, span('P'), 'ayload')),
                             li(a({'href': '#headers'}, span('H'), 'eaders')),
                             li(a({'href': '#response'}, span('R'), 'esponse'))
@@ -535,183 +713,7 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
-            div({
-                'id': 'container',
-                'class': 'fluid-container',
-                'events': {
-                    'click:relay(.control-group .control-label a)': function(event) {
-                        event.preventDefault();
-
-                        var width = 800;
-                        var height = 600;
-                        var top = ((window.getSize().y - height) / 2).round();
-                        var left = ((window.getSize().x - width) / 2).round();
-
-                        chrome.windows.create({
-                            'url': this.get('href'),
-                            'left': left,
-                            'top': top,
-                            'width': width,
-                            'height': height,
-                            'focused': true,
-                            'type': 'panel'
-                        });
-                    },
-
-                    // global enable / disable action on input fields
-                    'change:relay(.input-prepend input[type="checkbox"])': function(event) {
-                        var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
-                        var disabled = input.get('disabled');
-
-                        if (disabled) {
-                            document.id('container').fireEvent('keyup', new FakeEvent(input));
-
-                            input.set('disabled', false).fireEvent('focus').focus();
-                            event.stopPropagation();
-                        } else {
-                            input.set('disabled', true);
-
-                            this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
-                        }
-
-                        new Storage('input-status').set(input.get('name'), disabled);
-                    },
-
-                    // store input values
-                    'change:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea)': function(event) {
-                        new Storage('input-values').set(this.get('name'), this.get('value'));
-
-                        document.id('container').fireEvent('keyup', event);
-                    },
-
-                    // highlight inputs
-                    'keyup:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea)': function(event) {
-                        var group = this.getParent('.control-group');
-                        var value = this.get('value');
-
-                        group.removeClass('success').removeClass('error').removeClass('warning');
-
-                        if (value == '') {
-                            if (this.get('required')) {
-                                group.addClass('error');
-                            } else {
-                                group.addClass('warning');
-                            }
-                        } else {
-                            group.addClass('success');
-                        }
-                    },
-
-                    // section hide toggle
-                    'click:relay(section header a)': function(event) {
-                        var section = this.getParent('section');
-
-                        section.toggleClass('minimize')
-
-                        new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
-
-                        window.fireEvent('resize');
-                    },
-
-                    // store pairs values
-                    'change:relay(.pairs:not([ignore]) input[type="text"])': function(event) {
-                        var group = this.getParent('.control-group');
-                        var data = group.toObject();
-
-                        var storage = {};
-
-                        if (data.key.length) {
-                            data.key.each(function(key, index) {
-                                if (key.length > 0) {
-                                    storage[key] = data.value[index];
-                                }
-                            });
-                        }
-
-                        new Storage('pairs').set(group.get('name'), storage);
-                    },
-
-                    // pairs delete button
-                    'click:relay(.pairs .add-on.danger)': function(event) {
-                        var row = this.getParent('.controls');
-                        var next = row.getNext();
-
-                        // don't focus on the next row if its the last
-                        // otherwise you get stuck in a loop
-                        if (next != row.getParent('.control-group').getLast()) {
-                            next.getElement('input').focus();
-                        } else if (row.getPrevious('.controls')) {
-                            row.getPrevious('.controls').getElement('input').focus();
-                        }
-
-                        row.destroy();
-
-                        document.id('container').fireEvent('change', new FakeEvent(next.getElement('input')));
-                    },
-
-                    // clear error highlight on pairs
-                    'keyup:input:relay(.pairs .controls.error input[type="text"]:first-child)': function(event) {
-                        event.target.getParent('.controls').removeClass('error');
-                    },
-
-                    // check for empty keys on pairs
-                    'blur:relay(.pairs .controls:not(:last-child) input[type="text"]:first-child)': function(event) {
-                        var value = this.get('value').trim();
-
-                        if (value == '') {
-                            this.getParent('.controls').addClass('error');
-                        } else {
-                            this.set('value', value);
-                        }
-                    },
-
-                    // clone on focus
-                    'focus:relay(.pairs .controls:last-of-type input[type="text"])': function(event) {
-                        var row = this.getParent('.controls');
-                        var previous = row.getPrevious('.controls');
-                        var index = row.getChildren().indexOf(event.target);
-
-                        if (previous && previous.getElement('input').get('value') == '') {
-                            previous.addClass('error').getElement('input').focus();
-                        } else {
-                            var clone = row.clone();
-                            clone.inject(row, 'before');
-                            clone.getElement('.add-on.success').removeClass('success').addClass('danger');
-                            clone.getElement('input').focus();
-                        }
-                    },
-
-                    // tabs navigation
-                    'click:relay(.tabbable .tabs li a)': function(event) {
-                        event.preventDefault();
-
-                        var tabbable = event.target.getParent('.tabbable');
-                        var tabs = tabbable.getElement('.tabs');
-                        var content = tabbable.getElements('.tab-content .tab-pane');
-                        var index = tabs.getChildren().indexOf(event.target.getParent('li'));
-
-                        // switch tabs
-                        tabs.getElement('.active').removeClass('active');
-                        event.target.getParent('li').addClass('active');
-
-                        content.removeClass('active');
-                        content[index].addClass('active');
-
-                        // store active tab
-                        new Storage('tabs').set(tabbable.dataset.name, index);
-
-                        // fire resize event to fix hidden field sizes
-                        window.fireEvent('resize');
-                    }.bind(this),
-
-                    // prevent enter key from triggering any buttons on the page
-                    'keydown:relay(form):keys(enter)': function(event) {
-                        event.stop();
-
-                        this.send();
-                    }.bind(this)
-                }},
-
+            div({'id': 'container', 'class': 'fluid-container', 'data-screen': 'main'},
                 this.renderTemplate('sidebar'),
                 this.renderTemplate('content')
             )
@@ -720,57 +722,67 @@ var App = new Class({
         'sidebar': new Template(function(data) {
             section({'class': 'fluid-sidebar-left'},
                 div({'class': 'well side-nav'},
-                    h6({'class': 'nav-label'}, 'Services'),
-                    ul({'class': 'nav-group'},
-                        li({'class': 'active'}, a({'class': 'nav-item', 'href': '#'}, i({'class': 'home'}), ' Home')),
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'book'}), ' Library')),
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'user'}), ' Profile')),
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'cog'}), ' Settings')),
+                    h6({'class': 'nav-label'}, 'Main Menu'),
+                    ul({
+                        'class': 'nav-group',
+                        'events': {
+                            'click:relay(a)': function(event) {
+                                event.preventDefault();
+                                this.getParent('ul').getElement('.active').removeClass('active');
+                                this.getParent('li').addClass('active');
+                                this.getParent('.fluid-container').set('data-screen', this.get('href').replace('#', ''));
+                            }
+                        }},
+
+                        li({'class': 'active'}, a({'class': 'nav-item', 'href': '#main'}, i({'class': 'home'}), ' Main')),
+                        //~ li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'user'}), ' Profile')),
+                        li(a({'class': 'nav-item', 'href': '#settings'}, i({'class': 'cog'}), ' Settings')),
                         li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'time'}), ' Help'))
                     )
                 ),
 
-                div({'class': 'page'},
-                    h5('Services'),
+                div({'class': 'well side-nav'},
+                    h6({'class': 'nav-label'}, 'Presets'),
+                    ul({'class': 'nav-group'},
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'home'}), ' Twitter')),
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'time'}), ' Goolge+'))
+                    )
+                ),
 
-                    a({'events': {
+                div({'class': 'well side-nav'},
+                    h6({'class': 'nav-label'}, 'About'),
+                    ul({'class': 'nav-group'},
+                        li(a({'class': 'nav-item', 'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), ' Code in Chaos Inc.')),
+                        li(a({'class': 'nav-item', 'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), ' GitHub')),
+                        li(a({'class': 'nav-item', 'href': 'https://raw.github.com/codeinchaos/restconsole//LICENSE', 'target': '_blank'}, i({'class': 'book'}), ' License'))
+                    )
+                )
+            )
+        }),
+
+        'content': new Template(function(data) {
+            div({'id': 'main', 'class': 'fluid-content'},
+                this.renderTemplate('target-section'),
+                this.renderTemplate('payload-section'),
+                this.renderTemplate('authorization-section'),
+                this.renderTemplate('headers-section'),
+                this.renderTemplate('response-section'),
+                this.renderTemplate('settings-section'),
+                this.renderTemplate('help-section')
+            )
+        }),
+
+        'settings-section': new Template(function(data) {
+            section({'id': 'settings'},
+                this.renderTemplate('section-header', 'Settings'),
+a({'events': {
                         'click': function(event) {
                             event.preventDefault();
 
                             chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
                         }
                     }}, 'Install Extension'),
-
-                    select({'class': 'span2'},
-                        option('Twitter'),
-                        option('Facebook'),
-                        option('LinkedIn')
-                    ),
-
-                    h5('History'),
-                    p('Coming Soon...'),
-
-                    br()
-                ),
-                a('license')
-            )
-        }),
-
-        'content': new Template(function(data) {
-            div({'class': 'fluid-content'},
-                this.renderTemplate('options'),
-                this.renderTemplate('target'),
-                this.renderTemplate('payload'),
-                this.renderTemplate('authorization'),
-                this.renderTemplate('headers'),
-                this.renderTemplate('response')
-            )
-        }),
-
-        'options': new Template(function(data) {
-            section({'id': 'options', 'class': 'minimize'},
-                this.renderTemplate('section-header', 'Options'),
-
                 form({
                     'name': 'options',
                     'class': 'form-stacked',
@@ -877,7 +889,7 @@ var App = new Class({
             )
         }),
 
-        'target': new Template(function(data) {
+        'target-section': new Template(function(data) {
             section({'id': 'target'},
                 this.renderTemplate('section-header', 'Target'),
 
@@ -973,7 +985,7 @@ var App = new Class({
             )
         }),
 
-        'payload': new Template(function(data) {
+        'payload-section': new Template(function(data) {
             section({'id': 'payload', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Payload'),
 
@@ -1083,7 +1095,7 @@ var App = new Class({
                                                                         var event = new FakeEvent(form.getElement('.pairs .controls:last-of-type input[type="text"]:first-child'));
 
                                                                         // trigger focus event to insert more rows
-                                                                        document.id('container').fireEvent('focus', event);
+                                                                        document.fireEvent('focus', event);
 
                                                                         var last = form.getElement('.pairs .controls:nth-last-child(-n+2)');
 
@@ -1119,7 +1131,7 @@ var App = new Class({
                                                         textarea.set('value', Object.toQueryString(data));
 
                                                         // trigger change event to store the resutls
-                                                        document.id('container').fireEvent('change', new FakeEvent(textarea));
+                                                        document.fireEvent('change', new FakeEvent(textarea));
                                                     }
                                                 }
                                             }},
@@ -1153,7 +1165,7 @@ var App = new Class({
             )
         }),
 
-        'authorization': new Template(function(data) {
+        'authorization-section': new Template(function(data) {
             section({'id': 'authorization', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Authorization'),
 
@@ -1185,7 +1197,7 @@ var App = new Class({
 
                                             input.set('disabled', false);
 
-                                            document.id('container').fireEvent('keyup', new FakeEvent(input));
+                                            document.fireEvent('keyup', new FakeEvent(input));
                                         }
                                     });
 
@@ -1587,7 +1599,7 @@ var App = new Class({
             )
         }),
 
-        'headers': new Template(function(data) {
+        'headers-section': new Template(function(data) {
             section({'id': 'headers', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Headers'),
 
@@ -2066,7 +2078,7 @@ var App = new Class({
             )
         }),
 
-        'response': new Template(function(data) {
+        'response-section': new Template(function(data) {
             section({'id': 'response'},
                 this.renderTemplate('section-header', 'Response'),
 
@@ -2157,6 +2169,9 @@ var App = new Class({
     },
 
     'resizeEvent': function(event) {
+        document.id('container').setStyle('height', window.getHeight() - 80);
+        document.getElement('.fluid-sidebar-left').setStyle('height', window.getHeight() - 140);
+
         document.getElements('.expand').each(function(element) {
             var width = element.getParent('div.controls, [class*="offset"]').getDimensions().width - element.getPadding();
 
@@ -2226,7 +2241,7 @@ var App = new Class({
         OAuth.completeRequest(message, accessor);
 
         // debug
-        console.log(OAuth.SignatureMethod.getBaseString(message));
+        //console.log(OAuth.SignatureMethod.getBaseString(message));
 
         if (data.method == 'header') {
             var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
@@ -2269,6 +2284,9 @@ var App = new Class({
         body.adopt(this.renderTemplate('container'));
         body.adopt(this.renderTemplate('controls'));
 
+        // assign global events
+        document.addEvents(this.events);
+
         // add the datalists
         Object.each(this.datalists, function(datalist, id) {
             datalist.sort();
@@ -2303,7 +2321,6 @@ var App = new Class({
         var values      = new Storage('input-values');
         var sections    = new Storage('sections');
         var statuses    = new Storage('input-status');
-        var container   = document.id('container');
 
         // input fields and textareas
         document.getElements('.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea').each(function(input) {
@@ -2320,10 +2337,10 @@ var App = new Class({
                     input.set('disabled', !enabled);
                     checkbox.set('checked', enabled);
 
-                    container.fireEvent('keyup', event);
+                    document.fireEvent('keyup', event);
                 }
             } else {
-                container.fireEvent('keyup', event);
+                document.fireEvent('keyup', event);
             }
         });
 
@@ -2335,8 +2352,8 @@ var App = new Class({
                 // construct fake event object
                 var event = new FakeEvent(group.getElement('.controls:last-of-type input[type="text"]:first-child'));
 
-                // trigger focus event on container to insert more rows
-                container.fireEvent('focus', event);
+                // trigger focus event on document to insert more rows
+                document.fireEvent('focus', event);
 
                 // get the newly inserted row
                 var row = group.getElement('.controls:nth-last-child(-n+2)');
@@ -2366,7 +2383,7 @@ var App = new Class({
 
             var link = tab.getElement('li:nth-of-type({0}) a'.substitute([index + 1]));
 
-            document.id('container').fireEvent('click', new FakeEvent(link));
+            document.fireEvent('click', new FakeEvent(link));
 
             tab.fireEvent('click', new FakeEvent(link));
         });
