@@ -488,77 +488,6 @@ var App = new Class({
 
             // fire resize event to trigger hidden elements resize
             window.fireEvent('resize');
-        },
-
-        // store pairs values
-        'change:relay(.pairs:not([ignore]) input[type="text"])': function(event) {
-            var group = this.getParent('.control-group');
-            var data = group.toObject();
-
-            var storage = {};
-
-            // is there any?
-            if (data.key.length) {
-                // loop through
-                data.key.each(function(key, index) {
-                    // only store ones with keys
-                    if (key.length > 0) {
-                        storage[key] = data.value[index];
-                    }
-                });
-            }
-
-            new Storage('pairs').set(group.get('name'), storage);
-        },
-
-        // pairs delete button
-        'click:relay(.pairs .add-on.danger)': function(event) {
-            var row = this.getParent('.controls');
-            var next = row.getNext();
-
-            // don't focus on the next row if its the last
-            // otherwise you get stuck in a loop
-            if (next != row.getParent('.control-group').getLast()) {
-                next.getElement('input').focus();
-            } else if (row.getPrevious('.controls')) {
-                row.getPrevious('.controls').getElement('input').focus();
-            }
-
-            row.destroy();
-
-            document.fireEvent('change', new FakeEvent(next.getElement('input')));
-        },
-
-        // clear error highlight on pairs
-        'keyup:relay(.pairs .controls.error input[type="text"]:first-child)': function(event) {
-            event.target.getParent('.controls').removeClass('error');
-        },
-
-        // check for empty keys on pairs
-        'blur:relay(.pairs .controls:not(:last-child) input[type="text"]:first-child)': function(event) {
-            var value = this.get('value').trim();
-
-            if (value == '') {
-                this.getParent('.controls').addClass('error');
-            } else {
-                this.set('value', value);
-            }
-        },
-
-        // clone on focus
-        'focus:relay(.pairs .controls:last-of-type input[type="text"])': function(event) {
-            var row = this.getParent('.controls');
-            var previous = row.getPrevious('.controls');
-            var index = row.getChildren().indexOf(event.target);
-
-            if (previous && previous.getElement('input').get('value') == '') {
-                previous.addClass('error').getElement('input').focus();
-            } else {
-                var clone = row.clone();
-                clone.inject(row, 'before');
-                clone.getElement('.add-on.success').removeClass('success').addClass('danger');
-                clone.getElement('input').focus();
-            }
         }
     },
 
@@ -585,6 +514,102 @@ var App = new Class({
 
                 a({'data-type': 'panel', 'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])})
             }
+        }),
+
+        'pairs': new Template(function(data) {
+            fieldset({
+                'class': 'control-group span6 pairs',
+                'name': data.name,
+                'events': {
+                    'save': function(event) {
+                        var data = this.toObject();
+
+                        var storage = {};
+
+                        // is there any?
+                        if (data.key.length) {
+                            // loop through
+                            data.key.each(function(key, index) {
+                                // only store ones with keys
+                                if (key.length > 0) {
+                                    storage[key] = data.value[index];
+                                }
+                            });
+                        }
+
+                        new Storage('pairs').set(this.get('name'), storage);
+                    },
+
+                    // clear error highlight on pairs
+                    'keyup:relay(.controls.error input[type="text"]:first-child)': function(event) {
+                        event.target.getParent('.controls').removeClass('error');
+                    },
+
+                    // check for empty keys on pairs
+                    'blur:relay(.controls:not(:last-child) input[type="text"]:first-child)': function(event) {
+                        var value = this.get('value').trim();
+
+                        if (value == '') {
+                            this.getParent('.controls').addClass('error');
+                        } else {
+                            this.set('value', value);
+                        }
+                    },
+
+                    'focus:relay(.controls:last-of-type input[type="text"])': function(event) {
+                        this.getNext('.add-on.add').fireEvent('click');
+                    }
+                }},
+
+                label({'for': data.name}, data.label),
+
+                div({
+                    'class': 'controls',
+                    'events': {
+                        'change:relay(input[type="text"])': function(event) {
+                            this.getParent('.control-group').fireEvent('save');
+                        },
+
+                        'click:relay(.btn.add)': function(event) {
+                            var row = this.getParent('.controls');
+                            var previous = row.getPrevious('.controls');
+
+                            if (previous && previous.getElement('input').get('value') == '') {
+                                previous.addClass('error').getElement('input').focus();
+                            } else {
+                                var clone = row.clone().cloneEvents(row);
+                                clone.inject(row, 'before');
+                                clone.getElement('input').focus();
+                            }
+                        },
+
+                        'click:relay(.btn.remove)': function(event) {
+                            var row = this.getParent('.controls');
+                            var group = this.getParent('.control-group');
+                            var next = row.getNext();
+
+                            // don't focus on the next row if its the last
+                            // otherwise you get stuck in a loop
+                            if (next != group.getLast()) {
+                                next.getElement('input').focus();
+                            } else if (row.getPrevious('.controls')) {
+                                row.getPrevious('.controls').getElement('input').focus();
+                            }
+                            row.destroy();
+
+                            group.fireEvent('save');
+                        }
+                    }},
+
+                    div({'class': 'input-append'},
+                        input({'class': 'span2', 'type': 'text', 'name': 'key', 'data-type': data['data-type'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: key'}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-type': data['data-type'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: value'}),
+
+                        span({'class': 'add-on btn add success'}),
+                        span({'class': 'add-on btn remove danger'})
+                    )
+                )
+            )
         }),
 
         'input': new Template(function(attributes) {
@@ -681,7 +706,7 @@ var App = new Class({
         'header': new Template(function(data) {
             header({'class': 'navbar navbar-fixed'},
                 div({'class': 'navbar-inner'},
-                    div({'class': 'container'},
+                    div({'class': 'fluid-container'},
                         div({'class': 'brand'},
                             img({'src': 'images/logo/32.png', 'align': 'left'}), 'REST Console', small('version 4.1.0')
                         ),
@@ -707,21 +732,26 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
-            div({'id': 'container', 'class': 'container'},
-                div({'id': 'main', 'class': 'content'},
-                    this.renderTemplate('target-section'),
-                    this.renderTemplate('payload-section'),
-                    this.renderTemplate('authorization-section'),
-                    this.renderTemplate('headers-section'),
-                    this.renderTemplate('response-section'),
-                    this.renderTemplate('settings-section'),
-                    this.renderTemplate('help-section')
-                )
+            div({'class': 'main fluid-container sidebar-left', 'data-screen': 'main'},
+                this.renderTemplate('sidebar'),
+                this.renderTemplate('content')
+            )
+        }),
+
+        'content': new Template(function(data) {
+            div({'id': 'main', 'class': 'fluid-content'},
+                this.renderTemplate('target-section'),
+                this.renderTemplate('payload-section'),
+                this.renderTemplate('authorization-section'),
+                this.renderTemplate('headers-section'),
+                this.renderTemplate('response-section'),
+                this.renderTemplate('settings-section'),
+                this.renderTemplate('help-section')
             )
         }),
 
         'sidebar': new Template(function(data) {
-            section({'class': 'sidebar'},
+            div({'class': 'fluid-sidebar'},
                 div({'class': 'well'},
                     ul({
                         'class': 'nav list',
@@ -767,33 +797,23 @@ var App = new Class({
                 div({'class': 'well'},
                     ul({'class': 'nav list history'},
                         li({'class': 'nav-header'}, 'History'),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api'))
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
+                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas'))
                     )
                 ),
 
-                div({'class': 'well nav list'},
-                    h6({'class': 'nav-label'}, 'About'),
-                    ul({'class': 'nav-group'},
+                div({'class': 'well'},
+                    ul({'class': 'nav list'},
+                        li({'class': 'nav-header'}, 'About'),
                         li(a({'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), ' Code in Chaos Inc.')),
                         li(a({'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), ' GitHub')),
                         li(a({'shref': 'https://raw.github.com/codeinchaos/restconsole/master/LICENSE', 'target': '_blank', 'data-type': 'panel'}, i({'class': 'book'}), ' License'))
@@ -959,13 +979,13 @@ var App = new Class({
                             })
                         ),
 
-                        div({'class': 'offset3'},
+                        div({'class': 'span9'},
                             this.renderTemplate('standard-input', {
                                 'rfc': '3.2',
                                 'label': 'URI',
                                 'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
                                 'attributes': {
-                                    'class': 'expand',
+                                    'class': 'span9',
                                     'type': 'text',
                                     'name': 'uri',
                                     'tabindex': 2,
@@ -989,29 +1009,21 @@ var App = new Class({
                     ),
 
                     div({'class': 'row'},
-                        fieldset({'class': 'control-group span6 pairs', 'name': 'query'},
-                            label({'for': 'query'}, 'Query String'),
+                        this.renderTemplate('pairs', [
+                            {
+                                'name': 'headers',
+                                'label': 'Headers',
+                                'data-type': 'header',
+                                'tabindex': 3
+                            },
 
-                            div({'class': 'controls'},
-                                div({'class': 'input-append'},
-                                    input({'class': 'span2', 'type': 'text', 'name': 'key', 'data-type': 'query', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                    input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-type': 'query', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                    span({'class': 'add-on btn success'})
-                                )
-                            )
-                        ),
-
-                        fieldset({'class': 'control-group span6 pairs', 'name': 'headers'},
-                            label({'for': 'headers'}, 'Headers'),
-
-                            div({'class': 'controls'},
-                                div({'class': 'input-append'},
-                                    input({'class': 'span2', 'type': 'text', 'name': 'key', 'data-type': 'header', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                    input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-type': 'header', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                    span({'class': 'add-on btn success'})
-                                )
-                            )
-                        )
+                            {
+                                'name': 'query',
+                                'label': 'Query String',
+                                'data-type': 'query',
+                                'tabindex': 3
+                            }
+                        ])
                     )
                 )
             )
@@ -1101,7 +1113,7 @@ var App = new Class({
                             ])
                         ),
 
-                        div({'class': 'offset6'},
+                        div({'class': 'span6'},
                             div({'class': 'tabbable', 'data-name': 'payload'},
                                 ul({'class': 'nav tabs'},
                                     li({'class': 'active'}, a({'href': '#payload-raw', 'data-toggle': 'tab'}, 'RAW Body')),
@@ -1114,7 +1126,7 @@ var App = new Class({
                                         fieldset({'class': 'control-group'},
                                             div({'class': 'controls'},
                                                 textarea({
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'name': 'payload',
                                                     'rows': 5,
                                                     'tabindex': 5,
@@ -1134,10 +1146,10 @@ var App = new Class({
 
                                                                     Object.each(payload, function(value, key) {
                                                                         // construct fake event object
-                                                                        var event = new FakeEvent(form.getElement('.pairs .controls:last-of-type input[type="text"]:first-child'));
+                                                                        var event = new FakeEvent(form.getElement('.pairs .controls:last-of-type .add-on'));
 
                                                                         // trigger focus event to insert more rows
-                                                                        document.fireEvent('focus', event);
+                                                                        document.fireEvent('click', event);
 
                                                                         var last = form.getElement('.pairs .controls:nth-last-child(-n+2)');
 
@@ -1262,7 +1274,7 @@ var App = new Class({
                                         'label': 'Authorization',
                                         'help': 'Authentication credentials for HTTP authentication.',
                                         'attributes': {
-                                            'class': 'expand',
+                                            'class': 'span12',
                                             'type': 'text',
                                             'name': 'Authorization',
                                             'tabindex': 7,
@@ -1277,7 +1289,7 @@ var App = new Class({
                                         'label': 'Proxy-Authorization',
                                         'help': 'Authorization credentials for connecting to a proxy.',
                                         'attributes': {
-                                            'class': 'expand',
+                                            'class': 'span12',
                                             'type': 'text',
                                             'name': 'Proxy-Authorization',
                                             'tabindex': 5,
@@ -1314,7 +1326,7 @@ var App = new Class({
                                         'label': 'Username',
                                         'help': '',
                                         'attributes': {
-                                            'class': 'expand',
+                                            'class': 'span12',
                                             'type': 'text',
                                             'name': 'basic-username',
                                             'tabindex': 7,
@@ -1329,7 +1341,7 @@ var App = new Class({
                                         'label': 'Password',
                                         'help': '',
                                         'attributes': {
-                                            'class': 'expand',
+                                            'class': 'span12',
                                             'type': 'password',
                                             'name': 'basic-password',
                                             'tabindex': 5,
@@ -1349,7 +1361,7 @@ var App = new Class({
                                         'label': 'Username',
                                         'help': '',
                                         'attributes': {
-                                            'class': 'expand',
+                                            'class': 'span12',
                                             'type': 'text',
                                             'name': 'digest-username',
                                             'tabindex': 7,
@@ -1364,7 +1376,7 @@ var App = new Class({
                                         'label': 'Password',
                                         'help': '',
                                         'attributes': {
-                                            'class': 'expand',
+                                            'class': 'span12',
                                             'type': 'password',
                                             'name': 'digest-password',
                                             'tabindex': 5,
@@ -1452,24 +1464,6 @@ var App = new Class({
                                                 p({'class': 'help-text'}, '')
                                             )
                                         )
-                                    /*
-                                    ),
-
-                                    div({'class': 'span5'},
-                                        this.renderTemplate('standard-input', {
-                                            'label': 'Header Separator',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'expand',
-                                                'type': 'text',
-                                                'name': 'header_separator',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: ,',
-                                                'disabled': true
-                                            }
-                                        })
-                                    */
                                     )
                                 ),
 
@@ -1538,7 +1532,7 @@ var App = new Class({
                                                 'label': 'Scope',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'scope',
                                                     'tabindex': 7,
@@ -1552,7 +1546,7 @@ var App = new Class({
                                                 'label': 'Realm',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'realm',
                                                     'tabindex': 7,
@@ -1564,13 +1558,13 @@ var App = new Class({
                                         ])
                                     ),
 
-                                    div({'class': 'span5'},
+                                    div({'class': 'span6'},
                                         this.renderTemplate('optional-input', [
                                             {
                                                 'label': 'Request token URL',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'request_url',
                                                     'tabindex': 7,
@@ -1584,7 +1578,7 @@ var App = new Class({
                                                 'label': 'Access token URL',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'access_url',
                                                     'tabindex': 7,
@@ -1598,7 +1592,7 @@ var App = new Class({
                                                 'label': 'Authorize URL',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'authorize_url',
                                                     'tabindex': 7,
@@ -1612,7 +1606,7 @@ var App = new Class({
                                                 'label': 'Oauth Callback',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'oauth_callback',
                                                     'tabindex': 7,
@@ -1626,7 +1620,7 @@ var App = new Class({
                                                 'label': 'Oauth Verifier',
                                                 'help': '',
                                                 'attributes': {
-                                                    'class': 'expand',
+                                                    'class': 'span6',
                                                     'type': 'text',
                                                     'name': 'oauth_verifier',
                                                     'tabindex': 7,
@@ -1935,7 +1929,7 @@ var App = new Class({
                             ])
                         ),
 
-                        div({'class': 'offset6'},
+                        div({'class': 'span6'},
                             h3('Cache'),
 
                             this.renderTemplate('optional-input', [
@@ -1945,7 +1939,7 @@ var App = new Class({
                                     'label': 'Cache-Control',
                                     'help': 'Used to specify caching mechanisms along the request/response chain',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Cache-Control',
                                         'tabindex': 6,
@@ -1960,7 +1954,7 @@ var App = new Class({
                                     'label': 'If-Match',
                                     'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Match',
                                         'tabindex': 6,
@@ -1975,7 +1969,7 @@ var App = new Class({
                                     'label': 'If-Modified-Since',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Modified-Since',
                                         'tabindex': 6,
@@ -1990,7 +1984,7 @@ var App = new Class({
                                     'label': 'If-None-Match',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-None-Match',
                                         'tabindex': 6,
@@ -2005,7 +1999,7 @@ var App = new Class({
                                     'label': 'If-Range',
                                     'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Range',
                                         'tabindex': 6,
@@ -2020,7 +2014,7 @@ var App = new Class({
                                     'label': 'If-Unmodified-Since',
                                     'help': 'Only send the response if the entity has not been modified since a specific time.',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'If-Unmodified-Since',
                                         'tabindex': 6,
@@ -2038,7 +2032,7 @@ var App = new Class({
                                     'label': 'Origin',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'Origin',
                                         'tabindex': 5,
@@ -2052,7 +2046,7 @@ var App = new Class({
                                     'label': 'X-HTTP-Method-Override',
                                     'help': 'mainly used bypass firewalls and browsers limitations.',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'X-HTTP-Method-Override',
                                         'tabindex': 7,
@@ -2066,7 +2060,7 @@ var App = new Class({
                                     'label': 'X-Requested-With',
                                     'help': 'mainly used to identify Ajax requests.',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'X-Requested-With',
                                         'tabindex': 7,
@@ -2080,7 +2074,7 @@ var App = new Class({
                                     'label': 'X-Forwarded-For',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'X-Forwarded-For',
                                         'tabindex': 7,
@@ -2094,7 +2088,7 @@ var App = new Class({
                                     'label': 'X-Do-Not-Track',
                                     'help': 'Requests a web application to disable their tracking of a user.',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'X-Do-Not-Track',
                                         'tabindex': 7,
@@ -2108,7 +2102,7 @@ var App = new Class({
                                     'label': 'DNT',
                                     'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
                                     'attributes': {
-                                        'class': 'expand',
+                                        'class': 'span6',
                                         'type': 'text',
                                         'name': 'DNT',
                                         'tabindex': 7,
@@ -2213,18 +2207,8 @@ var App = new Class({
     },
 
     'resizeEvent': function(event) {
-        document.id('container').setStyle('height', window.getHeight() - 80);
-        //document.getElement('.sidebar').setStyle('height', window.getHeight() - 140);
-
-        document.getElements('.expand').each(function(element) {
-            var width = element.getParent('div.controls, [class*="offset"]').getDimensions().width - element.getPadding();
-
-            if (element.getParent('.input-prepend') != null) {
-                width -= 36;
-            }
-
-            //element.setStyle('width', width);
-        });
+        document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
+        document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
     },
 
     'signOAuth': function() {
@@ -2394,10 +2378,10 @@ var App = new Class({
 
             Object.each(storage, function(value, key) {
                 // construct fake event object
-                var event = new FakeEvent(group.getElement('.controls:last-of-type input[type="text"]:first-child'));
+                var event = new FakeEvent(group.getElement('.controls:last-of-type .add-on'));
 
                 // trigger focus event on document to insert more rows
-                document.fireEvent('focus', event);
+                document.fireEvent('click', event);
 
                 // get the newly inserted row
                 var row = group.getElement('.controls:nth-last-child(-n+2)');

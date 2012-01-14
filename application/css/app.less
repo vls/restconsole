@@ -1,7 +1,6 @@
 @import "/css/bootstrap/bootstrap.less";
 
-@color: #404040;
-@sectionPadding: 10px;
+@fluidSidebarWidth: 200px;
 
 .user-select() {
     -webkit-user-select: @arguments;
@@ -12,53 +11,56 @@
     user-select: @arguments;
 }
 
+.box() {
+    padding: 10px;
+    margin-bottom: 20px;
+
+    background-color: #ffffff;
+    border: 1px solid #999;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+
+    .border-radius(6px);
+    .box-shadow(0 3px 7px rgba(0, 0, 0, 0.3));
+    .background-clip(padding-box);
+}
+
 .prepend-columns(@columns: 1, @prepend: 36) {
     width: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1)) - @prepend;
 }
 
-.scrollbar() {
+.scrollbar(vertical) {
+    overflow: hidden;
+    overflow-y: auto;
+}
+.scrollbar(horizontal) {
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.scrollbar(@_) {
     ::-webkit-scrollbar {
         width:10px;
         height:10px;
-        background-color: #FFFFFF;
-        margin-top: 40px;
+        background-color: transparent;
     }
 
-    ::-webkit-scrollbar-button:vertical:increment {
-        background-color:transparent;
-    }
-
-    ::-webkit-scrollbar-track:enabled {
-        width: 10px;
-        background-color:rgba(113,112,107,0.1);
-        -webkit-border-radius:5px;
-    }
-
-    ::-webkit-scrollbar-thumb:vertical {
-        background-color:rgba(0,0,0,.2);
-        -webkit-border-radius:5px;
-    }
-
-    ::-webkit-scrollbar-thumb:horizontal {
-        width:50px;
-        background-color:rgba(0,0,0,.2);
-        -webkit-border-radius:5px;
+    ::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,.2);
+        -webkit-border-radius: 4px;
     }
 
     ::-webkit-scrollbar-button:start:decrement,
     ::-webkit-scrollbar-button:end:increment {
-        display:block;
-        height:5px;
+        display: none;
     }
 }
 
 html {
-    height: 100%;
+    overflow-y: hidden;
 
     body {
-        background-color: #AAA;
+        background-color: #AAAAAA;
         padding-top: 40px;
-        height: 100%;
 
         .user-select(none);
 
@@ -70,6 +72,9 @@ html {
 
         > .progress {
             display: none;
+            width: 300px;
+            margin: 0 auto;
+            margin-top: 50%;
         }
 
         &.loading {
@@ -79,70 +84,35 @@ html {
 
             > .progress {
                 display: block;
-                width: 300px;
-                margin: 0 auto;
-                margin-top: 50%;
             }
         }
 
         ::-webkit-input-placeholder {
-            color:#dfdfdf;
-        }
-
-        ul {
-            list-style: none;
-            margin-left: 0px;
-        }
-
-        .input-append {
-            input {
-                float: left;
-                .border-radius(3px 0 0 3px);
-
-                &:nth-of-type(2) {
-                    .border-radius(0);
-                    border-left: none;
-                }
-            }
+            color:#DFDFDF;
         }
 
         input,
+        select,
         textarea {
-            &.span {
-                width: auto;
-            }
-
             &[disabled] {
                 background-color: #DDD;
                 border: 1px solid #CCC;
             }
 
-            &[name="method"],
-            &[name="uri"] {
+            &[name="uri"],
+            &[name="method"] {
                 font-weight: bold;
             }
         }
 
         select {
             background-color: #EEE;
-
-            &[disabled] {
-                background-color: #DDD;
-                border: 1px solid #CCC;
-            }
-        }
-
-        .tabs {
-            > li {
-                a {
-                    cursor: pointer;
-                }
-            }
         }
 
         .navbar {
             .brand {
-                width: 230px;
+                width: @fluidSidebarWidth;
+                margin-right: 20px;
                 padding: 4px 0px 4px 20px;
 
                 img {
@@ -164,21 +134,65 @@ html {
             }
         }
 
-        .messages {
-            z-index: 20000;
-            position: fixed;
-            width: 100%;
-            margin-top: 10px;
-
-            .alert-message {
-                width: 500px;
-                margin: 0px auto;
-            }
+        .tab-content {
+            border: 1px solid #DDD;
+            border-top: none;
+            margin-top: -18px;
+            padding: 10px;
+            .border-radius(0px 0px 4px 4px);
         }
 
-        .container {
-            .content {
-                padding-top: 20px;
+        .main {
+            &.fluid-container {
+                .scrollbar(vertical);
+
+                > .fluid-sidebar {
+                    @width: @fluidSidebarWidth - 20px;
+
+                    .box();
+
+                    width: @width;
+
+                    min-height: 500px;
+                    position: fixed;
+                    top: 60px;
+
+                    .well {
+                        padding: 0px;
+
+                        &:last-of-type {
+                            width: @width;
+                            position: absolute;
+                            bottom: 0px;
+                        }
+
+                        .nav {
+                            max-height: 120px;
+
+                            .scrollbar(vertical);
+
+                            li {
+                                a {
+                                    overflow: hidden;
+                                    white-space: nowrap;
+                                    text-overflow: ellipsis;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                > .fluid-content {
+                    width: @siteWidth + 22px;
+                    padding-top: 20px;
+                }
+
+                > .ads {
+                    float: left;
+                    border: 1px solid red;
+                    width: 130px;
+                    height: 100%;
+                }
             }
         }
 
@@ -202,27 +216,16 @@ html {
             }
         }
 
+        .input-prepend {
+            input {
+                &.span12 {
+                    .prepend-columns(12);
+                }
+            }
+        }
+
         section {
-            padding: @sectionPadding;
-            margin-bottom: 20px;
-
-            background-color: #ffffff;
-            border: 1px solid #999;
-            border: 1px solid rgba(0, 0, 0, 0.3);
-            *border: 1px solid #999;
-            /* IE6-7 */
-
-            -webkit-border-radius: 6px;
-            -moz-border-radius: 6px;
-            border-radius: 6px;
-
-            -webkit-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
-            -moz-box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
-            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
-
-            -webkit-background-clip: padding-box;
-            -moz-background-clip: padding-box;
-            background-clip: padding-box;
+            .box();
 
             &.minimize {
                 header {
@@ -277,7 +280,7 @@ html {
                     .control-label {
                         height: 20px;
                         line-height: 20px;
-                        color: @color;
+                        color: #404040;
 
                         a {
                             display: block;
@@ -350,18 +353,6 @@ html {
                 .row {
                     margin-left: 0px;
 
-                    [class*="offset"] {
-                        .row::before,
-                        .row::after,
-                        .tabs::before,
-                        .tabs::after,
-                        .pills::before,
-                        .pills::after {
-                            display: inline-table;
-                            margin-top: 36px;
-                        }
-                    }
-
                     [class*="span"]:first-child {
                         margin-left: 0px;
                     }
@@ -381,22 +372,50 @@ html {
                             }
 
                             .input-append {
+                                margin-bottom: 0px;
+
+                                input {
+                                    float: left;
+                                    margin-bottom: 0px;
+                                    .border-radius(3px 0 0 3px);
+
+                                    &:nth-of-type(2) {
+                                        .border-radius(0);
+                                        border-left: none;
+                                    }
+                                }
+
                                 .add-on {
                                     width: 25px;
 
-                                    &.danger {
+                                    &.add {
+                                        display: none;
+                                        background-color: #57A957;
+
+                                        &:before {
+                                            content: url('/images/add.png');
+                                        }
+                                    }
+
+                                    &.remove {
                                         background-color: #C43C35;
 
                                         &:before {
                                             content: url('/images/delete.png');
                                         }
                                     }
+                                }
+                            }
 
-                                    &.success {
-                                        background-color: #57A957;
+                            &:last-of-type {
+                                .input-append {
+                                    .add-on {
+                                        &.add {
+                                            display: block;
+                                        }
 
-                                        &:before {
-                                            content: url('/images/add.png');
+                                        &.remove {
+                                            display: none;
                                         }
                                     }
                                 }
@@ -560,7 +579,7 @@ html {
 
             background-color: white;
 
-            overflow-y: scroll;
+            .scrollbar(vertical);
 
             div {
                 padding: 3px;
