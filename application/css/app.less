@@ -1,7 +1,6 @@
 @import "/css/bootstrap/bootstrap.less";
 
 @color: #404040;
-@sideBarWidth: 190px;
 @sectionPadding: 10px;
 
 .user-select() {
@@ -21,8 +20,8 @@
     ::-webkit-scrollbar {
         width:10px;
         height:10px;
-        border-left:solid 1px rgba(0,0,0,0.3);
         background-color: #FFFFFF;
+        margin-top: 40px;
     }
 
     ::-webkit-scrollbar-button:vertical:increment {
@@ -55,13 +54,10 @@
 
 html {
     height: 100%;
-    overflow-y: hidden;
 
     body {
         background-color: #AAA;
-        background-image: url('/images/loading.gif');
-        background-repeat: no-repeat;
-        background-position: 50% 50%;
+        padding-top: 40px;
         height: 100%;
 
         .user-select(none);
@@ -72,15 +68,20 @@ html {
             }
         }
 
-        > * {
+        > .progress {
             display: none;
         }
 
-        &.loaded {
-            background-image: none;
+        &.loading {
+            > * {
+                display: none;
+            }
 
-            > *:not(datalist) {
+            > .progress {
                 display: block;
+                width: 300px;
+                margin: 0 auto;
+                margin-top: 50%;
             }
         }
 
@@ -175,51 +176,9 @@ html {
             }
         }
 
-        #container {
-            margin-top: 40px;
-            overflow-y: auto;
-
-            .scrollbar();
-        }
-
-        .fluid-container {
-            > .fluid-sidebar-left {
-                min-height: 500px;
-                width: @sideBarWidth;
-                margin-bottom: 0px;
-                position: fixed;
-                top: 60px;
-
-                .side-nav:last-of-type {
-                    width: @sideBarWidth;
-                    position: absolute;
-                    bottom: 0px;
-                }
-            }
-
-            > .fluid-content {
+        .container {
+            .content {
                 padding-top: 20px;
-                margin-left: @sideBarWidth + @sectionPadding * 4;
-
-                > section {
-                    display: none;
-                }
-            }
-
-            &[data-screen="settings"] {
-                #settings {
-                    display: block;
-                }
-            }
-
-            &[data-screen="main"] {
-                #target,
-                #payload,
-                #authorization,
-                #headers,
-                #response {
-                    display: block;
-                }
             }
         }
 
@@ -611,84 +570,6 @@ html {
                     color: white;
                     background-color: #3875D7;
                     cursor: pointer;
-                }
-            }
-        }
-    }
-}
-
-
-@media screen and (max-width: 1024px) {
-    // Reset grid variables
-    @gridColumnWidth:   30px;
-    @gridGutterWidth:   10px;
-    @siteWidth:         (@gridColumns * @gridColumnWidth) + (@gridGutterWidth * (@gridColumns - 1));
-
-    // Bring grid mixins to recalculate widths
-    .columns(@columns: 1) {
-        width: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1));
-    }
-    .offset(@columns: 1) {
-        margin-left: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1)) + (@gridGutterWidth * 2);
-    }
-
-    .prepend-columns(@columns: 1, @prepend: 36) {
-        width: (@gridColumnWidth * @columns) + (@gridGutterWidth * (@columns - 1)) - @prepend;
-    }
-
-    html {
-        body {
-            // Default columns
-            .span1     { .columns(1); }
-            .span2     { .columns(2); }
-            .span3     { .columns(3); }
-            .span4     { .columns(4); }
-            .span5     { .columns(5); }
-            .span6     { .columns(6); }
-            .span7     { .columns(7); }
-            .span8     { .columns(8); }
-            .span9     { .columns(9); }
-            .span10    { .columns(10); }
-            .span11    { .columns(11); }
-            .span12    { .columns(12); }
-
-            // Offset column options
-            .offset1   { .offset(1); }
-            .offset2   { .offset(2); }
-            .offset3   { .offset(3); }
-            .offset4   { .offset(4); }
-            .offset5   { .offset(5); }
-            .offset6   { .offset(6); }
-            .offset7   { .offset(7); }
-            .offset8   { .offset(8); }
-            .offset9   { .offset(9); }
-            .offset10  { .offset(10); }
-            .offset11  { .offset(11); }
-            .offset12  { .offset(12); }
-
-            .span6 {
-                .input-prepend {
-                    input {
-                        &.span6 {
-                            .prepend-columns(6);
-                        }
-                    }
-                }
-            }
-
-            section {
-                form {
-                    .pairs {
-                        margin-left: 0px;
-
-                        &.control-group {
-                            .controls {
-                                .span2 {
-                                    .prepend-columns(3, 44);
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

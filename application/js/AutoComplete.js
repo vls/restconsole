@@ -54,7 +54,7 @@ var AutoComplete = new Class({
                             input.set('value', this.dataset.value).fireEvent('change');
 
                             // this part is custom to the REST console
-                            document.id('container').fireEvent('change', new FakeEvent(input));
+                            input.fireEvent('change');
                         }
                     }
                 });
@@ -209,9 +209,7 @@ var AutoComplete = new Class({
                     if (list.dataset.current > -1) {
                         this.set('value', suggestions[list.dataset.current].dataset.value);
 
-                        this.fireEvent('change', new FakeEvent(this));
-
-                        document.id('container').fireEvent('change', new FakeEvent(this));
+                        this.fireEvent('change');
 
                         list.dataset.current = -1;
                     }

@@ -121,24 +121,6 @@ var FakeEvent = new Class({
 var App = new Class({
     'Implements': [Events, Mooml.Templates],
 
-    // unsecure headers:
-    'unsafe': [
-        'accept-charset',
-        'accept-encoding',
-        'content-length',
-        'cookie',
-        'date',
-        'origin',
-        'connection',
-        'expect',
-        'referer',
-        'user-agent',
-        'via',
-        'proxy-authorization',
-        'te',
-        'upgrade'
-    ],
-
     // autocomplete values
     'datalists': {
         'mimetypes': [
@@ -146,17 +128,12 @@ var App = new Class({
             'application/atom+xml',
             'application/docbook+xml',
             'application/ecmascript',
-            'application/hta',
             'application/http',
             'application/javascript',
             'application/json',
             'application/octet-stream',
             'application/ogg',
             'application/pdf',
-            'application/pgp-encrypted',
-            'application/pgp-keys',
-            'application/pgp-signature',
-            'application/postscript',
             'application/rar',
             'application/rdf+xml',
             'application/rss+xml',
@@ -176,8 +153,6 @@ var App = new Class({
             'application/x-cab',
             'application/x-cbr',
             'application/x-cbz',
-            'application/x-debian-package',
-            'application/x-executable',
             'application/x-font',
             'application/x-freemind',
             'application/x-httpd-php',
@@ -186,7 +161,6 @@ var App = new Class({
             'application/x-httpd-php3-preprocessed',
             'application/x-httpd-php4',
             'application/x-httpd-php5',
-            'application/x-quicktimeplayer',
             'application/x-ruby',
             'application/x-shockwave-flash',
             'application/x-silverlight',
@@ -210,8 +184,6 @@ var App = new Class({
             'audio/x-ms-wma',
             'audio/x-ms-wax',
             'audio/x-realaudio',
-            'audio/x-scpls',
-            'audio/x-sd2',
             'audio/x-wav',
             'image/gif',
             'image/jpeg',
@@ -247,13 +219,6 @@ var App = new Class({
             'text/tab-separated-values',
             'text/uri-list',
             'text/x-java',
-            'text/x-makefile',
-            'text/x-perl',
-            'text/x-python',
-            'text/x-scala',
-            'text/x-server-parsed-html',
-            'text/x-setext',
-            'text/x-sh',
             'text/x-vcalendar',
             'text/x-vcard',
             'text/xml',
@@ -273,31 +238,51 @@ var App = new Class({
             'video/x-msvideo'
         ],
 
-        'charset': ['*',
-            'UTF-8',
-            'ISO-8859-1',
-            'ISO-8859-2',
-            'ISO-8859-3',
-            'ISO-8859-4',
-            'ISO-8859-5',
-            'ISO-8859-6',
-            'ISO-8859-7',
-            'ISO-8859-8',
-            'ISO-8859-9',
-            'ISO-8859-10',
-            'ISO-8859-11',
-            'ISO-8859-12',
-            'ISO-8859-13',
-            'ISO-8859-14',
-            'ISO-8859-15',
-            'ISO-8859-16',
-            'ISO-2022-JP',
-            'ISO-2022-JP-2',
-            'ISO-2022-KR',
-            'ISO-8859-6-E',
-            'ISO-8859-6-I',
-            'ISO-8859-8-E',
-            'ISO-8859-8-I'
+        'charset': ["*",
+            "Big5",
+            "EUC-JP",
+            "EUC-KR",
+            "GB2312",
+            "ISO-2022-JP",
+            "ISO-2022-JP-2",
+            "ISO-2022-KR",
+            "ISO-8859-1",
+            "ISO-8859-2",
+            "ISO-8859-3",
+            "ISO-8859-4",
+            "ISO-8859-5",
+            "ISO-8859-6",
+            "ISO-8859-6-E",
+            "ISO-8859-6-I",
+            "ISO-8859-7",
+            "ISO-8859-8",
+            "ISO-8859-8-E",
+            "ISO-8859-8-I",
+            "ISO-8859-9",
+            "ISO-8859-10",
+            "ISO-8859-11",
+            "ISO-8859-12",
+            "ISO-8859-13",
+            "ISO-8859-14",
+            "ISO-8859-15",
+            "ISO-8859-16",
+            "KOI7",
+            "KOI8-R",
+            "KOI8-U",
+            "Shift_JIS",
+            "US-ASCII",
+            "UTF-8",
+            "UTF-16",
+            "UTF-32",
+            "Windows-1250",
+            "Windows-1251",
+            "Windows-1252",
+            "Windows-1253",
+            "Windows-1254",
+            "Windows-1255",
+            "Windows-1256",
+            "Windows-1257",
+            "Windows-1258"
         ],
 
         'encoding': [
@@ -470,7 +455,9 @@ var App = new Class({
     },
 
     'events': {
-        'click:relay(.control-group .control-label a)': function(event) {
+        // loads panels
+        // TODO: its ugly, replace with modals + iframes
+        'click:relay(a[data-type="panel"])': function(event) {
             event.preventDefault();
 
             var width = 800;
@@ -489,58 +476,17 @@ var App = new Class({
             });
         },
 
-        // global enable / disable action on input fields
-        'change:relay(.input-prepend input[type="checkbox"])': function(event) {
-            var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
-            var disabled = input.get('disabled');
-
-            if (disabled) {
-                document.fireEvent('keyup', new FakeEvent(input));
-
-                input.set('disabled', false).fireEvent('focus').focus();
-                event.stopPropagation();
-            } else {
-                input.set('disabled', true);
-
-                this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
-            }
-
-            new Storage('input-status').set(input.get('name'), disabled);
-        },
-
-        // store input values
-        'change:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea)': function(event) {
-            new Storage('input-values').set(this.get('name'), this.get('value'));
-
-            document.fireEvent('keyup', event);
-        },
-
-        // highlight inputs
-        'keyup:relay(.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea)': function(event) {
-            var group = this.getParent('.control-group');
-            var value = this.get('value');
-
-            group.removeClass('success').removeClass('error').removeClass('warning');
-
-            if (value == '') {
-                if (this.get('required')) {
-                    group.addClass('error');
-                } else {
-                    group.addClass('warning');
-                }
-            } else {
-                group.addClass('success');
-            }
-        },
-
         // section hide toggle
         'click:relay(section header a)': function(event) {
             var section = this.getParent('section');
 
+            // change class
             section.toggleClass('minimize')
 
+            // store status
             new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
 
+            // fire resize event to trigger hidden elements resize
             window.fireEvent('resize');
         },
 
@@ -551,8 +497,11 @@ var App = new Class({
 
             var storage = {};
 
+            // is there any?
             if (data.key.length) {
+                // loop through
                 data.key.each(function(key, index) {
+                    // only store ones with keys
                     if (key.length > 0) {
                         storage[key] = data.value[index];
                     }
@@ -581,7 +530,7 @@ var App = new Class({
         },
 
         // clear error highlight on pairs
-        'keyup:input:relay(.pairs .controls.error input[type="text"]:first-child)': function(event) {
+        'keyup:relay(.pairs .controls.error input[type="text"]:first-child)': function(event) {
             event.target.getParent('.controls').removeClass('error');
         },
 
@@ -610,37 +559,7 @@ var App = new Class({
                 clone.getElement('.add-on.success').removeClass('success').addClass('danger');
                 clone.getElement('input').focus();
             }
-        },
-
-        // tabs navigation
-        'click:relay(.tabbable .tabs li a)': function(event) {
-            event.preventDefault();
-
-            var tabbable = event.target.getParent('.tabbable');
-            var tabs = tabbable.getElement('.tabs');
-            var content = tabbable.getElements('.tab-content .tab-pane');
-            var index = tabs.getChildren().indexOf(event.target.getParent('li'));
-
-            // switch tabs
-            tabs.getElement('.active').removeClass('active');
-            event.target.getParent('li').addClass('active');
-
-            content.removeClass('active');
-            content[index].addClass('active');
-
-            // store active tab
-            new Storage('tabs').set(tabbable.dataset.name, index);
-
-            // fire resize event to fix hidden field sizes
-            window.fireEvent('resize');
-        }.bind(this),
-
-        // prevent enter key from triggering any buttons on the page
-        'keydown:relay(form):keys(enter)': function(event) {
-            event.stop();
-
-            this.send();
-        }.bind(this)
+        }
     },
 
     'templates': {
@@ -664,17 +583,59 @@ var App = new Class({
             if (data) {
                 section = data.split('.')[0];
 
-                a({
-                    'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])
-                })
+                a({'data-type': 'panel', 'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])})
             }
         }),
 
-        'input': new Template(function(data) {
+        'input': new Template(function(attributes) {
+            // init events object
+            if (!attributes.events) attributes.events = {};
+
+            // default change event
+            if (!attributes.events.change) {
+                attributes.events.change = function(event) {
+                    this.fireEvent('save');
+                }
+            }
+
+            // save event
+            attributes.events.save = function(event) {
+                console.log('saving ' + this.get('name'));
+
+                new Storage('input-values').set(this.get('name'), this.get('value'));
+
+                // trigger highlight
+                this.fireEvent('highlight');
+            }
+
+            // highlight event
+            attributes.events.highlight = function(event) {
+                var group = this.getParent('.control-group');
+                var value = this.get('value');
+
+                // reset classes
+                group.removeClass('success').removeClass('error').removeClass('warning');
+
+                // empty check
+                if (value == '') {
+                    if (this.get('required')) {
+                        group.addClass('error');
+                    } else {
+                        group.addClass('warning');
+                    }
+                } else {
+                    group.addClass('success');
+                }
+            }
+
+            input(attributes)
+        }),
+
+        'standard-input': new Template(function(data) {
             fieldset({'class': 'control-group'},
                 label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
                 div({'class': 'controls'},
-                    input(data.attributes),
+                    this.renderTemplate('input', data.attributes),
                     p({'class': 'help-text'}, data.help)
                 )
             )
@@ -685,8 +646,32 @@ var App = new Class({
                 label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
                 div({'class': 'controls'},
                     div({'class': 'input-prepend'},
-                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                        input(data.attributes),
+                        label({'class': 'add-on'},
+                            input({
+                                'type': 'checkbox',
+                                'events': {
+                                    'change': function(event) {
+                                        var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+                                        var disabled = input.get('disabled');
+
+                                        if (disabled) {
+                                            input.set('disabled', false).fireEvent('highlight').fireEvent('focus').focus();
+
+                                            // prevent autoComplete
+                                            event.stopPropagation();
+                                        } else {
+                                            input.set('disabled', true);
+                                            this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
+                                        }
+
+                                        new Storage('input-status').set(input.get('name'), disabled);
+                                    }
+                                }
+                            })
+                        ),
+
+                        this.renderTemplate('input', data.attributes),
+
                         p({'class': 'help-text'}, data.help)
                     )
                 )
@@ -696,16 +681,25 @@ var App = new Class({
         'header': new Template(function(data) {
             header({'class': 'navbar navbar-fixed'},
                 div({'class': 'navbar-inner'},
-                    div({'class': 'fluid-container'},
+                    div({'class': 'container'},
                         div({'class': 'brand'},
                             img({'src': 'images/logo/32.png', 'align': 'left'}), 'REST Console', small('version 4.1.0')
                         ),
 
                         ul({'class': 'nav'},
-                            li({'class': 'active'}, a({'href': '#target'}, span('T'), 'arget')),
-                            li(a({'href': '#payload'}, span('P'), 'ayload')),
-                            li(a({'href': '#headers'}, span('H'), 'eaders')),
-                            li(a({'href': '#response'}, span('R'), 'esponse'))
+                            li({'class': 'dropdown'},
+                                a({'class': 'dropdown-toggle', 'data-toggle': 'dropdown', 'href': '#'}, 'Request', b({'class': 'caret'})),
+                                ul({'class': 'dropdown-menu'},
+                                    li(a({'href': '#target'}, i({'class': 'home'}), ' Target')),
+                                    li(a({'href': '#payload'}, i({'class': 'cog'}), ' Payload')),
+                                    li(a({'href': '#authorization'}, i({'class': 'cog'}), ' Authorization')),
+                                    li(a({'href': '#headers'}, i({'class': 'cog'}), ' Headers')),
+                                    li(a({'href': '#help'}, i({'class': 'time'}), ' Help'))
+                                )
+                            ),
+
+                            li(a({'href': '#response'}, span('R'), 'esponse')),
+                            li(a({'href': '#settings'}, span('S'), 'ettings'))
                         )
                     )
                 )
@@ -713,86 +707,117 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
-            div({'id': 'container', 'class': 'fluid-container', 'data-screen': 'main'},
-                this.renderTemplate('sidebar'),
-                this.renderTemplate('content')
+            div({'id': 'container', 'class': 'container'},
+                div({'id': 'main', 'class': 'content'},
+                    this.renderTemplate('target-section'),
+                    this.renderTemplate('payload-section'),
+                    this.renderTemplate('authorization-section'),
+                    this.renderTemplate('headers-section'),
+                    this.renderTemplate('response-section'),
+                    this.renderTemplate('settings-section'),
+                    this.renderTemplate('help-section')
+                )
             )
         }),
 
         'sidebar': new Template(function(data) {
-            section({'class': 'fluid-sidebar-left'},
-                div({'class': 'well side-nav'},
-                    h6({'class': 'nav-label'}, 'Main Menu'),
+            section({'class': 'sidebar'},
+                div({'class': 'well'},
                     ul({
-                        'class': 'nav-group',
+                        'class': 'nav list',
                         'events': {
                             'click:relay(a)': function(event) {
                                 event.preventDefault();
                                 this.getParent('ul').getElement('.active').removeClass('active');
                                 this.getParent('li').addClass('active');
-                                this.getParent('.fluid-container').set('data-screen', this.get('href').replace('#', ''));
                             }
                         }},
 
-                        li({'class': 'active'}, a({'class': 'nav-item', 'href': '#main'}, i({'class': 'home'}), ' Main')),
-                        //~ li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'user'}), ' Profile')),
-                        li(a({'class': 'nav-item', 'href': '#settings'}, i({'class': 'cog'}), ' Settings')),
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'time'}), ' Help'))
+                        li({'class': 'nav-header'}, 'Main Menu'),
+                        li({'class': 'active'}, a({'href': '#main'}, i({'class': 'home'}), ' Main')),
+                        //~ li(a({'href': '#'}, i({'class': 'user'}), ' Profile')),
+                        li(a({'href': '#settings'}, i({'class': 'cog'}), ' Settings')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' Help'))
                     )
                 ),
 
-                div({'class': 'well side-nav'},
-                    h6({'class': 'nav-label'}, 'Presets'),
-                    ul({'class': 'nav-group'},
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'home'}), ' Twitter')),
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'class': 'nav-item', 'href': '#'}, i({'class': 'time'}), ' Goolge+'))
+                div({'class': 'well'},
+                    ul({'class': 'nav list services'},
+                        li({'class': 'nav-header'}, 'Presets'),
+                        li(a({'href': '#'}, i({'class': 'home'}), ' Twitter')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' Goolge+'))
                     )
                 ),
 
-                div({'class': 'well side-nav'},
+                div({'class': 'well'},
+                    ul({'class': 'nav list history'},
+                        li({'class': 'nav-header'}, 'History'),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api')),
+                        li(a({'href': '#'}, i({'class': 'time'}), ' GET www.domain.com/api'))
+                    )
+                ),
+
+                div({'class': 'well nav list'},
                     h6({'class': 'nav-label'}, 'About'),
                     ul({'class': 'nav-group'},
-                        li(a({'class': 'nav-item', 'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), ' Code in Chaos Inc.')),
-                        li(a({'class': 'nav-item', 'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), ' GitHub')),
-                        li(a({'class': 'nav-item', 'href': 'https://raw.github.com/codeinchaos/restconsole//LICENSE', 'target': '_blank'}, i({'class': 'book'}), ' License'))
+                        li(a({'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), ' Code in Chaos Inc.')),
+                        li(a({'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), ' GitHub')),
+                        li(a({'shref': 'https://raw.github.com/codeinchaos/restconsole/master/LICENSE', 'target': '_blank', 'data-type': 'panel'}, i({'class': 'book'}), ' License'))
                     )
                 )
-            )
-        }),
-
-        'content': new Template(function(data) {
-            div({'id': 'main', 'class': 'fluid-content'},
-                this.renderTemplate('target-section'),
-                this.renderTemplate('payload-section'),
-                this.renderTemplate('authorization-section'),
-                this.renderTemplate('headers-section'),
-                this.renderTemplate('response-section'),
-                this.renderTemplate('settings-section'),
-                this.renderTemplate('help-section')
             )
         }),
 
         'settings-section': new Template(function(data) {
             section({'id': 'settings'},
                 this.renderTemplate('section-header', 'Settings'),
-a({'events': {
-                        'click': function(event) {
-                            event.preventDefault();
 
-                            chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
-                        }
-                    }}, 'Install Extension'),
+                a({'events': {
+                    'click': function(event) {
+                        event.preventDefault();
+                        chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
+                    }
+                }}, 'Install Extension'),
+
                 form({
                     'name': 'options',
                     'class': 'form-stacked',
                     'novalidate': true,
                     'events': {
-                        //~ 'change:relay(input[type="checkbox"])': function(event) {
-                            //~ console.log('here');
-                            //~ new Storage('options').set(this.get('name'), this.get('checked'));
-                        //~ },
-
                         'init': function() {
                             var options = new Storage('options');
 
@@ -817,21 +842,24 @@ a({'events': {
                             fieldset({'class': 'control-group'},
                                 label({'class': 'control-label'}, 'General'),
                                 div({'class': 'controls'},
-                                    div({
-                                        'class': 'control-list',
-                                        'events': {
-                                            'change:relay(input[name="help"]': function(event) {
-                                                if (this.get('checked')) {
-                                                    document.body.addClass('no-help');
-                                                } else {
-                                                    document.body.removeClass('no-help');
-                                                }
-                                            }
-                                        }},
+                                    div({'class': 'control-list'},
                                         label({'class': 'checkbox'},
-                                            input({'type': 'checkbox','name': 'help'}), 'Hide Help Lines'
-                                        ),
+                                            input({
+                                                'type': 'checkbox',
+                                                'name': 'help',
+                                                'events': {
+                                                    'change': function(event) {
+                                                        if (this.get('checked')) {
+                                                            document.body.addClass('no-help');
+                                                        } else {
+                                                            document.body.removeClass('no-help');
+                                                        }
+                                                    }
+                                                }
+                                            }),
 
+                                            'Hide Help Lines'
+                                        ),
                                         label({'class': 'checkbox'},
                                             input({'type': 'checkbox', 'name': 'lines'}), 'Hide Line Numbers *'
                                         )
@@ -855,6 +883,7 @@ a({'events': {
                                                 }
                                             }
                                         }},
+
                                         label({'class': 'checkbox'},
                                             input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
                                         ),
@@ -896,7 +925,7 @@ a({'events': {
                 form({'name': 'target', 'class': 'form-stacked', 'novalidate': true},
                     div({'class': 'row'},
                         div({'class': 'span2'},
-                            this.renderTemplate('input', {
+                            this.renderTemplate('standard-input', {
                                 'rfc': '5.1.1',
                                 'label': 'Method',
                                 'help': 'HTTP Verb',
@@ -914,7 +943,7 @@ a({'events': {
                         ),
 
                         div({'class': 'span1'},
-                            this.renderTemplate('input', {
+                            this.renderTemplate('standard-input', {
                                 'label': 'Timeout',
                                 'help': 'seconds',
                                 'attributes': {
@@ -931,7 +960,7 @@ a({'events': {
                         ),
 
                         div({'class': 'offset3'},
-                            this.renderTemplate('input', {
+                            this.renderTemplate('standard-input', {
                                 'rfc': '3.2',
                                 'label': 'URI',
                                 'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
@@ -946,9 +975,12 @@ a({'events': {
                                     'events': {
                                         'change': function(event) {
                                             var value = this.get('value');
+
                                             if (value.length && value.substr(0, 4) != 'http') {
                                                 this.set('value', 'http://' + value);
                                             }
+
+                                            this.fireEvent('save');
                                         }
                                     }
                                 }
@@ -1017,6 +1049,8 @@ a({'events': {
                                                 } else {
                                                     tab.removeClass('true');
                                                 }
+
+                                                this.fireEvent('save');
                                             }
                                         }
                                     }
@@ -1052,23 +1086,31 @@ a({'events': {
                                 },
 
                                 {
-                                'label': 'Content-MD5',
-                                'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
-                                'attributes': {'class': 'span6', 'type': 'text', 'name': 'Content-MD5', 'tabindex': 4, 'autocomplete': true, 'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==', 'disabled': true}
+                                    'label': 'Content-MD5',
+                                    'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'name': 'Content-MD5',
+                                        'tabindex': 4,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==',
+                                        'disabled': true
+                                    }
                                 }
                             ])
                         ),
 
                         div({'class': 'offset6'},
                             div({'class': 'tabbable', 'data-name': 'payload'},
-                                ul({'class': 'tabs'},
-                                    li({'class': 'active'}, a('RAW Body')),
-                                    li(a('Form Data')),
-                                    li(a('Attachments'))
+                                ul({'class': 'nav tabs'},
+                                    li({'class': 'active'}, a({'href': '#payload-raw', 'data-toggle': 'tab'}, 'RAW Body')),
+                                    li(a({'href': '#payload-form', 'data-toggle': 'tab'}, 'Form Data')),
+                                    li(a({'href': '#payload-attachments', 'data-toggle': 'tab'}, 'Attachments'))
                                 ),
 
                                 div({'class': 'tab-content'},
-                                    div({'class': 'tab-pane active'},
+                                    div({'class': 'tab-pane active', 'id': 'payload-raw'},
                                         fieldset({'class': 'control-group'},
                                             div({'class': 'controls'},
                                                 textarea({
@@ -1113,7 +1155,7 @@ a({'events': {
                                         )
                                     ),
 
-                                    div({'class': 'tab-pane urlencoded'},
+                                    div({'class': 'tab-pane urlencoded', 'id': 'payload-form'},
                                         p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
 
                                         fieldset({
@@ -1146,7 +1188,7 @@ a({'events': {
                                         )
                                     ),
 
-                                    div({'class': 'tab-pane'},
+                                    div({'class': 'tab-pane', 'id': 'payload-attachments'},
                                         fieldset({'class': 'control-group pairs'},
                                             div({'class': 'controls'},
                                                 div({'class': 'input-append'},
@@ -1177,7 +1219,7 @@ a({'events': {
 
                     div({'class': 'tabbable', 'data-name': 'authorization'},
                         ul({
-                            'class': 'tabs',
+                            'class': 'nav tabs',
                             'events': {
                                 'click:relay(li a)': function(event) {
                                     var tabbable = this.getParent('.tabbable');
@@ -1207,14 +1249,14 @@ a({'events': {
                                 }
                             }},
 
-                            li({'class': 'active'}, a('Custom')),
-                            li(a('Basic')),
-                            //li(a('Digest')),
-                            li(a('oAuth'))
+                            li({'class': 'active'}, a({'href': '#authorization-custom', 'data-toggle': 'tab'}, 'Custom')),
+                            li(a({'href': '#authorization-basic', 'data-toggle': 'tab'}, 'Basic')),
+                            //li(a({'href': '#authorization-digest', 'data-toggle': 'tab'}, 'Digest')),
+                            li(a({'href': '#authorization-oauth', 'data-toggle': 'tab'}, 'oAuth'))
                         ),
 
                         div({'class': 'tab-content'},
-                            div({'class': 'tab-pane active'},
+                            div({'class': 'tab-pane active', 'id': 'authorization-custom'},
                                 this.renderTemplate('optional-input', [
                                     {
                                         'label': 'Authorization',
@@ -1249,6 +1291,7 @@ a({'events': {
 
                             div({
                                 'class': 'tab-pane',
+                                'id': 'authorization-basic',
                                 'events': {
                                     'keyup:relay(input[type="text"], input[type="password"])': function(event) {
                                         var pane = this.getParent('.tab-pane');
@@ -1298,7 +1341,7 @@ a({'events': {
                                 ])
                             ),
 /*
-                            div({'class': 'tab-pane'},
+                            div({'class': 'tab-pane', 'id': 'authorization-digest'},
                                 input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
 
                                 this.renderTemplate('optional-input', [
@@ -1335,13 +1378,14 @@ a({'events': {
 */
                             div({
                                 'class': 'tab-pane oauth',
+                                'id': 'authorization-oauth',
                                 'events': {
                                     'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
                                 }},
 
                                 div({'class': 'row'},
                                     div({'class': 'span12'},
-                                        this.renderTemplate('input', {
+                                        this.renderTemplate('standard-input', {
                                             'label': 'Authorization Header',
                                             'help': '',
                                             'attributes': {
@@ -1376,6 +1420,8 @@ a({'events': {
                                                 'events': {
                                                     'change': function(event) {
                                                         this.set('value', parseInt(this.get('value')).toFixed(1));
+
+                                                        this.fireEvent('save');
                                                     }
                                                 }
                                             }
@@ -1410,7 +1456,7 @@ a({'events': {
                                     ),
 
                                     div({'class': 'span5'},
-                                        this.renderTemplate('input', {
+                                        this.renderTemplate('standard-input', {
                                             'label': 'Header Separator',
                                             'help': '',
                                             'attributes': {
@@ -2007,13 +2053,13 @@ a({'events': {
                                     'help': 'mainly used bypass firewalls and browsers limitations.',
                                     'attributes': {
                                         'class': 'expand',
-                                            'type': 'text',
-                                            'name': 'X-HTTP-Method-Override',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: PUT',
-                                            'disabled': true
-                                        }
+                                        'type': 'text',
+                                        'name': 'X-HTTP-Method-Override',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: PUT',
+                                        'disabled': true
+                                    }
                                 },
 
                                 {
@@ -2021,13 +2067,13 @@ a({'events': {
                                     'help': 'mainly used to identify Ajax requests.',
                                     'attributes': {
                                         'class': 'expand',
-                                            'type': 'text',
-                                            'name': 'X-Requested-With',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: XMLHttpRequest',
-                                            'disabled': true
-                                        }
+                                        'type': 'text',
+                                        'name': 'X-Requested-With',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: XMLHttpRequest',
+                                        'disabled': true
+                                    }
                                 },
 
                                 {
@@ -2035,13 +2081,13 @@ a({'events': {
                                     'help': '',
                                     'attributes': {
                                         'class': 'expand',
-                                            'type': 'text',
-                                            'name': 'X-Forwarded-For',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: ',
-                                            'disabled': true
-                                        }
+                                        'type': 'text',
+                                        'name': 'X-Forwarded-For',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: ',
+                                        'disabled': true
+                                    }
                                 },
 
                                 {
@@ -2049,13 +2095,13 @@ a({'events': {
                                     'help': 'Requests a web application to disable their tracking of a user.',
                                     'attributes': {
                                         'class': 'expand',
-                                            'type': 'text',
-                                            'name': 'X-Do-Not-Track',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 1',
-                                            'disabled': true
-                                        }
+                                        'type': 'text',
+                                        'name': 'X-Do-Not-Track',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1',
+                                        'disabled': true
+                                    }
                                 },
 
                                 {
@@ -2063,13 +2109,13 @@ a({'events': {
                                     'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
                                     'attributes': {
                                         'class': 'expand',
-                                            'type': 'text',
-                                            'name': 'DNT',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 1',
-                                            'disabled': true
-                                        }
+                                        'type': 'text',
+                                        'name': 'DNT',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1',
+                                        'disabled': true
+                                    }
                                 }
                             ])
                         )
@@ -2083,16 +2129,16 @@ a({'events': {
                 this.renderTemplate('section-header', 'Response'),
 
                 ul({'class': 'tabbable', 'data-name': 'response'},
-                    ul({'class': 'tabs'},
-                        li({'class': 'active'}, a({'data-target': 'body'}, 'Response Body')),
-                        li(a('RAW Response')),
-                        li(a('Response Preview')),
-                        li(a('RAW Request')),
-                        li(a('HTTP Archive (HAR)'))
+                    ul({'class': 'nav tabs'},
+                        li({'class': 'active'}, a({'href': '#response-body', 'data-toggle': 'tab'}, 'Response Body')),
+                        li(a({'href': '#response-body2', 'data-toggle': 'tab'}, 'RAW Response')),
+                        li(a({'href': '#response-preview', 'data-toggle': 'tab'}, 'Response Preview')),
+                        li(a({'href': '#response-raw', 'data-toggle': 'tab'}, 'RAW Request')),
+                        li(a({'href': '#response-har', 'data-toggle': 'tab'}, 'HTTP Archive (HAR)'))
                     ),
 
                     div({'class': 'tab-content'},
-                        div({'class': 'tab-pane active'},
+                        div({'class': 'tab-pane active', 'id': 'respone-body'},
                             pre({
                                 'id': 'response-body',
                                 'class': 'prettyprint',
@@ -2109,19 +2155,17 @@ a({'events': {
                             })
                         ),
 
-                        div({'class': 'tab-pane'},
-                            pre({'id': 'response-raw', 'class': 'prettyprint'})
+                        div({'class': 'tab-pane', 'id': 'respone-body2'},
+                            pre({'class': 'prettyprint'})
                         ),
 
-                        div({'class': 'tab-pane'},
-                            div({'id': 'response-preview'})
+                        div({'class': 'tab-pane', 'id': 'respone-preview'}),
+
+                        div({'class': 'tab-pane', 'id': 'respone-raw'},
+                            pre({'class': 'prettyprint'})
                         ),
 
-                        div({'class': 'tab-pane'},
-                            pre({'id': 'request-raw', 'class': 'prettyprint'})
-                        ),
-
-                        div({'class': 'tab-pane'},
+                        div({'class': 'tab-pane', 'id': 'respone-har'},
                             pre({'id': 'har', 'class': 'prettyprint lang-json'})
                         )
                     )
@@ -2132,7 +2176,7 @@ a({'events': {
         'controls': new Template(function(data) {
             footer({'class': 'navbar navbar-fixed'},
                 div({'class': 'navbar-inner'},
-                    div({'class': 'fluid-container'},
+                    div({'class': 'container'},
                         ul({'class': 'nav'},
                             li(a({'href': '#options'}, span('O'), 'ptions')),
                             li(a({'href': '#target'}, span('T'), 'arget')),
@@ -2170,7 +2214,7 @@ a({'events': {
 
     'resizeEvent': function(event) {
         document.id('container').setStyle('height', window.getHeight() - 80);
-        document.getElement('.fluid-sidebar-left').setStyle('height', window.getHeight() - 140);
+        //document.getElement('.sidebar').setStyle('height', window.getHeight() - 140);
 
         document.getElements('.expand').each(function(element) {
             var width = element.getParent('div.controls, [class*="offset"]').getDimensions().width - element.getPadding();
@@ -2179,7 +2223,7 @@ a({'events': {
                 width -= 36;
             }
 
-            element.setStyle('width', width);
+            //element.setStyle('width', width);
         });
     },
 
@@ -2327,7 +2371,7 @@ a({'events': {
             // construct fake event event object
             var event = new FakeEvent(input);
 
-            input.set('value', values.get(input.get('name'))).fireEvent('change');
+            input.set('value', values.get(input.get('name')))
 
             if (input.getParent('.input-prepend')) {
                 var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
@@ -2337,10 +2381,10 @@ a({'events': {
                     input.set('disabled', !enabled);
                     checkbox.set('checked', enabled);
 
-                    document.fireEvent('keyup', event);
+                    input.fireEvent('highlight');
                 }
             } else {
-                document.fireEvent('keyup', event);
+                input.fireEvent('highlight');
             }
         });
 
@@ -2474,7 +2518,7 @@ a({'events': {
 
             'onRequest': function() {
                 // replace buttons with animation
-                document.id('controls').addClass('progress');
+                //document.id('controls').addClass('progress');
             },
 
             'onProgress': function(event, xhr) {
@@ -2486,7 +2530,7 @@ a({'events': {
                 Error('Error', 'Connection Timed-out');
 
                 // remove loading animation
-                document.id('controls').removeClass('progress');
+                //document.id('controls').removeClass('progress');
             },
 
             'onCancel': function() {
@@ -2718,7 +2762,7 @@ a({'events': {
 
         $App.goTo('response');
 
-        document.id('controls').removeClass('progress');
+        //document.id('controls').removeClass('progress');
 return;
 
         if (this.xhr.status == 0) {
