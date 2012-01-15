@@ -474,20 +474,6 @@ var App = new Class({
                 'focused': true,
                 'type': 'panel'
             });
-        },
-
-        // section hide toggle
-        'click:relay(section header a)': function(event) {
-            var section = this.getParent('section');
-
-            // change class
-            section.toggleClass('minimize')
-
-            // store status
-            new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
-
-            // fire resize event to trigger hidden elements resize
-            window.fireEvent('resize');
         }
     },
 
@@ -503,7 +489,22 @@ var App = new Class({
 
         'section-header': new Template(function(data) {
             header(
-                a(),
+                a({
+                    'events': {
+                        'click': function(event) {
+                            var section = this.getParent('section');
+
+                            // change class
+                            section.toggleClass('minimize')
+
+                            // store status
+                            new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
+
+                            // fire resize event to trigger hidden elements resize
+                            window.fireEvent('resize');
+                        }
+                    }
+                }),
                 h2(data)
             )
         }),
@@ -708,23 +709,14 @@ var App = new Class({
                 div({'class': 'navbar-inner'},
                     div({'class': 'fluid-container'},
                         div({'class': 'brand'},
-                            img({'src': 'images/logo/32.png', 'align': 'left'}), 'REST Console', small('version 4.1.0')
+                            img({'src': 'images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
                         ),
 
                         ul({'class': 'nav'},
-                            li({'class': 'dropdown'},
-                                a({'class': 'dropdown-toggle', 'data-toggle': 'dropdown', 'href': '#'}, 'Request', b({'class': 'caret'})),
-                                ul({'class': 'dropdown-menu'},
-                                    li(a({'href': '#target'}, i({'class': 'home'}), ' Target')),
-                                    li(a({'href': '#payload'}, i({'class': 'cog'}), ' Payload')),
-                                    li(a({'href': '#authorization'}, i({'class': 'cog'}), ' Authorization')),
-                                    li(a({'href': '#headers'}, i({'class': 'cog'}), ' Headers')),
-                                    li(a({'href': '#help'}, i({'class': 'time'}), ' Help'))
-                                )
-                            ),
-
+                            li(a({'href': '#request'}, 'Re', span('q'), 'uest')),
                             li(a({'href': '#response'}, span('R'), 'esponse')),
-                            li(a({'href': '#settings'}, span('S'), 'ettings'))
+                            li(a({'href': '#settings'}, span('S'), 'ettings')),
+                            li(a({'href': '#help'}, span('H'), 'elp'))
                         )
                     )
                 )
@@ -763,11 +755,12 @@ var App = new Class({
                             }
                         }},
 
-                        li({'class': 'nav-header'}, 'Main Menu'),
-                        li({'class': 'active'}, a({'href': '#main'}, i({'class': 'home'}), ' Main')),
-                        //~ li(a({'href': '#'}, i({'class': 'user'}), ' Profile')),
-                        li(a({'href': '#settings'}, i({'class': 'cog'}), ' Settings')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' Help'))
+                        li({'class': 'nav-header'}, 'Request'),
+
+                        li(a({'href': '#target'}, i({'class': 'cog'}), ' Target')),
+                        li(a({'href': '#payload'}, i({'class': 'cog'}), ' Payload')),
+                        li(a({'href': '#authorization'}, i({'class': 'cog'}), ' Authorization')),
+                        li(a({'href': '#headers'}, i({'class': 'cog'}), ' Headers'))
                     )
                 ),
 
@@ -938,6 +931,12 @@ var App = new Class({
             )
         }),
 
+        'help-section': new Template(function(data) {
+            section({'id': 'help'},
+                this.renderTemplate('section-header', 'Help')
+            )
+        }),
+
         'target-section': new Template(function(data) {
             section({'id': 'target'},
                 this.renderTemplate('section-header', 'Target'),
@@ -957,23 +956,6 @@ var App = new Class({
                                     'autocomplete': true,
                                     'placeholder': 'ex: POST',
                                     'list': 'methods',
-                                    'required': true
-                                }
-                            })
-                        ),
-
-                        div({'class': 'span1'},
-                            this.renderTemplate('standard-input', {
-                                'label': 'Timeout',
-                                'help': 'seconds',
-                                'attributes': {
-                                    'class': 'span1',
-                                    'type': 'number',
-                                    'name': 'timeout',
-                                    'value': 60,
-                                    'tabindex': 2,
-                                    'min': 1,
-                                    'step': 1,
                                     'required': true
                                 }
                             })
@@ -1003,6 +985,23 @@ var App = new Class({
                                             this.fireEvent('save');
                                         }
                                     }
+                                }
+                            })
+                        ),
+
+                        div({'class': 'span1'},
+                            this.renderTemplate('standard-input', {
+                                'label': 'Timeout',
+                                'help': 'seconds',
+                                'attributes': {
+                                    'class': 'span1',
+                                    'type': 'number',
+                                    'name': 'timeout',
+                                    'value': 60,
+                                    'tabindex': 2,
+                                    'min': 1,
+                                    'step': 1,
+                                    'required': true
                                 }
                             })
                         )
@@ -2171,12 +2170,14 @@ var App = new Class({
             footer({'class': 'navbar navbar-fixed'},
                 div({'class': 'navbar-inner'},
                     div({'class': 'container'},
-                        ul({'class': 'nav'},
-                            li(a({'href': '#options'}, span('O'), 'ptions')),
-                            li(a({'href': '#target'}, span('T'), 'arget')),
-                            li(a({'href': '#payload'}, span('P'), 'ayload')),
-                            li(a({'href': '#headers'}, span('H'), 'eaders')),
-                            li(a({'href': '#response'}, span('R'), 'esponse'))
+                        div({'class': 'btn-group'},
+                            a({'class': 'btn', 'href': '#'}, 'Action'),
+                            a({'class': 'btn dropdown-toggle', 'data-toggle': 'dropdown', 'href': '#'}, span({'class': 'caret'})),
+                            ul({'class': 'dropdown-menu'},
+                                li(a({'href': '#'}, 'Action')),
+                                li(a({'href': '#'}, 'Action')),
+                                li(a({'href': '#'}, 'Action'))
+                            )
                         )
                     )
                 )
@@ -2302,6 +2303,10 @@ var App = new Class({
             row.inject(container, 'top');
         }
         */
+    },
+
+    'setProgress': function(progress) {
+        //document.body.getElement('.progress .bar').setStyle('width', progress + '%');
     },
 
     'initialize': function() {

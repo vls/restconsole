@@ -15,13 +15,10 @@
     padding: 10px;
     margin-bottom: 20px;
 
-    background-color: #ffffff;
-    border: 1px solid #999;
-    border: 1px solid rgba(0, 0, 0, 0.3);
+    background-color: whiteSmoke;
 
-    .border-radius(6px);
+    .border-radius(5px);
     .box-shadow(0 3px 7px rgba(0, 0, 0, 0.3));
-    .background-clip(padding-box);
 }
 
 .prepend-columns(@columns: 1, @prepend: 36) {
@@ -45,7 +42,7 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        background-color: rgba(0,0,0,.2);
+        background-color: rgba(0,0,0,0.2);
         -webkit-border-radius: 4px;
     }
 
@@ -55,12 +52,19 @@
     }
 }
 
+i {
+    background-image: url('/images/glyphicons-halflings-sprite.png');
+}
+
 html {
     overflow-y: hidden;
 
     body {
-        background-color: #AAAAAA;
+        background-color: #1b69a1;
+        background-image: url(/images/bg.png);
         padding-top: 40px;
+
+        font-family: 'Ubuntu', sans-serif;
 
         .user-select(none);
 
@@ -70,20 +74,9 @@ html {
             }
         }
 
-        > .progress {
-            display: none;
-            width: 300px;
-            margin: 0 auto;
-            margin-top: 50%;
-        }
-
         &.loading {
             > * {
                 display: none;
-            }
-
-            > .progress {
-                display: block;
             }
         }
 
@@ -94,6 +87,8 @@ html {
         input,
         select,
         textarea {
+            font-family: 'Droid Sans Mono', monospace;
+
             &[disabled] {
                 background-color: #DDD;
                 border: 1px solid #CCC;
@@ -115,18 +110,29 @@ html {
                 margin-right: 20px;
                 padding: 4px 0px 4px 20px;
 
+                font-family: 'Orbitron', sans-serif;
+
                 img {
                     margin-right: 4px;
                 }
 
+                span {
+                    display: inline-block;
+                    margin-top: 3px;
+                }
+
                 small {
-                    display:block;
+                    display: block;
+                    margin-top: -5px;
                     font-size: 10px;
+                    font-family: 'Ubuntu', sans-serif;
                 }
             }
 
             .nav {
                 a {
+                    font-size: 110%;
+
                     span {
                         border-bottom: 1px solid #BFBFBF;
                     }
@@ -145,6 +151,10 @@ html {
         .main {
             &.fluid-container {
                 .scrollbar(vertical);
+
+                ::-webkit-scrollbar-thumb {
+                    background-color: lighten(#1B69A1, 50%);
+                }
 
                 > .fluid-sidebar {
                     @width: @fluidSidebarWidth - 20px;
@@ -232,7 +242,7 @@ html {
                     margin-bottom: 0px;
 
                     a {
-                        background-position: -360px -96px;
+                        background-image: url(/images/resize_full.png);
                     }
                 }
 
@@ -244,16 +254,20 @@ html {
             header {
                 margin-bottom: 10px;
 
+                h2 {
+                    font-family: 'Orbitron', sans-serif;
+                }
+
                 a {
                     display: block;
                     float: right;
                     cursor: pointer;
 
-                    background-image: url(/images/glyphicons-halflings-sprite.png);
-                    background-position: -384px -96px;
+                    background-image: url(/images/resize_small.png);
                     background-repeat: no-repeat;
-                    width: 14px;
-                    height: 14px;
+                    background-position: 50% 50%;
+                    width: 24px;
+                    height: 36px;
                 }
             }
 

@@ -10,9 +10,11 @@
     "background_page": "background.html",
 
     "icons": {
+        // favicon
         "16": "images/logo/16.png",
-        "32": "images/logo/32.png",
+        // chrome://extensions
         "48": "images/logo/48.png",
+        // webstore
         "128": "images/logo/128.png"
     },
 
