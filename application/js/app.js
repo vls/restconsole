@@ -1,13 +1,22 @@
 /**
  * Template class for Mooml templates
  */
-var Template = new Class({
+Template = new Class({
     'Extends': Mooml.Template,
 
     'initialize': function(code) {
         this.name = null;
         this.code = code;
         this.prepared = false;
+    }
+});
+
+Templates = new Class({
+    'Implements': [Mooml.Templates],
+
+    'renderSection': function(name, data, bind) {
+        var template = this.sections[name];
+        return (template)? template.render(data, [bind, this].pick()) : null;
     }
 });
 
@@ -72,7 +81,7 @@ Element.implement({
     }
 });
 
-var Storage = new Class({
+Storage = new Class({
     'name': false,
 
     'initialize': function(item) {
@@ -103,7 +112,7 @@ var Storage = new Class({
     }
 });
 
-var FakeEvent = new Class({
+FakeEvent = new Class({
     'initialize': function(target) {
         var event = new DOMEvent(document.createEvent('CustomEvent'));
 
@@ -118,8 +127,8 @@ var FakeEvent = new Class({
 /**
  * Main App logic
  */
-var App = new Class({
-    'Implements': [Events, Mooml.Templates],
+App = new Class({
+    'Implements': [Events, Templates],
 
     // autocomplete values
     'datalists': {
@@ -614,6 +623,9 @@ var App = new Class({
         }),
 
         'input': new Template(function(attributes) {
+            // speech
+            attributes['x-webkit-speech'] = true;
+
             // init events object
             if (!attributes.events) attributes.events = {};
 
@@ -709,14 +721,26 @@ var App = new Class({
                 div({'class': 'navbar-inner'},
                     div({'class': 'fluid-container'},
                         div({'class': 'brand'},
-                            img({'src': 'images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
+                            img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
                         ),
 
-                        ul({'class': 'nav'},
-                            li(a({'href': '#request'}, 'Re', span('q'), 'uest')),
-                            li(a({'href': '#response'}, span('R'), 'esponse')),
-                            li(a({'href': '#settings'}, span('S'), 'ettings')),
-                            li(a({'href': '#help'}, span('H'), 'elp'))
+                        ul({
+                            'class': 'nav',
+                            'events': {
+                                'click:relay(a)': function(event) {
+                                    event.preventDefault();
+
+                                    document.getElement('[data-screen]').dataset.screen = this.dataset.target;
+
+                                    this.getParent('ul').getElement('.active').removeClass('active');
+                                    this.getParent('li').addClass('active');
+                                }
+                            }},
+
+                            li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
+                            li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
+                            li(a({'data-target': 'help'}, i({'class': 'question'}), span('H'), 'elp')),
+                            li(a({'data-target': 'about'}, i({'class': 'info'}), span('A'), 'bout'))
                         )
                     )
                 )
@@ -724,98 +748,131 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
-            div({'class': 'main fluid-container sidebar-left', 'data-screen': 'main'},
-                this.renderTemplate('sidebar'),
-                this.renderTemplate('content')
-            )
-        }),
+            div({
+                'class': 'main fluid-container sidebar-left',
+                'data-screen': 'main',
+                'events': {
+                    'scroll': function() {
+                        var position = this.getScroll().y;
 
-        'content': new Template(function(data) {
-            div({'id': 'main', 'class': 'fluid-content'},
-                this.renderTemplate('target-section'),
-                this.renderTemplate('payload-section'),
-                this.renderTemplate('authorization-section'),
-                this.renderTemplate('headers-section'),
-                this.renderTemplate('response-section'),
-                this.renderTemplate('settings-section'),
-                this.renderTemplate('help-section')
-            )
-        }),
+                        document.getElements('a[data-spy="scroll"]').each(function(link) {
+                            var target = link.get('href');
+                            var targetPosition = document.getElement(target).getCoordinates(this).top;
 
-        'sidebar': new Template(function(data) {
-            div({'class': 'fluid-sidebar'},
-                div({'class': 'well'},
-                    ul({
-                        'class': 'nav list',
-                        'events': {
-                            'click:relay(a)': function(event) {
-                                event.preventDefault();
-                                this.getParent('ul').getElement('.active').removeClass('active');
-                                this.getParent('li').addClass('active');
+                            if (targetPosition - 20 <= 0) {
+                                link.getParent('ul').getElement('.active').removeClass('active');
+                                link.getParent('li').addClass('active');
                             }
-                        }},
+                        }.bind(this));
+                    }
+                }},
 
-                        li({'class': 'nav-header'}, 'Request'),
+                div({'class': 'fluid-sidebar'},
+                    div({'class': 'well'},
+                        h3('Navigation'),
 
-                        li(a({'href': '#target'}, i({'class': 'cog'}), ' Target')),
-                        li(a({'href': '#payload'}, i({'class': 'cog'}), ' Payload')),
-                        li(a({'href': '#authorization'}, i({'class': 'cog'}), ' Authorization')),
-                        li(a({'href': '#headers'}, i({'class': 'cog'}), ' Headers'))
+                        ul({'class': 'nav list navigation', 'data-screen-name': 'main'},
+                            li({'class': 'active'}, a({'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Target')),
+                            li(a({'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Payload')),
+                            li(a({'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Authorization')),
+                            li(a({'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Headers')),
+                            li(a({'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Response'))
+                        )
+                    ),
+
+                    div({'class': 'tabbable', 'data-screen-name': 'main'},
+                        ul({'class': 'nav tabs'},
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'star'}), 'Presets')),
+                            li(a({'data-toggle': 'tab'}, i({'class': 'history'}), 'History'))
+                        ),
+
+                        div({'class': 'tab-content'},
+                            div({'class': 'tab-pane active'},
+                                ul({'class': 'nav list services'},
+                                    li({'class': 'nav-header'}, 'User'),
+                                    li(a({'href': '#'}, i({'class': 'plus'}), 'Add WADL')),
+
+                                    li({'class': 'nav-header'}, 'Defaults'),
+                                    li(a({'href': '#'}, i({'class': 'facebook'}), 'Facebook')),
+                                    li(a({'href': '#'}, i({'class': 'flickr'}), 'Flickr')),
+                                    li(a({'href': '#'}, i({'class': 'foursquare'}), 'Four Square')),
+                                    li(a({'href': '#'}, i({'class': 'googleplus'}), 'Goolge+')),
+                                    li(a({'href': '#'}, i({'class': 'linkedin'}), 'LinkedIn')),
+                                    li(a({'href': '#'}, i({'class': 'quora'}), 'Quora')),
+                                    li(a({'href': '#'}, i({'class': 'twitter'}), 'Twitter')),
+                                    li(a({'href': '#'}, i({'class': 'youtube'}), 'YouTube'))
+                                )
+                            ),
+
+                            div({'class': 'tab-pane'},
+                                ul({'class': 'nav list history'},
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
+                                )
+                            )
+                        )
+                    ),
+
+                    div({'class': 'tabbable tabs-below'},
+                        div({'class': 'tab-content'},
+                            div({'class': 'tab-pane active'},
+                                ul({'class': 'nav list'},
+                                    li(a({'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
+                                    li(a({'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
+                                    li(a({'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
+                                )
+                            ),
+
+                            div({'class': 'tab-pane'},
+                                ul({'class': 'nav list'},
+                                    li(a({'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), 'Code in Chaos Inc.')),
+                                    li(a({'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), 'GitHub')),
+                                    li(a({'shref': 'https://raw.github.com/codeinchaos/restconsole/master/LICENSE', 'target': '_blank', 'data-type': 'panel'}, i({'class': 'book'}), 'License'))
+                                )
+                            )
+                        ),
+
+                        ul({'class': 'nav tabs'},
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'star'}), 'Donate')),
+                            li(a({'data-toggle': 'tab'}, i({'class': 'time'}), 'About'))
+                        )
                     )
                 ),
 
-                div({'class': 'well'},
-                    ul({'class': 'nav list services'},
-                        li({'class': 'nav-header'}, 'Presets'),
-                        li(a({'href': '#'}, i({'class': 'home'}), ' Twitter')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'cog'}), ' Facebook')),
-                        li(a({'href': '#'}, i({'class': 'time'}), ' Goolge+'))
-                    )
-                ),
+                div({'class': 'fluid-content'},
+                    div({'data-screen-name': 'main'},
+                        this.renderSection('target'),
+                        this.renderSection('payload'),
+                        this.renderSection('authorization'),
+                        this.renderSection('headers'),
+                        this.renderSection('response')
+                    ),
 
-                div({'class': 'well'},
-                    ul({'class': 'nav list history'},
-                        li({'class': 'nav-header'}, 'History'),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas')),
-                        li(a({'href': '#'}, 'GET www.domain.com/api/sasgasg/asgas'))
-                    )
-                ),
+                    div({'data-screen-name': 'settings'},
+                        this.renderTemplate('settings')
+                    ),
 
-                div({'class': 'well'},
-                    ul({'class': 'nav list'},
-                        li({'class': 'nav-header'}, 'About'),
-                        li(a({'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), ' Code in Chaos Inc.')),
-                        li(a({'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), ' GitHub')),
-                        li(a({'shref': 'https://raw.github.com/codeinchaos/restconsole/master/LICENSE', 'target': '_blank', 'data-type': 'panel'}, i({'class': 'book'}), ' License'))
+                    div({'data-screen-name': 'help'},
+                        this.renderTemplate('help')
+                    ),
+
+                    div({'data-screen-name': 'about'},
+                        this.renderTemplate('about')
                     )
                 )
             )
         }),
 
-        'settings-section': new Template(function(data) {
+        'settings': new Template(function(data) {
             section({'id': 'settings'},
                 this.renderTemplate('section-header', 'Settings'),
 
@@ -931,13 +988,49 @@ var App = new Class({
             )
         }),
 
-        'help-section': new Template(function(data) {
+        'help': new Template(function(data) {
             section({'id': 'help'},
                 this.renderTemplate('section-header', 'Help')
             )
         }),
 
-        'target-section': new Template(function(data) {
+        'about': new Template(function(data) {
+            section({'id': 'about'},
+                this.renderTemplate('section-header', 'About')
+            )
+        }),
+
+        'controls': new Template(function(data) {
+            footer({'class': 'navbar navbar-fixed'},
+                div({'class': 'navbar-inner'},
+                    div({'class': 'fluid-container sidebar-left'},
+                        div({
+                            'class': 'fluid-content controls',
+                            'events': {
+                                'click:relay(button)': function(event) {
+                                    this.send();
+                                }.bind(this)
+                            }},
+
+                            button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
+                            button({'data-action': 'get', 'class': 'btn'}, 'GET'),
+                            button({'data-action': 'post', 'class': 'btn'}, 'POST'),
+                            button({'data-action': 'put', 'class': 'btn'}, 'PUT'),
+                            button({'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
+
+                            div({'class': 'pull-right'},
+                                button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
+                                button({'data-action': 'save', 'class': 'btn success'}, 'Save Request')
+                            )
+                        )
+                    )
+                )
+            )
+        })
+    },
+
+    'sections': {
+        'target': new Template(function(data) {
             section({'id': 'target'},
                 this.renderTemplate('section-header', 'Target'),
 
@@ -1028,7 +1121,7 @@ var App = new Class({
             )
         }),
 
-        'payload-section': new Template(function(data) {
+        'payload': new Template(function(data) {
             section({'id': 'payload', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Payload'),
 
@@ -1115,13 +1208,13 @@ var App = new Class({
                         div({'class': 'span6'},
                             div({'class': 'tabbable', 'data-name': 'payload'},
                                 ul({'class': 'nav tabs'},
-                                    li({'class': 'active'}, a({'href': '#payload-raw', 'data-toggle': 'tab'}, 'RAW Body')),
-                                    li(a({'href': '#payload-form', 'data-toggle': 'tab'}, 'Form Data')),
-                                    li(a({'href': '#payload-attachments', 'data-toggle': 'tab'}, 'Attachments'))
+                                    li({'class': 'active'}, a({'data-toggle': 'tab'}, 'RAW Body')),
+                                    li(a({'data-toggle': 'tab'}, 'Form Data')),
+                                    li(a({'data-toggle': 'tab'}, 'Attachments'))
                                 ),
 
                                 div({'class': 'tab-content'},
-                                    div({'class': 'tab-pane active', 'id': 'payload-raw'},
+                                    div({'class': 'tab-pane active'},
                                         fieldset({'class': 'control-group'},
                                             div({'class': 'controls'},
                                                 textarea({
@@ -1166,7 +1259,7 @@ var App = new Class({
                                         )
                                     ),
 
-                                    div({'class': 'tab-pane urlencoded', 'id': 'payload-form'},
+                                    div({'class': 'tab-pane urlencoded'},
                                         p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
 
                                         fieldset({
@@ -1199,7 +1292,7 @@ var App = new Class({
                                         )
                                     ),
 
-                                    div({'class': 'tab-pane', 'id': 'payload-attachments'},
+                                    div({'class': 'tab-pane'},
                                         fieldset({'class': 'control-group pairs'},
                                             div({'class': 'controls'},
                                                 div({'class': 'input-append'},
@@ -1218,7 +1311,7 @@ var App = new Class({
             )
         }),
 
-        'authorization-section': new Template(function(data) {
+        'authorization': new Template(function(data) {
             section({'id': 'authorization', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Authorization'),
 
@@ -1260,14 +1353,14 @@ var App = new Class({
                                 }
                             }},
 
-                            li({'class': 'active'}, a({'href': '#authorization-custom', 'data-toggle': 'tab'}, 'Custom')),
-                            li(a({'href': '#authorization-basic', 'data-toggle': 'tab'}, 'Basic')),
-                            //li(a({'href': '#authorization-digest', 'data-toggle': 'tab'}, 'Digest')),
-                            li(a({'href': '#authorization-oauth', 'data-toggle': 'tab'}, 'oAuth'))
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Custom')),
+                            li(a({'data-toggle': 'tab'}, 'Basic')),
+                            //li(a({'data-toggle': 'tab'}, 'Digest')),
+                            li(a({'data-toggle': 'tab'}, 'oAuth'))
                         ),
 
                         div({'class': 'tab-content'},
-                            div({'class': 'tab-pane active', 'id': 'authorization-custom'},
+                            div({'class': 'tab-pane active'},
                                 this.renderTemplate('optional-input', [
                                     {
                                         'label': 'Authorization',
@@ -1302,7 +1395,6 @@ var App = new Class({
 
                             div({
                                 'class': 'tab-pane',
-                                'id': 'authorization-basic',
                                 'events': {
                                     'keyup:relay(input[type="text"], input[type="password"])': function(event) {
                                         var pane = this.getParent('.tab-pane');
@@ -1352,7 +1444,7 @@ var App = new Class({
                                 ])
                             ),
 /*
-                            div({'class': 'tab-pane', 'id': 'authorization-digest'},
+                            div({'class': 'tab-pane'},
                                 input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
 
                                 this.renderTemplate('optional-input', [
@@ -1389,7 +1481,6 @@ var App = new Class({
 */
                             div({
                                 'class': 'tab-pane oauth',
-                                'id': 'authorization-oauth',
                                 'events': {
                                     'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
                                 }},
@@ -1638,7 +1729,7 @@ var App = new Class({
             )
         }),
 
-        'headers-section': new Template(function(data) {
+        'headers': new Template(function(data) {
             section({'id': 'headers', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Headers'),
 
@@ -1648,490 +1739,494 @@ var App = new Class({
                     'novalidate': true
                     },
 
-                    div({'class': 'row'},
-                        div({'class': 'span6'},
-                            h3('Standard Headers'),
-
-                            this.renderTemplate('optional-input', [
-                                {
-                                    'rfc': '14.1',
-                                    'label': 'Accept',
-                                    'help': 'Content-Types that are acceptable.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Accept',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: text/plain',
-                                        'list': 'mimetypes',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.2',
-                                    'label': 'Accept Charset',
-                                    'help': 'Character sets that are acceptable.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Accept-Charset',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: utf-8',
-                                        'list': 'charset',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.3',
-                                    'label': 'Accept Encoding',
-                                    'help': 'Acceptable encodings.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Accept-Encoding',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: identity',
-                                        'list': 'encoding',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.4',
-                                    'label': 'Accept Language',
-                                    'help': 'Acceptable languages for response.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Accept-Language',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: en-US',
-                                        'list': 'languages',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.10',
-                                    'label': 'Connection',
-                                    'help': 'What type of connection the user-agent would prefer',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Connection',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: keep-alive',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'Cookie',
-                                    'help': 'an HTTP cookie previously sent by the server',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Cookie',
-                                        'tabindex': 4,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.18',
-                                    'label': 'Date',
-                                    'help': 'The date and time that the message was sent',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Date',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.20',
-                                    'label': 'Expect',
-                                    'help': 'Indicates that particular server behaviors are by the client',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Expect',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 100-continue',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.22',
-                                    'label': 'From',
-                                    'help': 'The email address of the user making the request.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'From',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: user@example.com',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.31',
-                                    'label': 'Max-Forwards',
-                                    'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Max-Forwards',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 10',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.32',
-                                    'label': 'Pragma',
-                                    'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Pragma',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: no-cache',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.35',
-                                    'label': 'Range',
-                                    'help': 'Request only part of an entity. Bytes are numbered from 0.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Range',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: bytes=500-999',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.36',
-                                    'label': 'Referer',
-                                    'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Referer',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: http://www.restconsole.com/',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.41',
-                                    'label': 'Transfer-Encoding',
-                                    'help': 'The transfer encodings the user agent is willing to accept.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'TE',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: trailers, deflate',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.42',
-                                    'label': 'Upgrade',
-                                    'help': 'Ask the server to upgrade to another protocol.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Upgrade',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.43',
-                                    'label': 'User-Agent',
-                                    'help': 'The user agent string of the user agent.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'User-Agent',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.45',
-                                    'label': 'Via',
-                                    'help': 'Informs the server of proxies through which the request was sent.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Via',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.64',
-                                    'label': 'Warning',
-                                    'help': 'A general warning about possible problems with the entity body.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Warning',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 199 Miscellaneous warning',
-                                        'disabled': true
-                                    }
-                                }
-                            ])
+                    div({'class': 'tabbable'},
+                        ul({'class': 'nav tabs'},
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Standard Headers')),
+                            li(a({'data-toggle': 'tab'}, 'Cache')),
+                            li(a({'data-toggle': 'tab'}, 'Common non-standard headers'))
                         ),
 
-                        div({'class': 'span6'},
-                            h3('Cache'),
+                        div({'class': 'tab-content'},
+                            div({'class': 'tab-pane active'},
+                                this.renderTemplate('optional-input', [
+                                    {
+                                        'rfc': '14.1',
+                                        'label': 'Accept',
+                                        'help': 'Content-Types that are acceptable.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Accept',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: text/plain',
+                                            'list': 'mimetypes',
+                                            'disabled': true
+                                        }
+                                    },
 
-                            this.renderTemplate('optional-input', [
+                                    {
+                                        'rfc': '14.2',
+                                        'label': 'Accept Charset',
+                                        'help': 'Character sets that are acceptable.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Accept-Charset',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: utf-8',
+                                            'list': 'charset',
+                                            'disabled': true
+                                        }
+                                    },
 
-                                {
-                                    'rfc': '14.9',
-                                    'label': 'Cache-Control',
-                                    'help': 'Used to specify caching mechanisms along the request/response chain',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Cache-Control',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: no-cache',
-                                        'disabled': true
+                                    {
+                                        'rfc': '14.3',
+                                        'label': 'Accept Encoding',
+                                        'help': 'Acceptable encodings.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Accept-Encoding',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: identity',
+                                            'list': 'encoding',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.4',
+                                        'label': 'Accept Language',
+                                        'help': 'Acceptable languages for response.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Accept-Language',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: en-US',
+                                            'list': 'languages',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.10',
+                                        'label': 'Connection',
+                                        'help': 'What type of connection the user-agent would prefer',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Connection',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: keep-alive',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Cookie',
+                                        'help': 'an HTTP cookie previously sent by the server',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Cookie',
+                                            'tabindex': 4,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.18',
+                                        'label': 'Date',
+                                        'help': 'The date and time that the message was sent',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Date',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.20',
+                                        'label': 'Expect',
+                                        'help': 'Indicates that particular server behaviors are by the client',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Expect',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 100-continue',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.22',
+                                        'label': 'From',
+                                        'help': 'The email address of the user making the request.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'From',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: user@example.com',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.31',
+                                        'label': 'Max-Forwards',
+                                        'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Max-Forwards',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 10',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.32',
+                                        'label': 'Pragma',
+                                        'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Pragma',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: no-cache',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.35',
+                                        'label': 'Range',
+                                        'help': 'Request only part of an entity. Bytes are numbered from 0.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Range',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: bytes=500-999',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.36',
+                                        'label': 'Referer',
+                                        'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Referer',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: http://www.restconsole.com/',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.41',
+                                        'label': 'Transfer-Encoding',
+                                        'help': 'The transfer encodings the user agent is willing to accept.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'TE',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: trailers, deflate',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.42',
+                                        'label': 'Upgrade',
+                                        'help': 'Ask the server to upgrade to another protocol.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Upgrade',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.43',
+                                        'label': 'User-Agent',
+                                        'help': 'The user agent string of the user agent.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'User-Agent',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.45',
+                                        'label': 'Via',
+                                        'help': 'Informs the server of proxies through which the request was sent.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Via',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.64',
+                                        'label': 'Warning',
+                                        'help': 'A general warning about possible problems with the entity body.',
+                                        'attributes': {
+                                            'class': 'span12',
+                                            'type': 'text',
+                                            'name': 'Warning',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 199 Miscellaneous warning',
+                                            'disabled': true
+                                        }
                                     }
-                                },
+                                ])
+                            ),
 
-                                {
-                                    'rfc': '14.24',
-                                    'label': 'If-Match',
-                                    'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'If-Match',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                        'disabled': true
+                            div({'class': 'tab-pane'},
+                                this.renderTemplate('optional-input', [
+
+                                    {
+                                        'rfc': '14.9',
+                                        'label': 'Cache-Control',
+                                        'help': 'Used to specify caching mechanisms along the request/response chain',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'Cache-Control',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: no-cache',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.24',
+                                        'label': 'If-Match',
+                                        'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'If-Match',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.25',
+                                        'label': 'If-Modified-Since',
+                                        'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'If-Modified-Since',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.26',
+                                        'label': 'If-None-Match',
+                                        'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'If-None-Match',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.27',
+                                        'label': 'If-Range',
+                                        'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'If-Range',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'rfc': '14.28',
+                                        'label': 'If-Unmodified-Since',
+                                        'help': 'Only send the response if the entity has not been modified since a specific time.',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'If-Unmodified-Since',
+                                            'tabindex': 6,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                            'disabled': true
+                                        }
                                     }
-                                },
+                                ])
+                            ),
 
-                                {
-                                    'rfc': '14.25',
-                                    'label': 'If-Modified-Since',
-                                    'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'If-Modified-Since',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
-                                        'disabled': true
+                            div({'class': 'tab-pane'},
+                                this.renderTemplate('optional-input', [
+                                    {
+                                        'label': 'Origin',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'Origin',
+                                            'tabindex': 5,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: chrome-extension',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'X-HTTP-Method-Override',
+                                        'help': 'mainly used bypass firewalls and browsers limitations.',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'X-HTTP-Method-Override',
+                                            'tabindex': 7,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: PUT',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'X-Requested-With',
+                                        'help': 'mainly used to identify Ajax requests.',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'X-Requested-With',
+                                            'tabindex': 7,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: XMLHttpRequest',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'X-Forwarded-For',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'X-Forwarded-For',
+                                            'tabindex': 7,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: ',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'X-Do-Not-Track',
+                                        'help': 'Requests a web application to disable their tracking of a user.',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'X-Do-Not-Track',
+                                            'tabindex': 7,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 1',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'DNT',
+                                        'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'name': 'DNT',
+                                            'tabindex': 7,
+                                            'autocomplete': false,
+                                            'placeholder': 'ex: 1',
+                                            'disabled': true
+                                        }
                                     }
-                                },
-
-                                {
-                                    'rfc': '14.26',
-                                    'label': 'If-None-Match',
-                                    'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'If-None-Match',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.27',
-                                    'label': 'If-Range',
-                                    'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'If-Range',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'rfc': '14.28',
-                                    'label': 'If-Unmodified-Since',
-                                    'help': 'Only send the response if the entity has not been modified since a specific time.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'If-Unmodified-Since',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
-                                        'disabled': true
-                                    }
-                                }
-                            ]),
-
-                            h3('Common non-standard request headers'),
-
-                            this.renderTemplate('optional-input', [
-                                {
-                                    'label': 'Origin',
-                                    'help': '',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Origin',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: chrome-extension',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'X-HTTP-Method-Override',
-                                    'help': 'mainly used bypass firewalls and browsers limitations.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'X-HTTP-Method-Override',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: PUT',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'X-Requested-With',
-                                    'help': 'mainly used to identify Ajax requests.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'X-Requested-With',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: XMLHttpRequest',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'X-Forwarded-For',
-                                    'help': '',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'X-Forwarded-For',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: ',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'X-Do-Not-Track',
-                                    'help': 'Requests a web application to disable their tracking of a user.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'X-Do-Not-Track',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 1',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'DNT',
-                                    'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'DNT',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
-                                        'placeholder': 'ex: 1',
-                                        'disabled': true
-                                    }
-                                }
-                            ])
+                                ])
+                            )
                         )
                     )
                 )
             )
         }),
 
-        'response-section': new Template(function(data) {
+        'response': new Template(function(data) {
             section({'id': 'response'},
                 this.renderTemplate('section-header', 'Response'),
 
                 ul({'class': 'tabbable', 'data-name': 'response'},
                     ul({'class': 'nav tabs'},
-                        li({'class': 'active'}, a({'href': '#response-body', 'data-toggle': 'tab'}, 'Response Body')),
-                        li(a({'href': '#response-body2', 'data-toggle': 'tab'}, 'RAW Response')),
-                        li(a({'href': '#response-preview', 'data-toggle': 'tab'}, 'Response Preview')),
-                        li(a({'href': '#response-raw', 'data-toggle': 'tab'}, 'RAW Request')),
-                        li(a({'href': '#response-har', 'data-toggle': 'tab'}, 'HTTP Archive (HAR)'))
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Response Body')),
+                        li(a({'data-toggle': 'tab'}, 'RAW Response')),
+                        li(a({'data-toggle': 'tab'}, 'Response Preview')),
+                        li(a({'data-toggle': 'tab'}, 'RAW Request')),
+                        li(a({'data-toggle': 'tab'}, 'HTTP Archive (HAR)'))
                     ),
 
                     div({'class': 'tab-content'},
-                        div({'class': 'tab-pane active', 'id': 'respone-body'},
+                        div({'class': 'tab-pane active'},
                             pre({
                                 'id': 'response-body',
                                 'class': 'prettyprint',
@@ -2148,68 +2243,29 @@ var App = new Class({
                             })
                         ),
 
-                        div({'class': 'tab-pane', 'id': 'respone-body2'},
+                        div({'class': 'tab-pane'},
                             pre({'class': 'prettyprint'})
                         ),
 
-                        div({'class': 'tab-pane', 'id': 'respone-preview'}),
+                        div({'class': 'tab-pane'}),
 
-                        div({'class': 'tab-pane', 'id': 'respone-raw'},
+                        div({'class': 'tab-pane'},
                             pre({'class': 'prettyprint'})
                         ),
 
-                        div({'class': 'tab-pane', 'id': 'respone-har'},
+                        div({'class': 'tab-pane'},
                             pre({'id': 'har', 'class': 'prettyprint lang-json'})
                         )
                     )
                 )
             )
-        }),
-
-        'controls': new Template(function(data) {
-            footer({'class': 'navbar navbar-fixed'},
-                div({'class': 'navbar-inner'},
-                    div({'class': 'container'},
-                        div({'class': 'btn-group'},
-                            a({'class': 'btn', 'href': '#'}, 'Action'),
-                            a({'class': 'btn dropdown-toggle', 'data-toggle': 'dropdown', 'href': '#'}, span({'class': 'caret'})),
-                            ul({'class': 'dropdown-menu'},
-                                li(a({'href': '#'}, 'Action')),
-                                li(a({'href': '#'}, 'Action')),
-                                li(a({'href': '#'}, 'Action'))
-                            )
-                        )
-                    )
-                )
-            )
-            /*
-                section({'events': {
-                        'click:relay(button)': function(event) {
-                            this.send();
-                        }.bind(this)
-                    }},
-
-                    img({'src': '/images/loading.gif'}),
-
-                    button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
-                    button({'data-action': 'get', 'class': 'btn'}, 'GET'),
-                    button({'data-action': 'post', 'class': 'btn'}, 'POST'),
-                    button({'data-action': 'put', 'class': 'btn'}, 'PUT'),
-                    button({'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
-
-                    div({'class': 'pull-right'},
-                        button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
-                        button({'data-action': 'save', 'class': 'btn success'}, 'Save Request')
-                    )
-                )
-            )
-            */
         })
     },
 
     'resizeEvent': function(event) {
         document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
         document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
+        document.getElement('#response').setStyle('min-height', window.getHeight() - 140);
     },
 
     'signOAuth': function() {
@@ -2310,7 +2366,7 @@ var App = new Class({
     },
 
     'initialize': function() {
-        var body = document.body;
+        var body = document.body.empty();
 
         // render the body templates
         body.adopt(this.renderTemplate('header'));
@@ -2326,18 +2382,8 @@ var App = new Class({
             body.adopt(this.renderTemplate('datalist', {'id': id, 'values': datalist}));
         }.bind(this));
 
-        // enable smooth scrolling
-        new Fx.SmoothScroll({
-            'offset': {'y': -60},
-            'links': '.navbar a[href^="#"]',
-            'wheelStops': true
-        });
-
         // load default values
         this.loadDefaults();
-
-        // display the page
-        body.set('class', 'loaded');
 
         // fix sizing
         window.addEvent('resize', this.resizeEvent).fireEvent('resize');
