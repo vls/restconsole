@@ -81,7 +81,7 @@ Element.implement({
     }
 });
 
-Storage = new Class({
+var Storage = new Class({
     'name': false,
 
     'initialize': function(item) {
@@ -127,7 +127,7 @@ FakeEvent = new Class({
 /**
  * Main App logic
  */
-App = new Class({
+var App = new Class({
     'Implements': [Events, Templates],
 
     // autocomplete values
@@ -362,7 +362,7 @@ App = new Class({
             ['gn', 'Guarani'],
             ['gu', 'Gujarati'],
             ['ha', 'Hausa'],
-            ['he', 'Hebrew (formerly iw)'],
+            ['he', 'Hebrew'],
             ['hi', 'Hindi'],
             ['hr', 'Croatian'],
             ['hu', 'Hungarian'],
@@ -463,7 +463,61 @@ App = new Class({
         ]
     },
 
+    // presets
+    'presets': [{
+        'name': 'Twitter',
+        'resources': [
+            {
+                'name': 'Public Timeline',
+                'request': {
+                    'method': 'GET',
+                    'url': 'http://api.twitter.com/1/statuses/public_timeline.json',
+                    'headers': [],
+                    'queryString': [],
+                    'postData': {
+                        'mimeType': null,
+                        'params': [{
+                            'name': 'paramName',
+                            'value': 'paramValue',
+                        }],
+                        'text' : null
+                    }
+                }
+            }
+        ]
+    }],
+
     'events': {
+        'change:relay(input[type="text"], input[type="number"], textarea)': function(event) {
+            var form = this.getParent('form[name="main"]');
+
+            // init data object
+            var data = {
+                'url': form.getElement('[name="url"]').get('value'),
+                'method': form.getElement('[name="method"]').get('value'),
+                'options': []
+            };
+
+            // construct custom "options" array
+            form.getElements('[data-storage="option"]').each(function(option) {
+                data.options.push({
+                    'name': option.get('name'),
+                    'value': option.get('value'),
+                    'disabled': option.get('disabled')
+                });
+            });
+
+            // init HAR.Request
+            var request = new HAR.Request(data);
+
+            // add headers
+            form.getElements('[data-storage="header"]').each(function(header) {
+                request.addHeader(header.get('name'), header.get('value'), header.get('disabled'));
+            });
+
+            console.log(request.toObject());
+        },
+
         // loads panels
         // TODO: its ugly, replace with modals + iframes
         'click:relay(a[data-type="panel"])': function(event) {
@@ -489,6 +543,16 @@ App = new Class({
     'templates': {
         'datalist': new Template(function(data) {
             datalist({'id': data.id}, this.renderTemplate('option', data.values))
+        }),
+
+        'presets': new Template(function(data) {
+            li(i({'class': data.name.toLowerCase()}),
+                details(summary(data.name), this.renderTemplate('resource', data.resources))
+            )
+        }),
+
+        'resource': new Template(function(data) {
+            a(data.name);
         }),
 
         'option': new Template(function(data) {
@@ -632,18 +696,8 @@ App = new Class({
             // default change event
             if (!attributes.events.change) {
                 attributes.events.change = function(event) {
-                    this.fireEvent('save');
+                    this.fireEvent('highlight');
                 }
-            }
-
-            // save event
-            attributes.events.save = function(event) {
-                console.log('saving ' + this.get('name'));
-
-                new Storage('input-values').set(this.get('name'), this.get('value'));
-
-                // trigger highlight
-                this.fireEvent('highlight');
             }
 
             // highlight event
@@ -701,8 +755,6 @@ App = new Class({
                                             input.set('disabled', true);
                                             this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
                                         }
-
-                                        new Storage('input-status').set(input.get('name'), disabled);
                                     }
                                 }
                             })
@@ -730,7 +782,13 @@ App = new Class({
                                 'click:relay(a)': function(event) {
                                     event.preventDefault();
 
-                                    document.getElement('[data-screen]').dataset.screen = this.dataset.target;
+                                    var container = document.getElement('[data-screen]');
+
+                                    container.dataset.screen = this.dataset.target;
+
+                                    new Fx.Scroll(container).toTop();
+
+                                    container.fireEvent('scroll');
 
                                     this.getParent('ul').getElement('.active').removeClass('active');
                                     this.getParent('li').addClass('active');
@@ -739,8 +797,8 @@ App = new Class({
 
                             li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
                             li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
-                            li(a({'data-target': 'help'}, i({'class': 'question'}), span('H'), 'elp')),
-                            li(a({'data-target': 'about'}, i({'class': 'info'}), span('A'), 'bout'))
+                            li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
+                            li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
                         )
                     )
                 )
@@ -772,11 +830,16 @@ App = new Class({
                         h3('Navigation'),
 
                         ul({'class': 'nav list navigation', 'data-screen-name': 'main'},
-                            li({'class': 'active'}, a({'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Target')),
-                            li(a({'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Payload')),
-                            li(a({'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Authorization')),
-                            li(a({'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Headers')),
-                            li(a({'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Response'))
+                            li({'class': 'active'}, a({'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('T'), 'arget')),
+                            li(a({'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('P'), 'ayload')),
+                            li(a({'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('A'), 'uthorization')),
+                            li(a({'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('H'), 'eaders')),
+                            li(a({'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('R'), 'esponse'))
+                        ),
+
+                        ul({'class': 'nav list navigation', 'data-screen-name': 'settings'},
+                            li({'class': 'active'}, a({'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'General')),
+                            li(a({'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Display'))
                         )
                     ),
 
@@ -788,72 +851,61 @@ App = new Class({
 
                         div({'class': 'tab-content'},
                             div({'class': 'tab-pane active'},
-                                ul({'class': 'nav list services'},
+                                ul({'class': 'nav list presets'},
                                     li({'class': 'nav-header'}, 'User'),
-                                    li(a({'href': '#'}, i({'class': 'plus'}), 'Add WADL')),
+                                    li(a({
+                                        'events': {
+                                            'click': function(event) {
+                                                event.stop();
+
+                                                alert('Coming Soon!');
+                                            }
+                                        }
+                                    }, i({'class': 'plus'}), 'Add WADL')),
 
                                     li({'class': 'nav-header'}, 'Defaults'),
-                                    li(a({'href': '#'}, i({'class': 'facebook'}), 'Facebook')),
-                                    li(a({'href': '#'}, i({'class': 'flickr'}), 'Flickr')),
-                                    li(a({'href': '#'}, i({'class': 'foursquare'}), 'Four Square')),
-                                    li(a({'href': '#'}, i({'class': 'googleplus'}), 'Goolge+')),
-                                    li(a({'href': '#'}, i({'class': 'linkedin'}), 'LinkedIn')),
-                                    li(a({'href': '#'}, i({'class': 'quora'}), 'Quora')),
-                                    li(a({'href': '#'}, i({'class': 'twitter'}), 'Twitter')),
-                                    li(a({'href': '#'}, i({'class': 'youtube'}), 'YouTube'))
+
+                                    this.renderTemplate('presets', this.presets)
                                 )
                             ),
 
                             div({'class': 'tab-pane'},
                                 ul({'class': 'nav list history'},
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': '#'}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
                                 )
                             )
                         )
                     ),
 
-                    div({'class': 'tabbable tabs-below'},
-                        div({'class': 'tab-content'},
-                            div({'class': 'tab-pane active'},
-                                ul({'class': 'nav list'},
-                                    li(a({'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
-                                    li(a({'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
-                                    li(a({'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
-                                )
-                            ),
-
-                            div({'class': 'tab-pane'},
-                                ul({'class': 'nav list'},
-                                    li(a({'href': 'http://www.codeinchaos.com', 'target': '_blank'}, i({'class': 'star'}), 'Code in Chaos Inc.')),
-                                    li(a({'href': 'https://github.com/codeinchaos/restconsole', 'target': '_blank'}, i({'class': 'cog'}), 'GitHub')),
-                                    li(a({'shref': 'https://raw.github.com/codeinchaos/restconsole/master/LICENSE', 'target': '_blank', 'data-type': 'panel'}, i({'class': 'book'}), 'License'))
-                                )
-                            )
-                        ),
-
-                        ul({'class': 'nav tabs'},
-                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'star'}), 'Donate')),
-                            li(a({'data-toggle': 'tab'}, i({'class': 'time'}), 'About'))
+                    div({'class': 'well'},
+                        ul({'class': 'nav list'},
+                            li({'class': 'nav-header'}, 'Donate'),
+                            li(a({'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
+                            li(a({'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
+                            li(a({'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
                         )
                     )
                 ),
 
                 div({'class': 'fluid-content'},
                     div({'data-screen-name': 'main'},
-                        this.renderSection('target'),
-                        this.renderSection('payload'),
-                        this.renderSection('authorization'),
-                        this.renderSection('headers'),
+                        form({'name': 'main', 'novalidate': true},
+                            this.renderSection('target'),
+                            this.renderSection('payload'),
+                            this.renderSection('authorization'),
+                            this.renderSection('headers')
+                        ),
+
                         this.renderSection('response')
                     ),
 
@@ -873,8 +925,11 @@ App = new Class({
         }),
 
         'settings': new Template(function(data) {
-            section({'id': 'settings'},
-                this.renderTemplate('section-header', 'Settings'),
+            section({'id': 'display'}
+            ),
+
+            section({'id': 'general'},
+                this.renderTemplate('section-header', 'General'),
 
                 a({'events': {
                     'click': function(event) {
@@ -1034,89 +1089,90 @@ App = new Class({
             section({'id': 'target'},
                 this.renderTemplate('section-header', 'Target'),
 
-                form({'name': 'target', 'class': 'form-stacked', 'novalidate': true},
-                    div({'class': 'row'},
-                        div({'class': 'span2'},
-                            this.renderTemplate('standard-input', {
-                                'rfc': '5.1.1',
-                                'label': 'Method',
-                                'help': 'HTTP Verb',
-                                'attributes': {
-                                    'class': 'span2',
-                                    'type': 'text',
-                                    'name': 'method',
-                                    'tabindex': 2,
-                                    'autocomplete': true,
-                                    'placeholder': 'ex: POST',
-                                    'list': 'methods',
-                                    'required': true
-                                }
-                            })
-                        ),
-
-                        div({'class': 'span9'},
-                            this.renderTemplate('standard-input', {
-                                'rfc': '3.2',
-                                'label': 'URI',
-                                'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
-                                'attributes': {
-                                    'class': 'span9',
-                                    'type': 'text',
-                                    'name': 'uri',
-                                    'tabindex': 2,
-                                    'autocomplete': true,
-                                    'placeholder': 'ex: http://example.com/resources/ef7d-xj36p',
-                                    'required': true,
-                                    'events': {
-                                        'change': function(event) {
-                                            var value = this.get('value');
-
-                                            if (value.length && value.substr(0, 4) != 'http') {
-                                                this.set('value', 'http://' + value);
-                                            }
-
-                                            this.fireEvent('save');
-                                        }
-                                    }
-                                }
-                            })
-                        ),
-
-                        div({'class': 'span1'},
-                            this.renderTemplate('standard-input', {
-                                'label': 'Timeout',
-                                'help': 'seconds',
-                                'attributes': {
-                                    'class': 'span1',
-                                    'type': 'number',
-                                    'name': 'timeout',
-                                    'value': 60,
-                                    'tabindex': 2,
-                                    'min': 1,
-                                    'step': 1,
-                                    'required': true
-                                }
-                            })
-                        )
+                div({'class': 'row'},
+                    div({'class': 'span2'},
+                        this.renderTemplate('standard-input', {
+                            'rfc': '5.1.1',
+                            'label': 'Method',
+                            'help': 'HTTP Verb',
+                            'attributes': {
+                                'class': 'span2',
+                                'type': 'text',
+                                'data-storage': 'property',
+                                'name': 'method',
+                                'tabindex': 2,
+                                'autocomplete': true,
+                                'placeholder': 'ex: POST',
+                                'list': 'methods',
+                                'required': true
+                            }
+                        })
                     ),
 
-                    div({'class': 'row'},
-                        this.renderTemplate('pairs', [
-                            {
-                                'name': 'headers',
-                                'label': 'Headers',
-                                'data-type': 'header',
-                                'tabindex': 3
-                            },
+                    div({'class': 'span9'},
+                        this.renderTemplate('standard-input', {
+                            'rfc': '3.2',
+                            'label': 'URI',
+                            'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
+                            'attributes': {
+                                'class': 'span9',
+                                'type': 'text',
+                                'data-storage': 'property',
+                                'name': 'url',
+                                'tabindex': 2,
+                                'autocomplete': true,
+                                'placeholder': 'ex: http://example.com/resources/ef7d-xj36p',
+                                'required': true,
+                                'events': {
+                                    'change': function(event) {
+                                        var value = this.get('value');
 
-                            {
-                                'name': 'query',
-                                'label': 'Query String',
-                                'data-type': 'query',
-                                'tabindex': 3
+                                        if (value.length && value.substr(0, 4) != 'http') {
+                                            this.set('value', 'http://' + value);
+                                        }
+
+                                        this.fireEvent('highlight');
+                                    }
+                                }
                             }
-                        ])
+                        })
+                    ),
+
+                    div({'class': 'span1'},
+                        this.renderTemplate('standard-input', {
+                            'label': 'Timeout',
+                            'help': 'seconds',
+                            'attributes': {
+                                'class': 'span1',
+                                'type': 'number',
+                                'data-storage': 'option',
+                                'name': 'timeout',
+                                'value': 60,
+                                'tabindex': 2,
+                                'min': 1,
+                                'step': 1,
+                                'required': true
+                            }
+                        })
                     )
+                ),
+
+                div({'class': 'row'},
+                    this.renderTemplate('pairs', [
+                        {
+                            'name': 'headers',
+                            'label': 'Headers',
+                            'data-type': 'header',
+                            'tabindex': 3
+                        },
+
+                        {
+                            'name': 'query',
+                            'label': 'Query String',
+                            'data-type': 'query',
+                            'tabindex': 3
+                        }
+                    ])
                 )
             )
         }),
@@ -1125,181 +1181,183 @@ App = new Class({
             section({'id': 'payload', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Payload'),
 
-                form({'name': 'payload', 'class': 'form-stacked', 'novalidate': true},
-                    div({'class': 'row'},
-                        div({'class': 'span6'},
-                            this.renderTemplate('optional-input', [
-                                {
-                                    'label': 'Content-Type',
-                                    'help': 'The mime type of the body of the request',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Content-Type',
-                                        'tabindex': 4,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: application/x-www-form-urlencoded',
-                                        'list': 'mimetypes',
-                                        'disabled': true,
-                                        'events': {
-                                            'change': function(event) {
-                                                var form = this.getParent('form');
-                                                var tab = form.getElement('.tab-pane.urlencoded');
-                                                var textarea = form.getElement('textarea');
+                div({'class': 'row'},
+                    div({'class': 'span6'},
+                        this.renderTemplate('optional-input', [
+                            {
+                                'label': 'Content-Type',
+                                'help': 'The mime type of the body of the request',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Content-Type',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: application/x-www-form-urlencoded',
+                                    'list': 'mimetypes',
+                                    'disabled': true,
+                                    'events': {
+                                        'change': function(event) {
+                                            var form = this.getParent('form');
+                                            var tab = form.getElement('.tab-pane.urlencoded');
+                                            var textarea = form.getElement('textarea');
 
-                                                if (this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
-                                                    tab.addClass('true');
-                                                    textarea.fireEvent('change');
-                                                } else {
-                                                    tab.removeClass('true');
-                                                }
-
-                                                this.fireEvent('save');
+                                            if (this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                tab.addClass('true');
+                                                textarea.fireEvent('change');
+                                            } else {
+                                                tab.removeClass('true');
                                             }
+
+                                            this.fireEvent('highlight');
                                         }
                                     }
-                                },
-
-                                {
-                                    'label': 'Content-Type Encoding',
-                                    'help': 'Acceptable encodings',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'content-encoding',
-                                        'tabindex': 4,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: utf-8',
-                                        'list': 'charset',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'Content-Length',
-                                    'help': 'The length of the request body in octets (8-bit bytes).',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Content-Length',
-                                        'tabindex': 4,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: 348',
-                                        'disabled': true
-                                    }
-                                },
-
-                                {
-                                    'label': 'Content-MD5',
-                                    'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
-                                    'attributes': {
-                                        'class': 'span6',
-                                        'type': 'text',
-                                        'name': 'Content-MD5',
-                                        'tabindex': 4,
-                                        'autocomplete': true,
-                                        'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==',
-                                        'disabled': true
-                                    }
                                 }
-                            ])
-                        ),
+                            },
 
-                        div({'class': 'span6'},
-                            div({'class': 'tabbable', 'data-name': 'payload'},
-                                ul({'class': 'nav tabs'},
-                                    li({'class': 'active'}, a({'data-toggle': 'tab'}, 'RAW Body')),
-                                    li(a({'data-toggle': 'tab'}, 'Form Data')),
-                                    li(a({'data-toggle': 'tab'}, 'Attachments'))
-                                ),
+                            {
+                                'label': 'Content-Type Encoding',
+                                'help': 'Acceptable encodings',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'option',
+                                    'name': 'content-encoding',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: utf-8',
+                                    'list': 'charset',
+                                    'disabled': true
+                                }
+                            },
 
-                                div({'class': 'tab-content'},
-                                    div({'class': 'tab-pane active'},
-                                        fieldset({'class': 'control-group'},
-                                            div({'class': 'controls'},
-                                                textarea({
-                                                    'class': 'span6',
-                                                    'name': 'payload',
-                                                    'rows': 5,
-                                                    'tabindex': 5,
-                                                    'placeholder': 'ex: XML, JSON, etc ...',
-                                                    'events': {
-                                                        'change': function(event) {
-                                                            var form = this.getParent('form');
-                                                            var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                            {
+                                'label': 'Content-Length',
+                                'help': 'The length of the request body in octets (8-bit bytes).',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Content-Length',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 348',
+                                    'disabled': true
+                                }
+                            },
 
-                                                            form.getElements('.pairs .controls:nth-last-of-type(n+2)').destroy();
+                            {
+                                'label': 'Content-MD5',
+                                'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Content-MD5',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
 
-                                                            if (type == 'application/x-www-form-urlencoded') {
-                                                                var payload = this.get('value');
+                    div({'class': 'span6'},
+                        div({'class': 'tabbable', 'data-name': 'payload'},
+                            ul({'class': 'nav tabs'},
+                                li({'class': 'active'}, a({'data-toggle': 'tab'}, 'RAW Body')),
+                                li(a({'data-toggle': 'tab'}, 'Form Data')),
+                                li(a({'data-toggle': 'tab'}, 'Attachments'))
+                            ),
 
-                                                                if (payload != '') {
-                                                                    payload = payload.parseQueryString();
+                            div({'class': 'tab-content'},
+                                div({'class': 'tab-pane active'},
+                                    fieldset({'class': 'control-group'},
+                                        div({'class': 'controls'},
+                                            textarea({
+                                                'class': 'span6',
+                                                'name': 'payload',
+                                                'rows': 5,
+                                                'tabindex': 5,
+                                                'placeholder': 'ex: XML, JSON, etc ...',
+                                                'events': {
+                                                    'change': function(event) {
+                                                        var form = this.getParent('form');
+                                                        var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
 
-                                                                    Object.each(payload, function(value, key) {
-                                                                        // construct fake event object
-                                                                        var event = new FakeEvent(form.getElement('.pairs .controls:last-of-type .add-on'));
+                                                        form.getElements('.pairs .controls:nth-last-of-type(n+2)').destroy();
 
-                                                                        // trigger focus event to insert more rows
-                                                                        document.fireEvent('click', event);
+                                                        if (type == 'application/x-www-form-urlencoded') {
+                                                            var payload = this.get('value');
 
-                                                                        var last = form.getElement('.pairs .controls:nth-last-child(-n+2)');
+                                                            if (payload != '') {
+                                                                payload = payload.parseQueryString();
 
-                                                                        last.getElement('input[type="text"]:first-of-type').set('value', key);
-                                                                        last.getElement('input[type="text"]:last-of-type').set('value', value);
-                                                                    }.bind(this));
-                                                                }
+                                                                Object.each(payload, function(value, key) {
+                                                                    // construct fake event object
+                                                                    var event = new FakeEvent(form.getElement('.pairs .controls:last-of-type .add-on'));
+
+                                                                    // trigger focus event to insert more rows
+                                                                    document.fireEvent('click', event);
+
+                                                                    var last = form.getElement('.pairs .controls:nth-last-child(-n+2)');
+
+                                                                    last.getElement('input[type="text"]:first-of-type').set('value', key);
+                                                                    last.getElement('input[type="text"]:last-of-type').set('value', value);
+                                                                }.bind(this));
                                                             }
                                                         }
                                                     }
-                                                }),
-
-                                                p({'class': 'help-text'}, 'Remember to set the Content-Type header.')
-                                            )
-                                        )
-                                    ),
-
-                                    div({'class': 'tab-pane urlencoded'},
-                                        p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
-
-                                        fieldset({
-                                            'class': 'control-group pairs',
-                                            'name': 'payload',
-                                            'ignore': true,
-                                            'events': {
-                                                'change:relay(input[type="text"])': function(event) {
-                                                    var form = this.getParent('form');
-                                                    var data = form.getPairs('payload');
-                                                    var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
-                                                    var textarea = form.getElement('textarea[name="payload"]');
-
-                                                    if (type == 'application/x-www-form-urlencoded') {
-                                                        textarea.set('value', Object.toQueryString(data));
-
-                                                        // trigger change event to store the resutls
-                                                        document.fireEvent('change', new FakeEvent(textarea));
-                                                    }
                                                 }
-                                            }},
+                                            }),
 
-                                            div({'class': 'controls'},
-                                                div({'class': 'input-append'},
-                                                    input({'class': 'span2 smaller', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                                    input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                                    span({'class': 'add-on btn success'})
-                                                )
+                                            p({'class': 'help-text'}, 'Remember to set the Content-Type header.')
+                                        )
+                                    )
+                                ),
+
+                                div({'class': 'tab-pane urlencoded'},
+                                    p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
+
+                                    fieldset({
+                                        'class': 'control-group pairs',
+                                        'name': 'payload',
+                                        'ignore': true,
+                                        'events': {
+                                            'change:relay(input[type="text"])': function(event) {
+                                                var form = this.getParent('form');
+                                                var data = form.getPairs('payload');
+                                                var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                                var textarea = form.getElement('textarea[name="payload"]');
+
+                                                if (type == 'application/x-www-form-urlencoded') {
+                                                    textarea.set('value', Object.toQueryString(data));
+
+                                                    // trigger change event to store the resutls
+                                                    document.fireEvent('change', new FakeEvent(textarea));
+                                                }
+                                            }
+                                        }},
+
+                                        div({'class': 'controls'},
+                                            div({'class': 'input-append'},
+                                                input({'class': 'span2 smaller', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
+                                                input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
+                                                span({'class': 'add-on btn success'})
                                             )
                                         )
-                                    ),
+                                    )
+                                ),
 
-                                    div({'class': 'tab-pane'},
-                                        fieldset({'class': 'control-group pairs'},
-                                            div({'class': 'controls'},
-                                                div({'class': 'input-append'},
-                                                    input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
-                                                    input({'class': 'span2 smaller', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
-                                                    span({'class': 'add-on btn success'})
-                                                )
+                                div({'class': 'tab-pane'},
+                                    fieldset({'class': 'control-group pairs'},
+                                        div({'class': 'controls'},
+                                            div({'class': 'input-append'},
+                                                input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
+                                                input({'class': 'span2 smaller', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                span({'class': 'add-on btn success'})
                                             )
                                         )
                                     )
@@ -1315,412 +1373,422 @@ App = new Class({
             section({'id': 'authorization', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Authorization'),
 
-                form({
-                    'name': 'authorization',
-                    'class': 'form-stacked',
-                    'novalidate': true
-                    },
+                div({'class': 'tabbable', 'data-name': 'authorization'},
+                    ul({
+                        'class': 'nav tabs',
+                        'events': {
+                            'click:relay(li a)': function(event) {
+                                var tabbable = this.getParent('.tabbable');
+                                var tabs = tabbable.getElement('.tabs');
+                                var content = tabbable.getElements('.tab-content .tab-pane');
+                                var index = tabs.getChildren().indexOf(this.getParent('li'));
 
-                    div({'class': 'tabbable', 'data-name': 'authorization'},
-                        ul({
-                            'class': 'nav tabs',
+                                content.getElements('input[name="Authorization"], input[type="text"]:not([disabled]), input[type="password"]:not([disabled]), input[type="hidden"], select').each(function(elements) {
+                                    elements.set('disabled', true);
+                                });
+
+                                content[index].getElements('input[name="Authorization"], input[type="hidden"], select').set('disabled', false);
+
+                                content[index].getElements('input[type="checkbox"]').each(function(checkbox) {
+                                    if (checkbox.get('checked')) {
+                                        var input = checkbox.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+
+                                        input.set('disabled', false);
+
+                                        document.fireEvent('keyup', new FakeEvent(input));
+                                    }
+                                });
+
+                                // trigger the Authorization value
+                                var firstInput = content[index].getElement('input[type="text"]')
+                                content[index].fireEvent('keyup', new FakeEvent(firstInput));
+                            }
+                        }},
+
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Custom')),
+                        li(a({'data-toggle': 'tab'}, 'Basic')),
+                        //li(a({'data-toggle': 'tab'}, 'Digest')),
+                        li(a({'data-toggle': 'tab'}, 'oAuth'))
+                    ),
+
+                    div({'class': 'tab-content'},
+                        div({'class': 'tab-pane active'},
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Authorization',
+                                    'help': 'Authentication credentials for HTTP authentication.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Authorization',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.34',
+                                    'label': 'Proxy-Authorization',
+                                    'help': 'Authorization credentials for connecting to a proxy.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Proxy-Authorization',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+
+                        div({
+                            'class': 'tab-pane',
                             'events': {
-                                'click:relay(li a)': function(event) {
-                                    var tabbable = this.getParent('.tabbable');
-                                    var tabs = tabbable.getElement('.tabs');
-                                    var content = tabbable.getElements('.tab-content .tab-pane');
-                                    var index = tabs.getChildren().indexOf(this.getParent('li'));
+                                'keyup:relay(input[type="text"], input[type="password"])': function(event) {
+                                    var pane = this.getParent('.tab-pane');
+                                    var data = pane.toObject();
 
-                                    content.getElements('input[name="Authorization"], input[type="text"]:not([disabled]), input[type="password"]:not([disabled]), input[type="hidden"], select').each(function(elements) {
-                                        elements.set('disabled', true);
-                                    });
+                                    var str = data['basic-username'] + ':';
 
-                                    content[index].getElements('input[name="Authorization"], input[type="hidden"], select').set('disabled', false);
+                                    if (data['basic-password']) {
+                                        str += data['basic-password'];
+                                    }
 
-                                    content[index].getElements('input[type="checkbox"]').each(function(checkbox) {
-                                        if (checkbox.get('checked')) {
-                                            var input = checkbox.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
-
-                                            input.set('disabled', false);
-
-                                            document.fireEvent('keyup', new FakeEvent(input));
-                                        }
-                                    });
-
-                                    // trigger the Authorization value
-                                    var firstInput = content[index].getElement('input[type="text"]')
-                                    content[index].fireEvent('keyup', new FakeEvent(firstInput));
+                                    pane.getElement('input[name="Authorization"]').set('value', 'Basic ' + btoa(str));
                                 }
                             }},
 
-                            li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Custom')),
-                            li(a({'data-toggle': 'tab'}, 'Basic')),
-                            //li(a({'data-toggle': 'tab'}, 'Digest')),
-                            li(a({'data-toggle': 'tab'}, 'oAuth'))
-                        ),
+                            input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
 
-                        div({'class': 'tab-content'},
-                            div({'class': 'tab-pane active'},
-                                this.renderTemplate('optional-input', [
-                                    {
-                                        'label': 'Authorization',
-                                        'help': 'Authentication credentials for HTTP authentication.',
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Username',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'authorization',
+                                        'name': 'basic-username',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: username',
+                                        'required': true,
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'Password',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'password',
+                                        'data-storage': 'authorization',
+                                        'name': 'basic-password',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: password',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+/*
+                        div({'class': 'tab-pane'},
+                            input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
+
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Username',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'name': 'digest-username',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: username',
+                                        'required': true,
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'Password',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'password',
+                                        'name': 'digest-password',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: password',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+*/
+                        div({
+                            'class': 'tab-pane oauth',
+                            'events': {
+                                'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
+                            }},
+
+                            div({'class': 'row'},
+                                div({'class': 'span12'},
+                                    this.renderTemplate('standard-input', {
+                                        'label': 'Authorization Header',
+                                        'help': '',
                                         'attributes': {
                                             'class': 'span12',
                                             'type': 'text',
+                                            'data-storage': 'authorization',
                                             'name': 'Authorization',
                                             'tabindex': 7,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.34',
-                                        'label': 'Proxy-Authorization',
-                                        'help': 'Authorization credentials for connecting to a proxy.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Proxy-Authorization',
-                                            'tabindex': 5,
                                             'autocomplete': false,
-                                            'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
-                                            'disabled': true
+                                            'placeholder': 'ex: ',
+                                            'required': false,
+                                            'disabled': false,
+                                            'readonly': true
                                         }
-                                    }
-                                ])
+                                    })
+                                )
                             ),
 
-                            div({
-                                'class': 'tab-pane',
-                                'events': {
-                                    'keyup:relay(input[type="text"], input[type="password"])': function(event) {
-                                        var pane = this.getParent('.tab-pane');
-                                        var data = pane.toObject();
-
-                                        var str = data['basic-username'] + ':';
-
-                                        if (data['basic-password']) {
-                                            str += data['basic-password'];
-                                        }
-
-                                        pane.getElement('input[name="Authorization"]').set('value', 'Basic ' + btoa(str));
-                                    }
-                                }},
-
-                                input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
-
-                                this.renderTemplate('optional-input', [
-                                    {
-                                        'label': 'Username',
+                            div({'class': 'row'},
+                                div({'class': 'span2'},
+                                    this.renderTemplate('optional-input', {
+                                        'label': 'Version',
                                         'help': '',
                                         'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'basic-username',
+                                            'class': 'span2',
+                                            'type': 'number',
+                                            'data-storage': 'authorization',
+                                            'name': 'version',
                                             'tabindex': 7,
                                             'autocomplete': true,
-                                            'placeholder': 'ex: username',
+                                            'placeholder': 'ex: 1.0',
                                             'required': true,
-                                            'disabled': true
-                                        }
-                                    },
+                                            'disabled': true,
+                                            'events': {
+                                                'change': function(event) {
+                                                    this.set('value', parseInt(this.get('value')).toFixed(1));
 
-                                    {
-                                        'label': 'Password',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'password',
-                                            'name': 'basic-password',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: password',
-                                            'disabled': true
-                                        }
-                                    }
-                                ])
-                            ),
-/*
-                            div({'class': 'tab-pane'},
-                                input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
-
-                                this.renderTemplate('optional-input', [
-                                    {
-                                        'label': 'Username',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'digest-username',
-                                            'tabindex': 7,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: username',
-                                            'required': true,
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'Password',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'password',
-                                            'name': 'digest-password',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: password',
-                                            'disabled': true
-                                        }
-                                    }
-                                ])
-                            ),
-*/
-                            div({
-                                'class': 'tab-pane oauth',
-                                'events': {
-                                    'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
-                                }},
-
-                                div({'class': 'row'},
-                                    div({'class': 'span12'},
-                                        this.renderTemplate('standard-input', {
-                                            'label': 'Authorization Header',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span12',
-                                                'type': 'text',
-                                                'name': 'Authorization',
-                                                'tabindex': 7,
-                                                'autocomplete': false,
-                                                'placeholder': 'ex: ',
-                                                'required': false,
-                                                'disabled': false,
-                                                'readonly': true
+                                                    this.fireEvent('highlight');
+                                                }
                                             }
-                                        })
+                                        }
+                                    })
+                                ),
+
+                                div({'class': 'span2'},
+                                    fieldset({'class': 'control-group'},
+                                        label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
+                                        div({'class': 'controls'},
+                                            select({'class': 'span2', 'name': 'signature', 'tabindex': 4, 'disabled': true},
+                                                option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
+                                                option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
+                                            ),
+                                            p({'class': 'help-text'}, '')
+                                        )
                                     )
                                 ),
 
-                                div({'class': 'row'},
-                                    div({'class': 'span2'},
-                                        this.renderTemplate('optional-input', {
-                                            'label': 'Version',
+                                div({'class': 'span2'},
+                                    fieldset({'class': 'control-group'},
+                                        label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
+                                        div({'class': 'controls'},
+                                            select({'class': 'span2', 'name': 'method', 'tabindex': 4, 'disabled': true},
+                                                option({'value': 'header', 'selected': true}, 'Header'),
+                                                option({'value': 'query'},'Query String')
+                                            ),
+                                            p({'class': 'help-text'}, '')
+                                        )
+                                    )
+                                )
+                            ),
+
+                            div({'class': 'row'},
+                                div({'class': 'span6'},
+                                    this.renderTemplate('optional-input', [
+                                        {
+                                            'label': 'Consumer Key',
                                             'help': '',
                                             'attributes': {
-                                                'class': 'span2',
-                                                'type': 'number',
-                                                'name': 'version',
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'consumer_key',
                                                 'tabindex': 7,
                                                 'autocomplete': true,
-                                                'placeholder': 'ex: 1.0',
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                                 'required': true,
-                                                'disabled': true,
-                                                'events': {
-                                                    'change': function(event) {
-                                                        this.set('value', parseInt(this.get('value')).toFixed(1));
-
-                                                        this.fireEvent('save');
-                                                    }
-                                                }
+                                                'disabled': true
                                             }
-                                        })
-                                    ),
+                                        },
 
-                                    div({'class': 'span2'},
-                                        fieldset({'class': 'control-group'},
-                                            label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
-                                            div({'class': 'controls'},
-                                                select({'class': 'span2', 'name': 'signature', 'tabindex': 4, 'disabled': true},
-                                                    option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
-                                                    option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
-                                                ),
-                                                p({'class': 'help-text'}, '')
-                                            )
-                                        )
-                                    ),
+                                        {
+                                            'label': 'Consumer Secret',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'consumer_secret',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'required': true,
+                                                'disabled': true
+                                            }
+                                        },
 
-                                    div({'class': 'span2'},
-                                        fieldset({'class': 'control-group'},
-                                            label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
-                                            div({'class': 'controls'},
-                                                select({'class': 'span2', 'name': 'method', 'tabindex': 4, 'disabled': true},
-                                                    option({'value': 'header', 'selected': true}, 'Header'),
-                                                    option({'value': 'query'},'Query String')
-                                                ),
-                                                p({'class': 'help-text'}, '')
-                                            )
-                                        )
-                                    )
+                                        {
+                                            'label': 'Token Key',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'token_key',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Token Secret',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'token_secret',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Scope',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'scope',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: ',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Realm',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'realm',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: ',
+                                                'disabled': true
+                                            }
+                                        }
+                                    ])
                                 ),
 
-                                div({'class': 'row'},
-                                    div({'class': 'span6'},
-                                        this.renderTemplate('optional-input', [
-                                            {
-                                                'label': 'Consumer Key',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'consumer_key',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'required': true,
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Consumer Secret',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'consumer_secret',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'required': true,
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Token Key',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'token_key',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Token Secret',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'token_secret',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Scope',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'scope',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: ',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Realm',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'realm',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: ',
-                                                    'disabled': true
-                                                }
+                                div({'class': 'span6'},
+                                    this.renderTemplate('optional-input', [
+                                        {
+                                            'label': 'Request token URL',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'request_url',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://api.provider.com/oauth/request_token',
+                                                'disabled': true
                                             }
-                                        ])
-                                    ),
+                                        },
 
-                                    div({'class': 'span6'},
-                                        this.renderTemplate('optional-input', [
-                                            {
-                                                'label': 'Request token URL',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'request_url',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://api.provider.com/oauth/request_token',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Access token URL',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'access_url',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://api.provider.com/oauth/access_token',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Authorize URL',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'authorize_url',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://api.provider.com/oauth/authorize',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Oauth Callback',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'oauth_callback',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://www.domain.com',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Oauth Verifier',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span6',
-                                                    'type': 'text',
-                                                    'name': 'oauth_verifier',
-                                                    'tabindex': 7,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'disabled': true
-                                                }
+                                        {
+                                            'label': 'Access token URL',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'access_url',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://api.provider.com/oauth/access_token',
+                                                'disabled': true
                                             }
-                                        ])
-                                    )
+                                        },
+
+                                        {
+                                            'label': 'Authorize URL',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'authorize_url',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://api.provider.com/oauth/authorize',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Oauth Callback',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'oauth_callback',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://www.domain.com',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Oauth Verifier',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'oauth_verifier',
+                                                'tabindex': 7,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'disabled': true
+                                            }
+                                        }
+                                    ])
                                 )
                             )
                         )
@@ -1733,479 +1801,502 @@ App = new Class({
             section({'id': 'headers', 'class': 'minimize'},
                 this.renderTemplate('section-header', 'Headers'),
 
-                form({
-                    'name': 'headers',
-                    'class': 'form-stacked',
-                    'novalidate': true
-                    },
+                div({'class': 'tabbable'},
+                    ul({'class': 'nav tabs'},
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Standard Headers')),
+                        li(a({'data-toggle': 'tab'}, 'Cache')),
+                        li(a({'data-toggle': 'tab'}, 'Common non-standard headers'))
+                    ),
 
-                    div({'class': 'tabbable'},
-                        ul({'class': 'nav tabs'},
-                            li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Standard Headers')),
-                            li(a({'data-toggle': 'tab'}, 'Cache')),
-                            li(a({'data-toggle': 'tab'}, 'Common non-standard headers'))
+                    div({'class': 'tab-content'},
+                        div({'class': 'tab-pane active'},
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'rfc': '14.1',
+                                    'label': 'Accept',
+                                    'help': 'Content-Types that are acceptable.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: text/plain',
+                                        'list': 'mimetypes',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.2',
+                                    'label': 'Accept Charset',
+                                    'help': 'Character sets that are acceptable.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept-Charset',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: utf-8',
+                                        'list': 'charset',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.3',
+                                    'label': 'Accept Encoding',
+                                    'help': 'Acceptable encodings.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept-Encoding',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: identity',
+                                        'list': 'encoding',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.4',
+                                    'label': 'Accept Language',
+                                    'help': 'Acceptable languages for response.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept-Language',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: en-US',
+                                        'list': 'languages',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.10',
+                                    'label': 'Connection',
+                                    'help': 'What type of connection the user-agent would prefer',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Connection',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: keep-alive',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'Cookie',
+                                    'help': 'an HTTP cookie previously sent by the server',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Cookie',
+                                        'tabindex': 4,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.18',
+                                    'label': 'Date',
+                                    'help': 'The date and time that the message was sent',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Date',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.20',
+                                    'label': 'Expect',
+                                    'help': 'Indicates that particular server behaviors are by the client',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Expect',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 100-continue',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.22',
+                                    'label': 'From',
+                                    'help': 'The email address of the user making the request.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'From',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: user@example.com',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.31',
+                                    'label': 'Max-Forwards',
+                                    'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Max-Forwards',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 10',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.32',
+                                    'label': 'Pragma',
+                                    'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Pragma',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: no-cache',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.35',
+                                    'label': 'Range',
+                                    'help': 'Request only part of an entity. Bytes are numbered from 0.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Range',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: bytes=500-999',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.36',
+                                    'label': 'Referer',
+                                    'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Referer',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: http://www.restconsole.com/',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.41',
+                                    'label': 'Transfer-Encoding',
+                                    'help': 'The transfer encodings the user agent is willing to accept.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'TE',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: trailers, deflate',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.42',
+                                    'label': 'Upgrade',
+                                    'help': 'Ask the server to upgrade to another protocol.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Upgrade',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.43',
+                                    'label': 'User-Agent',
+                                    'help': 'The user agent string of the user agent.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'User-Agent',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.45',
+                                    'label': 'Via',
+                                    'help': 'Informs the server of proxies through which the request was sent.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Via',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.64',
+                                    'label': 'Warning',
+                                    'help': 'A general warning about possible problems with the entity body.',
+                                    'attributes': {
+                                        'class': 'span12',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Warning',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 199 Miscellaneous warning',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
                         ),
 
-                        div({'class': 'tab-content'},
-                            div({'class': 'tab-pane active'},
-                                this.renderTemplate('optional-input', [
-                                    {
-                                        'rfc': '14.1',
-                                        'label': 'Accept',
-                                        'help': 'Content-Types that are acceptable.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Accept',
-                                            'tabindex': 3,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: text/plain',
-                                            'list': 'mimetypes',
-                                            'disabled': true
-                                        }
-                                    },
+                        div({'class': 'tab-pane'},
+                            this.renderTemplate('optional-input', [
 
-                                    {
-                                        'rfc': '14.2',
-                                        'label': 'Accept Charset',
-                                        'help': 'Character sets that are acceptable.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Accept-Charset',
-                                            'tabindex': 3,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: utf-8',
-                                            'list': 'charset',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.3',
-                                        'label': 'Accept Encoding',
-                                        'help': 'Acceptable encodings.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Accept-Encoding',
-                                            'tabindex': 3,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: identity',
-                                            'list': 'encoding',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.4',
-                                        'label': 'Accept Language',
-                                        'help': 'Acceptable languages for response.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Accept-Language',
-                                            'tabindex': 3,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: en-US',
-                                            'list': 'languages',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.10',
-                                        'label': 'Connection',
-                                        'help': 'What type of connection the user-agent would prefer',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Connection',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: keep-alive',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'Cookie',
-                                        'help': 'an HTTP cookie previously sent by the server',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Cookie',
-                                            'tabindex': 4,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.18',
-                                        'label': 'Date',
-                                        'help': 'The date and time that the message was sent',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Date',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.20',
-                                        'label': 'Expect',
-                                        'help': 'Indicates that particular server behaviors are by the client',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Expect',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 100-continue',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.22',
-                                        'label': 'From',
-                                        'help': 'The email address of the user making the request.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'From',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: user@example.com',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.31',
-                                        'label': 'Max-Forwards',
-                                        'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Max-Forwards',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 10',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.32',
-                                        'label': 'Pragma',
-                                        'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Pragma',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: no-cache',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.35',
-                                        'label': 'Range',
-                                        'help': 'Request only part of an entity. Bytes are numbered from 0.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Range',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: bytes=500-999',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.36',
-                                        'label': 'Referer',
-                                        'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Referer',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: http://www.restconsole.com/',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.41',
-                                        'label': 'Transfer-Encoding',
-                                        'help': 'The transfer encodings the user agent is willing to accept.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'TE',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: trailers, deflate',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.42',
-                                        'label': 'Upgrade',
-                                        'help': 'Ask the server to upgrade to another protocol.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Upgrade',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.43',
-                                        'label': 'User-Agent',
-                                        'help': 'The user agent string of the user agent.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'User-Agent',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.45',
-                                        'label': 'Via',
-                                        'help': 'Informs the server of proxies through which the request was sent.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Via',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.64',
-                                        'label': 'Warning',
-                                        'help': 'A general warning about possible problems with the entity body.',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'name': 'Warning',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 199 Miscellaneous warning',
-                                            'disabled': true
-                                        }
+                                {
+                                    'rfc': '14.9',
+                                    'label': 'Cache-Control',
+                                    'help': 'Used to specify caching mechanisms along the request/response chain',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Cache-Control',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: no-cache',
+                                        'disabled': true
                                     }
-                                ])
-                            ),
+                                },
 
-                            div({'class': 'tab-pane'},
-                                this.renderTemplate('optional-input', [
-
-                                    {
-                                        'rfc': '14.9',
-                                        'label': 'Cache-Control',
-                                        'help': 'Used to specify caching mechanisms along the request/response chain',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'Cache-Control',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: no-cache',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.24',
-                                        'label': 'If-Match',
-                                        'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'If-Match',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.25',
-                                        'label': 'If-Modified-Since',
-                                        'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'If-Modified-Since',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.26',
-                                        'label': 'If-None-Match',
-                                        'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'If-None-Match',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.27',
-                                        'label': 'If-Range',
-                                        'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'If-Range',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'rfc': '14.28',
-                                        'label': 'If-Unmodified-Since',
-                                        'help': 'Only send the response if the entity has not been modified since a specific time.',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'If-Unmodified-Since',
-                                            'tabindex': 6,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
-                                            'disabled': true
-                                        }
+                                {
+                                    'rfc': '14.24',
+                                    'label': 'If-Match',
+                                    'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Match',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                        'disabled': true
                                     }
-                                ])
-                            ),
+                                },
 
-                            div({'class': 'tab-pane'},
-                                this.renderTemplate('optional-input', [
-                                    {
-                                        'label': 'Origin',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'Origin',
-                                            'tabindex': 5,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: chrome-extension',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'X-HTTP-Method-Override',
-                                        'help': 'mainly used bypass firewalls and browsers limitations.',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'X-HTTP-Method-Override',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: PUT',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'X-Requested-With',
-                                        'help': 'mainly used to identify Ajax requests.',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'X-Requested-With',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: XMLHttpRequest',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'X-Forwarded-For',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'X-Forwarded-For',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: ',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'X-Do-Not-Track',
-                                        'help': 'Requests a web application to disable their tracking of a user.',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'X-Do-Not-Track',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 1',
-                                            'disabled': true
-                                        }
-                                    },
-
-                                    {
-                                        'label': 'DNT',
-                                        'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
-                                        'attributes': {
-                                            'class': 'span6',
-                                            'type': 'text',
-                                            'name': 'DNT',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: 1',
-                                            'disabled': true
-                                        }
+                                {
+                                    'rfc': '14.25',
+                                    'label': 'If-Modified-Since',
+                                    'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Modified-Since',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                        'disabled': true
                                     }
-                                ])
-                            )
+                                },
+
+                                {
+                                    'rfc': '14.26',
+                                    'label': 'If-None-Match',
+                                    'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-None-Match',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.27',
+                                    'label': 'If-Range',
+                                    'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Range',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.28',
+                                    'label': 'If-Unmodified-Since',
+                                    'help': 'Only send the response if the entity has not been modified since a specific time.',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Unmodified-Since',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Origin',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Origin',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: chrome-extension',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-HTTP-Method-Override',
+                                    'help': 'mainly used bypass firewalls and browsers limitations.',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-HTTP-Method-Override',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: PUT',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-Requested-With',
+                                    'help': 'mainly used to identify Ajax requests.',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-Requested-With',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: XMLHttpRequest',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-Forwarded-For',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-Forwarded-For',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: ',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-Do-Not-Track',
+                                    'help': 'Requests a web application to disable their tracking of a user.',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-Do-Not-Track',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'DNT',
+                                    'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
+                                    'attributes': {
+                                        'class': 'span6',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'DNT',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
                         )
                     )
                 )
@@ -2235,7 +2326,7 @@ App = new Class({
                                     'click:relay(a[href])': function(event) {
                                         event.preventDefault();
 
-                                        document.getElement('input[name="uri"]').set('value', this.get('href'));
+                                        document.getElement('input[name="url"]').set('value', this.get('href'));
                                         document.getElement('input[name="method"]').set('value', 'GET');
                                         //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
                                     }
@@ -2285,7 +2376,7 @@ App = new Class({
         };
 
         var message = {
-            'action': request.target.uri,
+            'action': request.target.url,
             'method': request.target.method,
             'parameters': [
                 ['oauth_version', data.version],
@@ -2394,34 +2485,36 @@ App = new Class({
         }
     },
 
+    'applyValues': function(request) {
+        document.getElement('[name="method"]').set('value', request.method);
+        document.getElement('[name="url"]').set('value', request.url);
+
+        request.headers.each(function(value, key) {
+            var input = document.getElement('[name="' + key + '"]');
+
+            if (input) {
+                input.set('value', value);
+            }
+        });
+
+        request.queryString.each(function(value, key) {
+        });
+    },
+
+    'saveValues': function() {
+        var form = document.getElement('form[name="main"]');
+        var data = form.toObjectNoPairs();
+        var query = form.getPairs('query');
+
+        console.log(form);
+        console.log(data);
+        console.log(query);
+    },
+
     'loadDefaults': function() {
         var tabs        = new Storage('tabs');
         var pairs       = new Storage('pairs');
-        var values      = new Storage('input-values');
         var sections    = new Storage('sections');
-        var statuses    = new Storage('input-status');
-
-        // input fields and textareas
-        document.getElements('.control-group:not(.pairs) input[type="text"], .control-group input[type="number"], .control-group input[type="password"], .control-group textarea').each(function(input) {
-            // construct fake event event object
-            var event = new FakeEvent(input);
-
-            input.set('value', values.get(input.get('name')))
-
-            if (input.getParent('.input-prepend')) {
-                var checkbox = input.getParent('.input-prepend').getElement('input[type="checkbox"]');
-                var enabled = statuses.get(input.get('name'));
-
-                if (enabled) {
-                    input.set('disabled', !enabled);
-                    checkbox.set('checked', enabled);
-
-                    input.fireEvent('highlight');
-                }
-            } else {
-                input.fireEvent('highlight');
-            }
-        });
 
         // process pairs
         document.getElements('.control-group.pairs[name]').each(function(group) {
@@ -2536,7 +2629,7 @@ App = new Class({
         */
 
         var options = {
-            'url': data.target.uri,
+            'url': data.target.url,
             'query': data.query,
             'payload': {},
             'files': {},
@@ -2795,8 +2888,6 @@ App = new Class({
         // init google prettify
         prettyPrint();
 
-        $App.goTo('response');
-
         //document.id('controls').removeClass('progress');
 return;
 
@@ -2819,11 +2910,6 @@ return;
             // remove loading animation
             document.getElement('form[name="request"] .actions').removeClass('progress');
         }
-    },
-
-    'goTo': function(target) {
-        var event = new FakeEvent(document.getElement('a[href="#' + target + '"]'));
-        event.target.fireEvent('click', event);
     }
 });
 

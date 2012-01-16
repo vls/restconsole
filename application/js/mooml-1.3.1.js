@@ -54,7 +54,7 @@ var Mooml = {
         "p", "param", "pre", "progress",
         "q",
         "rp", "rt", "ruby",
-        "samp", "script", "section", "select", "small", "source", "span", "strong", "style", "sub", "sup",
+        "samp", "script", "section", "select", "small", "source", "span", "strong", "style", "sub", "summary", "sup",
         "table", "tbody", "td", "textarea", "tfoot", "th", "thead", "time", "title", "tr",
         "ul",
         "var", "video",

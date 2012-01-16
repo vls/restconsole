@@ -81,7 +81,12 @@ html {
             cursor: pointer;
         }
 
+        details {
+            display: inline-block;
+        }
+
         i {
+            vertical-align: top;
             margin-top: 2px;
             margin-right: 4px;
 
@@ -142,24 +147,236 @@ html {
             }
         }
 
-        input,
-        select,
-        textarea {
-            font-family: 'Droid Sans Mono', monospace;
+        form {
+            input,
+            select,
+            textarea {
+                font-family: 'Droid Sans Mono', monospace;
 
-            &[disabled] {
-                background-color: #DDD;
-                border: 1px solid #CCC;
+                &[disabled] {
+                    background-color: #DDD;
+                    border: 1px solid #CCC;
+                }
+
+                &[name="url"],
+                &[name="method"] {
+                    font-weight: bold;
+                }
             }
 
-            &[name="uri"],
-            &[name="method"] {
-                font-weight: bold;
+            select {
+                background-color: #EEE;
+            }
+
+            .control-group {
+                &.success {
+                    input,
+                    textarea {
+                        color: #555;
+                    }
+                }
+
+                .control-label {
+                    height: 20px;
+                    line-height: 20px;
+                    color: #404040;
+
+                    a {
+                        display: block;
+                        float: left;
+                        width: 16px;
+                        height: 20px;
+                        margin-right: 5px;
+                        background-image: url('/images/w3-gray.png');
+                        background-position: 50% 50%;
+                        background-repeat: no-repeat;
+                    }
+
+                }
+
+                &:hover {
+                    .control-label {
+                        a {
+                            background-image: url('/images/w3.png');
+                        }
+                    }
+                }
+
+                .controls {
+                    &.error {
+                        .formFieldState(#b94a48, #ee5f5b, lighten(#ee5f5b, 30%));
+                    }
+
+                    .input-prepend {
+                        .add-on {
+                            &.active {
+                                position: relative;
+                                z-index: 2;
+                            }
+                        }
+                    }
+
+                    input[type="file"] {
+                        display: inline-block;
+                        width: 210px;
+                        height: @baseLineHeight;
+                        padding: 4px;
+                        font-size: @baseFontSize;
+                        line-height: @baseLineHeight;
+                        color: @gray;
+                        border: 1px solid #ccc;
+                        .border-radius(3px);
+                        .box-shadow(inset 0 1px 3px rgba(0,0,0,.1));
+                        @transition: border linear .2s, box-shadow linear .2s;
+                        .transition(@transition);
+
+                        &:focus {
+                          border-color: rgba(82,168,236,.8);
+                          @shadow: inset 0 1px 3px rgba(0,0,0,.1), 0 0 8px rgba(82,168,236,.6);
+                          .box-shadow(@shadow);
+                          outline: 0;
+                        }
+                    }
+                }
+
+                .control-list {
+                    label {
+                        input {
+                            margin-right: 3px;
+                        }
+                    }
+                }
+            }
+
+            .row {
+                margin-left: 0px;
+
+                [class*="span"]:first-child {
+                    margin-left: 0px;
+                }
+            }
+
+            .pairs {
+                &.control-group {
+                    .controls {
+                        margin-bottom: 10px;
+
+                        .span2 {
+                            .prepend-columns(3, 24);
+
+                            &.smaller {
+                                .prepend-columns(3, 55);
+                            }
+                        }
+
+                        .input-append {
+                            margin-bottom: 0px;
+
+                            input {
+                                float: left;
+                                margin-bottom: 0px;
+                                .border-radius(3px 0 0 3px);
+
+                                &:nth-of-type(2) {
+                                    .border-radius(0);
+                                    border-left: none;
+                                }
+                            }
+
+                            .add-on {
+                                width: 25px;
+
+                                &.add {
+                                    display: none;
+                                    background-color: #57A957;
+
+                                    &:before {
+                                        content: url('/images/icons/add.png');
+                                    }
+                                }
+
+                                &.remove {
+                                    background-color: #C43C35;
+
+                                    &:before {
+                                        content: url('/images/icons/delete.png');
+                                    }
+                                }
+                            }
+                        }
+
+                        &:last-of-type {
+                            .input-append {
+                                .add-on {
+                                    &.add {
+                                        display: block;
+                                    }
+
+                                    &.remove {
+                                        display: none;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        select {
-            background-color: #EEE;
+        .nav {
+            &.presets {
+                margin-left: -10px;
+
+                > li {
+                    &.nav-header {
+                        padding-left: 25px;
+                    }
+
+                    &:not(.nav-header) {
+                        display: block;
+                        padding: 3px 25px;
+                        margin-left: -15px;
+                        margin-right: -15px;
+                        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+
+                        &:hover {
+                            background-color: #eee;
+
+                            summary {
+                                cursor: pointer;
+                            }
+                        }
+                    }
+                }
+            }
+
+            li {
+                &.active {
+                    a {
+                        &:hover {
+                            span {
+                                border-color: white;
+                            }
+                        }
+
+                        span {
+                            border-color: white;
+                        }
+                    }
+                }
+
+                a {
+                    &:hover {
+                        span {
+                            border-color: #005580;
+                        }
+                    }
+
+                    span {
+                        border-bottom: 1px solid #08C;
+                    }
+                }
+            }
         }
 
         .navbar {
@@ -188,9 +405,25 @@ html {
             }
 
             .nav {
-                a {
-                    span {
-                        border-bottom: 1px solid #BFBFBF;
+                li {
+                    &.active {
+                        a {
+                            span {
+                                border-color: white;
+                            }
+                        }
+                    }
+
+                    a {
+                        &:hover {
+                            span {
+                                border-color: white;
+                            }
+                        }
+
+                        span {
+                            border-color: #999;
+                        }
                     }
                 }
             }
@@ -203,7 +436,7 @@ html {
                 border: 1px solid #DDD;
                 border-top: none;
 
-                padding: 10px;
+                padding: 5px 10px;
                 margin: -18px 0px 0px 0px;
 
                 .border-radius(0px 0px 4px 4px);
@@ -307,28 +540,32 @@ html {
                             padding-left: 14px;
                             padding-right: 14px;
                         }
+
+                        &:last-of-type {
+                            width: @width;
+                            position: absolute;
+                            bottom: 0px;
+                        }
                     }
 
                     .tabbable {
                         .nav.list {
                             padding-left: 0px;
-                            max-height: 100px;
+                            height: 190px;
 
                             .scrollbar(vertical);
 
                             li {
+                                & + .nav-header {
+                                    margin-top: 0px;
+                                }
+
                                 a {
                                     overflow: hidden;
                                     white-space: nowrap;
                                     text-overflow: ellipsis;
                                 }
                             }
-                        }
-
-                        &:last-of-type {
-                            width: @width;
-                            position: absolute;
-                            bottom: 0px;
                         }
                     }
                 }
@@ -379,7 +616,7 @@ html {
                     }
                 }
 
-                form {
+                div {
                     display: none;
                 }
             }
@@ -409,163 +646,6 @@ html {
                 header {
                     a {
                         display: none;
-                    }
-                }
-            }
-
-            form {
-                .control-group {
-
-                    &.success {
-                        input,
-                        textarea {
-                            color: gray;
-                        }
-                    }
-
-                    .control-label {
-                        height: 20px;
-                        line-height: 20px;
-                        color: #404040;
-
-                        a {
-                            display: block;
-                            float: left;
-                            width: 16px;
-                            height: 20px;
-                            margin-right: 5px;
-                            background-image: url('/images/w3-gray.png');
-                            background-position: 50% 50%;
-                            background-repeat: no-repeat;
-                        }
-
-                    }
-
-                    &:hover {
-                        .control-label {
-                            a {
-                                background-image: url('/images/w3.png');
-                            }
-                        }
-                    }
-
-                    .controls {
-                        &.error {
-                            .formFieldState(#b94a48, #ee5f5b, lighten(#ee5f5b, 30%));
-                        }
-
-                        .input-prepend {
-                            .add-on {
-                                &.active {
-                                    position: relative;
-                                    z-index: 2;
-                                }
-                            }
-                        }
-
-                        input[type="file"] {
-                                display: inline-block;
-                                width: 210px;
-                                height: @baseLineHeight;
-                                padding: 4px;
-                                font-size: @baseFontSize;
-                                line-height: @baseLineHeight;
-                                color: @gray;
-                                border: 1px solid #ccc;
-                                .border-radius(3px);
-                                .box-shadow(inset 0 1px 3px rgba(0,0,0,.1));
-                                @transition: border linear .2s, box-shadow linear .2s;
-                                .transition(@transition);
-
-                                &:focus {
-                                  border-color: rgba(82,168,236,.8);
-                                  @shadow: inset 0 1px 3px rgba(0,0,0,.1), 0 0 8px rgba(82,168,236,.6);
-                                  .box-shadow(@shadow);
-                                  outline: 0;
-                                }
-                            }
-                    }
-
-                    .control-list {
-                        label {
-                            input {
-                                margin-right: 3px;
-                            }
-                        }
-                    }
-                }
-
-                .row {
-                    margin-left: 0px;
-
-                    [class*="span"]:first-child {
-                        margin-left: 0px;
-                    }
-                }
-
-                .pairs {
-                    &.control-group {
-                        .controls {
-                            margin-bottom: 10px;
-
-                            .span2 {
-                                .prepend-columns(3, 24);
-
-                                &.smaller {
-                                    .prepend-columns(3, 55);
-                                }
-                            }
-
-                            .input-append {
-                                margin-bottom: 0px;
-
-                                input {
-                                    float: left;
-                                    margin-bottom: 0px;
-                                    .border-radius(3px 0 0 3px);
-
-                                    &:nth-of-type(2) {
-                                        .border-radius(0);
-                                        border-left: none;
-                                    }
-                                }
-
-                                .add-on {
-                                    width: 25px;
-
-                                    &.add {
-                                        display: none;
-                                        background-color: #57A957;
-
-                                        &:before {
-                                            content: url('/images/icons/add.png');
-                                        }
-                                    }
-
-                                    &.remove {
-                                        background-color: #C43C35;
-
-                                        &:before {
-                                            content: url('/images/icons/delete.png');
-                                        }
-                                    }
-                                }
-                            }
-
-                            &:last-of-type {
-                                .input-append {
-                                    .add-on {
-                                        &.add {
-                                            display: block;
-                                        }
-
-                                        &.remove {
-                                            display: none;
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }

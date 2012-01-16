@@ -14,7 +14,7 @@ window.addEvent('domready', function(event) {
             new Fx.Scroll(context, {'offset': {'y': -20}, 'wheelStops': true}).toElement(element, 'y');
         },
 
-        'click:relay(a[data-toggle="tab"], .nav.list a:not([data-spy="scroll"]))': function(event) {
+        'click:relay(a[data-toggle="tab"], .nav.list li > a:not([data-spy="scroll"]))': function(event) {
             this.getParent('ul').getElement('.active').removeClass('active');
             this.getParent('li').addClass('active');
         },
@@ -26,6 +26,14 @@ window.addEvent('domready', function(event) {
             var index = tabs.indexOf(this);
 
             panes.removeClass('active')[index].addClass('active');
+        },
+
+        'click:relay(.nav.list summary)': function(event) {
+            var open = this.getParent('.nav').getElement('details[open]');
+
+            if (open) {
+                open.erase('open');
+            }
         }
     })
 });
