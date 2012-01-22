@@ -561,8 +561,8 @@ var App = new Class({
                     }},
 
                     div({'class': 'input-append pair'},
-                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
-                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
 
                         span({'class': 'add-on btn add success'}),
                         span({'class': 'add-on btn remove danger'})
@@ -1135,7 +1135,7 @@ var App = new Class({
                                     'data-storage': 'header',
                                     'name': 'Content-Type',
                                     'tabindex': 4,
-                                    'autocomplete': true,
+                                    'autocomplete': false,
                                     'placeholder': 'ex: application/x-www-form-urlencoded',
                                     'list': 'mimetypes',
                                     'disabled': true,
@@ -1167,7 +1167,7 @@ var App = new Class({
                                     'data-storage': 'extra',
                                     'name': 'content-encoding',
                                     'tabindex': 4,
-                                    'autocomplete': true,
+                                    'autocomplete': false,
                                     'placeholder': 'ex: utf-8',
                                     'list': 'charset',
                                     'disabled': true
@@ -1374,7 +1374,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Proxy-Authorization',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
                                         'disabled': true
                                     }
@@ -1427,7 +1427,7 @@ var App = new Class({
                                         'data-storage': 'authorization',
                                         'name': 'basic-password',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: password',
                                         'disabled': true
                                     }
@@ -1462,7 +1462,7 @@ var App = new Class({
                                         'type': 'password',
                                         'name': 'digest-password',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: password',
                                         'disabled': true
                                     }
@@ -1745,7 +1745,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Accept',
                                         'tabindex': 3,
-                                        'autocomplete': true,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: text/plain',
                                         'list': 'mimetypes',
                                         'disabled': true
@@ -1762,7 +1762,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Accept-Charset',
                                         'tabindex': 3,
-                                        'autocomplete': true,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: utf-8',
                                         'list': 'charset',
                                         'disabled': true
@@ -1778,7 +1778,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Accept-Encoding',
                                         'tabindex': 3,
-                                        'autocomplete': true,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: identity',
                                         'list': 'encoding',
                                         'disabled': true
@@ -1796,7 +1796,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Accept-Language',
                                         'tabindex': 3,
-                                        'autocomplete': true,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: en-US',
                                         'list': 'languages',
                                         'disabled': true
@@ -1813,7 +1813,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Connection',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: keep-alive',
                                         'disabled': true
                                     }
@@ -1844,7 +1844,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Date',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
                                         'disabled': true
                                     }
@@ -1860,7 +1860,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Expect',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 100-continue',
                                         'disabled': true
                                     }
@@ -1876,7 +1876,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'From',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: user@example.com',
                                         'disabled': true
                                     }
@@ -1892,7 +1892,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Max-Forwards',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 10',
                                         'disabled': true
                                     }
@@ -1908,7 +1908,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Pragma',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: no-cache',
                                         'disabled': true
                                     }
@@ -1924,7 +1924,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Range',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: bytes=500-999',
                                         'disabled': true
                                     }
@@ -1940,7 +1940,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Referer',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: http://www.restconsole.com/',
                                         'disabled': true
                                     }
@@ -1956,7 +1956,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'TE',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: trailers, deflate',
                                         'disabled': true
                                     }
@@ -1972,7 +1972,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Upgrade',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
                                         'disabled': true
                                     }
@@ -1988,7 +1988,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'User-Agent',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
                                         'disabled': true
                                     }
@@ -2004,7 +2004,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Via',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
                                         'disabled': true
                                     }
@@ -2020,7 +2020,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Warning',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 199 Miscellaneous warning',
                                         'disabled': true
                                     }
@@ -2040,7 +2040,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Cache-Control',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: no-cache',
                                         'disabled': true
                                     }
@@ -2056,7 +2056,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'If-Match',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                         'disabled': true
                                     }
@@ -2072,7 +2072,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'If-Modified-Since',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
                                         'disabled': true
                                     }
@@ -2088,7 +2088,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'If-None-Match',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                         'disabled': true
                                     }
@@ -2104,7 +2104,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'If-Range',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                         'disabled': true
                                     }
@@ -2120,7 +2120,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'If-Unmodified-Since',
                                         'tabindex': 6,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
                                         'disabled': true
                                     }
@@ -2140,7 +2140,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'Origin',
                                         'tabindex': 5,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: chrome-extension',
                                         'disabled': true
                                     }
@@ -2155,7 +2155,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'X-HTTP-Method-Override',
                                         'tabindex': 7,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: PUT',
                                         'disabled': true
                                     }
@@ -2170,7 +2170,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'X-Requested-With',
                                         'tabindex': 7,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: XMLHttpRequest',
                                         'disabled': true
                                     }
@@ -2185,7 +2185,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'X-Forwarded-For',
                                         'tabindex': 7,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: ',
                                         'disabled': true
                                     }
@@ -2200,7 +2200,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'X-Do-Not-Track',
                                         'tabindex': 7,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 1',
                                         'disabled': true
                                     }
@@ -2215,7 +2215,7 @@ var App = new Class({
                                         'data-storage': 'header',
                                         'name': 'DNT',
                                         'tabindex': 7,
-                                        'autocomplete': false,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 1',
                                         'disabled': true
                                     }
