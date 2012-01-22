@@ -1,13 +1,22 @@
 /**
  * Template class for Mooml templates
  */
-var Template = new Class({
+Template = new Class({
     'Extends': Mooml.Template,
 
     'initialize': function(code) {
         this.name = null;
         this.code = code;
         this.prepared = false;
+    }
+});
+
+Templates = new Class({
+    'Implements': [Mooml.Templates],
+
+    'renderSection': function(name, data, bind) {
+        var template = this.sections[name];
+        return (template)? template.render(data, [bind, this].pick()) : null;
     }
 });
 
@@ -26,110 +35,150 @@ DOMEvent.definePseudo('input', function(split, fn, args) {
     fn.apply(this, args);
 });
 
-var App = new Class({
-    'Implements': [Events, Mooml.Templates],
+String.implement({
+    'htmlEntities': function() {
+        return this.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+});
 
+Element.implement({
+    'toObject': function() {
+        var str = this.toQueryString();
+
+        if (str == '') {
+            return {};
+        } else {
+            return str.parseQueryString();
+        }
+    },
+
+    'toObjectNoPairs': function() {
+        var obj = this.toObject();
+
+        delete obj.key;
+        delete obj.value;
+
+        return obj;
+    },
+
+    'getPairs': function(name) {
+        var keys = this.getElements('.pairs.' + name + ' input[name="key"]:not([value=""])').get('value');
+        var values = this.getElements('.pairs.' + name + ' input[name="value"]:not([value=""])').get('value');
+
+        // remove the last one because its always empty
+        keys.pop();
+
+        return values.associate(keys);
+    },
+
+    'getPadding': function() {
+        var size = [
+            this.getStyle('padding-left'),
+            this.getStyle('padding-left'),
+            this.getStyle('border-left-width'),
+            this.getStyle('border-right-width')
+        ];
+
+        size.each(function(px, index) {
+            size[index] = parseInt(px);
+        });
+
+        return size.sum();
+    }
+});
+
+var Storage = new Class({
+    'name': false,
+
+    'initialize': function(item) {
+        this.item = item;
+        this.data = JSON.decode(localStorage.getItem(this.item));
+
+        if (this.data == null) {
+            this.data = {};
+        }
+    },
+
+    'save': function() {
+        localStorage.setItem(this.item, JSON.encode(this.data));
+    },
+
+    'get': function(key) {
+        return this.data[key];
+    },
+
+    'set': function(key, value) {
+        this.data[key] = value;
+        this.save();
+    },
+
+    'remove': function(key) {
+        delete this.data[key];
+        this.save();
+    }
+});
+
+FakeEvent = new Class({
+    'initialize': function(target) {
+        var event = new DOMEvent(document.createEvent('CustomEvent'));
+
+        if (target) {
+            event.target = target;
+        }
+
+        return event;
+    }
+});
+
+/**
+ * Main App logic
+ */
+var App = new Class({
+    'Implements': [Events, Templates],
+
+    // autocomplete values
     'datalists': {
         'mimetypes': [
             '*/*',
             'application/atom+xml',
-            'application/atomcat+xml',
-            'application/atomserv+xml',
-            'application/beep+xml',
-            'application/bbolin',
-            'application/davmount+xml',
             'application/docbook+xml',
             'application/ecmascript',
-            'application/hta',
             'application/http',
             'application/javascript',
             'application/json',
-            'application/msaccess',
-            'application/msword',
-            'application/news-message-id',
-            'application/news-transmission',
             'application/octet-stream',
             'application/ogg',
             'application/pdf',
-            'application/pgp-encrypted',
-            'application/pgp-keys',
-            'application/pgp-signature',
-            'application/postscript',
             'application/rar',
             'application/rdf+xml',
             'application/rss+xml',
             'application/rtf',
             'application/sgml',
-            'application/sgml-open-catalog',
             'application/xhtml+xml',
             'application/xml',
             'application/xml-dtd',
-            'application/xml-external-parsed-entity',
-            'application/xspf+xml',
             'application/zip',
             'application/vnd.android.package-archive',
             'application/vnd.google-earth.kml+xml',
             'application/vnd.google-earth.kmz',
             'application/vnd.mozilla.xul+xml',
-            'application/vnd.oasis.opendocument.chart',
-            'application/vnd.oasis.opendocument.database',
-            'application/vnd.oasis.opendocument.formula',
-            'application/vnd.oasis.opendocument.graphics',
-            'application/vnd.oasis.opendocument.graphics-template',
-            'application/vnd.oasis.opendocument.image',
-            'application/vnd.oasis.opendocument.presentation',
-            'application/vnd.oasis.opendocument.presentation-template',
-            'application/vnd.oasis.opendocument.spreadsheet',
-            'application/vnd.oasis.opendocument.spreadsheet-template',
-            'application/vnd.oasis.opendocument.text',
-            'application/vnd.oasis.opendocument.text-master',
-            'application/vnd.oasis.opendocument.text-template',
-            'application/vnd.oasis.opendocument.text-web',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
-            'application/vnd.openxmlformats-officedocument.presentationml.template',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
-            'application/vnd.sun.xml.calc',
-            'application/vnd.sun.xml.calc.template',
-            'application/vnd.sun.xml.draw',
-            'application/vnd.sun.xml.draw.template',
-            'application/vnd.sun.xml.impress',
-            'application/vnd.sun.xml.impress.template',
-            'application/vnd.sun.xml.math',
-            'application/vnd.sun.xml.writer',
-            'application/vnd.sun.xml.writer.global',
-            'application/vnd.sun.xml.writer.template',
-            'application/vnd.wap.sic',
-            'application/vnd.wap.slc',
             'application/vnd.wap.wbxml',
-            'application/vnd.wap.wmlc',
-            'application/vnd.wap.wmlscriptc',
             'application/x-7z-compressed',
             'application/x-bittorrent',
             'application/x-cab',
             'application/x-cbr',
             'application/x-cbz',
-            'application/x-debian-package',
-            'application/x-executable',
             'application/x-font',
             'application/x-freemind',
-            'application/x-hdf',
             'application/x-httpd-php',
             'application/x-httpd-php-source',
             'application/x-httpd-php3',
             'application/x-httpd-php3-preprocessed',
             'application/x-httpd-php4',
             'application/x-httpd-php5',
-            'application/x-quicktimeplayer',
             'application/x-ruby',
-            'application/x-sh',
-            'application/x-shellscript',
             'application/x-shockwave-flash',
             'application/x-silverlight',
-            'application/x-stuffit',
             'application/x-tar',
             'application/x-www-form-urlencoded',
             'audio/3gpp',
@@ -149,11 +198,7 @@ var App = new Class({
             'audio/x-mpegurl',
             'audio/x-ms-wma',
             'audio/x-ms-wax',
-            'audio/x-pn-realaudio-plugin',
-            'audio/x-pn-realaudio',
             'audio/x-realaudio',
-            'audio/x-scpls',
-            'audio/x-sd2',
             'audio/x-wav',
             'image/gif',
             'image/jpeg',
@@ -162,10 +207,6 @@ var App = new Class({
             'image/tiff',
             'image/x-canon-cr2',
             'image/x-canon-crw',
-            'image/x-coreldraw',
-            'image/x-coreldrawpattern',
-            'image/x-coreldrawtemplate',
-            'image/x-corelphotopaint',
             'image/x-icon',
             'image/x-photoshop',
             'image/x-rgb',
@@ -179,7 +220,6 @@ var App = new Class({
             'multipart/related',
             'multipart/report',
             'multipart/signed',
-            'multipart/voice-message',
             'text/cache-manifest',
             'text/calendar',
             'text/css',
@@ -193,19 +233,7 @@ var App = new Class({
             'text/rtf',
             'text/tab-separated-values',
             'text/uri-list',
-            'text/vnd.curl',
-            'text/vnd.wap.si',
-            'text/vnd.wap.sl',
-            'text/vnd.wap.wml',
-            'text/vnd.wap.wmlscript',
             'text/x-java',
-            'text/x-makefile',
-            'text/x-perl',
-            'text/x-python',
-            'text/x-scala',
-            'text/x-server-parsed-html',
-            'text/x-setext',
-            'text/x-sh',
             'text/x-vcalendar',
             'text/x-vcard',
             'text/xml',
@@ -225,31 +253,51 @@ var App = new Class({
             'video/x-msvideo'
         ],
 
-        'charset': ['*',
-            'UTF-8',
-            'ISO-8859-1',
-            'ISO-8859-2',
-            'ISO-8859-3',
-            'ISO-8859-4',
-            'ISO-8859-5',
-            'ISO-8859-6',
-            'ISO-8859-7',
-            'ISO-8859-8',
-            'ISO-8859-9',
-            'ISO-8859-10',
-            'ISO-8859-11',
-            'ISO-8859-12',
-            'ISO-8859-13',
-            'ISO-8859-14',
-            'ISO-8859-15',
-            'ISO-8859-16',
-            'ISO-2022-JP',
-            'ISO-2022-JP-2',
-            'ISO-2022-KR',
-            'ISO-8859-6-E',
-            'ISO-8859-6-I',
-            'ISO-8859-8-E',
-            'ISO-8859-8-I'
+        'charset': ["*",
+            "Big5",
+            "EUC-JP",
+            "EUC-KR",
+            "GB2312",
+            "ISO-2022-JP",
+            "ISO-2022-JP-2",
+            "ISO-2022-KR",
+            "ISO-8859-1",
+            "ISO-8859-2",
+            "ISO-8859-3",
+            "ISO-8859-4",
+            "ISO-8859-5",
+            "ISO-8859-6",
+            "ISO-8859-6-E",
+            "ISO-8859-6-I",
+            "ISO-8859-7",
+            "ISO-8859-8",
+            "ISO-8859-8-E",
+            "ISO-8859-8-I",
+            "ISO-8859-9",
+            "ISO-8859-10",
+            "ISO-8859-11",
+            "ISO-8859-12",
+            "ISO-8859-13",
+            "ISO-8859-14",
+            "ISO-8859-15",
+            "ISO-8859-16",
+            "KOI7",
+            "KOI8-R",
+            "KOI8-U",
+            "Shift_JIS",
+            "US-ASCII",
+            "UTF-8",
+            "UTF-16",
+            "UTF-32",
+            "Windows-1250",
+            "Windows-1251",
+            "Windows-1252",
+            "Windows-1253",
+            "Windows-1254",
+            "Windows-1255",
+            "Windows-1256",
+            "Windows-1257",
+            "Windows-1258"
         ],
 
         'encoding': [
@@ -272,6 +320,8 @@ var App = new Class({
             'DELETE',
             'TRACE',
             'OPTIONS',
+            'LINK',
+            'UNLINK',
             'CONNET',
             'PATCH'
         ],
@@ -318,13 +368,13 @@ var App = new Class({
             ['gn', 'Guarani'],
             ['gu', 'Gujarati'],
             ['ha', 'Hausa'],
-            ['he', 'Hebrew (formerly iw)'],
+            ['he', 'Hebrew'],
             ['hi', 'Hindi'],
             ['hr', 'Croatian'],
             ['hu', 'Hungarian'],
             ['hy', 'Armenian'],
             ['ia', 'Interlingua'],
-            ['id', 'Indonesian (formerly in)'],
+            ['id', 'Indonesian'],
             ['ie', 'Interlingue'],
             ['ik', 'Inupiak'],
             ['is', 'Icelandic'],
@@ -361,7 +411,7 @@ var App = new Class({
             ['nl', 'Dutch'],
             ['no', 'Norwegian'],
             ['oc', 'Occitan'],
-            ['om', '(Afan) Oromo'],
+            ['om', 'Oromo'],
             ['or', 'Oriya'],
             ['pa', 'Punjabi'],
             ['pl', 'Polish'],
@@ -411,7 +461,7 @@ var App = new Class({
             ['vo', 'Volapuk'],
             ['wo', 'Wolof'],
             ['xh', 'Xhosa'],
-            ['yi', 'Yiddish (formerly ji)'],
+            ['yi', 'Yiddish'],
             ['yo', 'Yoruba'],
             ['za', 'Zhuang'],
             ['zh', 'Chinese'],
@@ -419,9 +469,123 @@ var App = new Class({
         ]
     },
 
+    // presets
+    'presets': [{
+        'name': 'Twitter',
+        'resources': [
+            {
+                'name': 'Public Timeline',
+                'request': {
+                    'method': 'GET',
+                    'url': 'http://api.twitter.com/1/statuses/public_timeline.json',
+                    'headers': [],
+                    'queryString': [],
+                    'postData': {
+                        'mimeType': null,
+                        'params': [{
+                            'name': 'paramName',
+                            'value': 'paramValue',
+                        }],
+                        'text' : null
+                    }
+                }
+            }
+        ]
+    }],
+
+    'events': {
+        'change:relay(input[type="text"], input[type="number"], textarea)': function(event) {
+            var form = this.getParent('form[name="main"]');
+
+            // init data object
+            var data = {
+                'url': form.getElement('[name="url"]').get('value'),
+                'method': form.getElement('[name="method"]').get('value'),
+                'extra': {}
+            };
+
+            // construct extras array
+            form.getElements('[data-storage="extra"]').each(function(field) {
+                if (!field.get('disabled')) {
+                    data.extra[field.get('name')] = field.get('value');
+                }
+            });
+
+            // init HAR.Request
+            var request = new HAR.Request(data);
+
+            // post text
+            request.addPostText(form.getElement('[data-storage="post-text"]').get('value'));
+
+            // headers
+            form.getElements('[data-storage="header"]').each(function(header) {
+                if (!header.get('disabled')) {
+                    request.addHeader(header.get('name'), header.get('value'));
+                }
+            });
+
+            // custom headers
+            var headers = {
+                'keys': form.getElements('[data-storage="headerCollection"][name="key"]').get('value'),
+                'values': form.getElements('[data-storage="headerCollection"][name="value"]').get('value')
+            };
+
+            headers.keys.each(function(key, index) {
+                if (key != '') {
+                    request.addHeader(key, headers.values[index]);
+                }
+            });
+
+            // query string data
+            var query = {
+                'keys': form.getElements('[data-storage="queryString"][name="key"]').get('value'),
+                'values': form.getElements('[data-storage="queryString"][name="value"]').get('value')
+            };
+
+            query.keys.each(function(key, index) {
+                if (key != '') {
+                    request.addQueryParam(key, query.values[index]);
+                }
+            });
+
+            localStorage.setItem('defaults', JSON.encode(request.toObject()));
+        },
+
+        // loads panels
+        // TODO: its ugly, replace with modals + iframes
+        'click:relay(a[data-type="panel"])': function(event) {
+            event.preventDefault();
+
+            var width = 800;
+            var height = 600;
+            var top = ((window.getSize().y - height) / 2).round();
+            var left = ((window.getSize().x - width) / 2).round();
+
+            chrome.windows.create({
+                'url': this.get('href'),
+                'left': left,
+                'top': top,
+                'width': width,
+                'height': height,
+                'focused': true,
+                'type': 'panel'
+            });
+        }
+    },
+
     'templates': {
         'datalist': new Template(function(data) {
             datalist({'id': data.id}, this.renderTemplate('option', data.values))
+        }),
+
+        'presets': new Template(function(data) {
+            li(i({'class': data.name.toLowerCase()}),
+                details(summary(data.name), this.renderTemplate('resource', data.resources))
+            )
+        }),
+
+        'resource': new Template(function(data) {
+            a(data.name);
         }),
 
         'option': new Template(function(data) {
@@ -429,23 +593,237 @@ var App = new Class({
             option({'value': data[0]}, [data[1], data[0]].pick())
         }),
 
-        'header': new Template(function(data) {
-            header({'class': 'topbar'},
-                div({'class': 'fill'},
-                    div({'class': 'container-fluid'},
-                        div({'class': 'brand'},
-                            img({'src': 'images/logo/32.png', 'align': 'left'}),
-                            'REST Console',
-                            small('version 4.1.0')
+        'section-header': new Template(function(data) {
+            header(
+                a({
+                    'events': {
+                        'click': function(event) {
+                            var section = this.getParent('section');
+
+                            // change class
+                            section.toggleClass('collapsed')
+
+                            // store status
+                            new Storage('sections').set(section.get('id'), !section.hasClass('collapsed'));
+
+                            // fire resize event to trigger hidden elements resize
+                            window.fireEvent('resize');
+                        }
+                    }
+                }),
+                h2(data)
+            )
+        }),
+
+        'rfc-link': new Template(function(data) {
+            if (data) {
+                section = data.split('.')[0];
+
+                a({'data-type': 'panel', 'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])})
+            }
+        }),
+
+        'pairs': new Template(function(data) {
+            fieldset({'class': 'control-group span6 pairs ' + data.name},
+                label({'class': 'control-label', 'for': data.name}, data.label),
+
+                div({
+                    'class': 'controls',
+                    'events': {
+                        'focus:relay(.pair:last-child input[type="text"])': function(event) {
+                            this.getParent('.controls').fireEvent('click', new FakeEvent(this.getNext('.add')));
+                        },
+
+                        // clear error highlight on pairs
+                        'keyup:relay(.error input[type="text"]:first-child)': function(event) {
+                            this.getParent('.pair').removeClass('error');
+                        },
+
+                        // check for empty keys on pairs
+                        'blur:relay(.pair:not(:last-child) input[type="text"]:first-child)': function(event) {
+                            var value = this.get('value').trim();
+
+                            if (value == '') {
+                                this.getParent('.pair').addClass('error');
+                            } else {
+                                this.set('value', value);
+                            }
+                        },
+
+                        'addRow': function(header) {
+                            var pair = this.getElement('.pair:last-child');
+                            var clone = pair.clone().cloneEvents(pair);
+
+                            if (header) {
+                                clone.getElement('input[name="key"]').set('value', header.name);
+                                clone.getElement('input[name="value"]').set('value', header.value);
+                            }
+
+                            clone.inject(pair, 'before');
+                            clone.getElement('input').focus();
+                        },
+
+                        'click:relay(.add)': function(event) {
+                            var pair = this.getParent('.pair');
+                            var previous = pair.getPrevious('.pair');
+
+                            if (previous && previous.getElement('input').get('value') == '') {
+                                previous.addClass('error').getElement('input').focus();
+                            } else {
+                                this.getParent('.controls').fireEvent('addRow');
+                            }
+                        },
+
+                        'click:relay(.remove)': function(event) {
+                            var pair = this.getParent('.pair');
+                            var next = pair.getNext();
+
+                            // don't focus on the next pair if its the last
+                            // otherwise you get stuck in a loop
+                            if (next != pair.getParent().getLast()) {
+                                next.getElement('input').focus();
+                            } else if (pair.getPrevious('.controls')) {
+                                pair.getPrevious('.pair').getElement('input').focus();
+                            }
+
+                            pair.destroy();
+
+                            document.fireEvent('change', new FakeEvent(next.getElement('input')));
+                        }
+                    }},
+
+                    div({'class': 'input-append pair'},
+                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
+
+                        span({'class': 'add-on btn add success'}),
+                        span({'class': 'add-on btn remove danger'})
+                    )
+                )
+            )
+        }),
+
+        'input': new Template(function(attributes) {
+            // speech
+            attributes['x-webkit-speech'] = true;
+
+            // init events object
+            if (!attributes.events) attributes.events = {};
+
+            // default change event
+            if (!attributes.events.change) {
+                attributes.events.change = function(event) {
+                    this.fireEvent('highlight');
+                }
+            }
+
+            // highlight event
+            attributes.events.highlight = function(event) {
+                var value = this.get('value');
+                var disabled = this.get('disabled');
+                var group = this.getParent('.control-group');
+
+                // reset classes
+                group.removeClass('success').removeClass('error').removeClass('warning');
+
+                // empty check
+                if (!disabled) {
+                    if (value == '') {
+                        if (this.get('required')) {
+                            group.addClass('error');
+                        } else {
+                            group.addClass('warning');
+                        }
+                    } else {
+                        group.addClass('success');
+                    }
+                }
+            }
+
+            input(attributes)
+        }),
+
+        'standard-input': new Template(function(data) {
+            fieldset({'class': 'control-group'},
+                label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
+                div({'class': 'controls'},
+                    this.renderTemplate('input', data.attributes),
+                    p({'class': 'help-text'}, data.help)
+                )
+            )
+        }),
+
+        'optional-input': new Template(function(data) {
+            fieldset({'class': 'control-group'},
+                label({'class': 'control-label', 'for': data.attributes.name}, this.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
+                div({'class': 'controls'},
+                    div({'class': 'input-prepend'},
+                        label({'class': 'add-on'},
+                            input({
+                                'type': 'checkbox',
+                                'events': {
+                                    'change': function(event) {
+                                        var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+                                        var disabled = input.get('disabled');
+
+                                        if (disabled) {
+                                            input.set('disabled', false).fireEvent('highlight').fireEvent('focus').focus();
+
+                                            // prevent autoComplete
+                                            if (event) {
+                                                event.stopPropagation();
+                                            }
+                                        } else {
+                                            input.set('disabled', true).fireEvent('highlight');
+                                            this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
+                                        }
+
+                                        input.fireEvent('change');
+                                        document.fireEvent('change', new FakeEvent(input));
+                                    }
+                                }
+                            })
                         ),
 
-                        ul({'class': 'nav'},
-                            li(a({'href': '#options', 'scroll': true}, span('O'), 'ptions')),
-                            li(a({'href': '#target', 'scroll': true}, span('T'), 'arget')),
-                            li(a({'href': '#body', 'scroll': true}, span('B'), 'ody')),
-                            li(a({'href': '#authorization', 'scroll': true}, span('A'), 'uthorization')),
-                            li(a({'href': '#headers', 'scroll': true}, span('H'), 'eaders')),
-                            li(a({'href': '#response', 'scroll': true}, span('R'), 'esponse'))
+                        this.renderTemplate('input', data.attributes),
+
+                        p({'class': 'help-text'}, data.help)
+                    )
+                )
+            )
+        }),
+
+        'header': new Template(function(data) {
+            header({'class': 'navbar navbar-fixed'},
+                div({'class': 'navbar-inner'},
+                    div({'class': 'fluid-container'},
+                        div({'class': 'brand'},
+                            img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
+                        ),
+
+                        ul({
+                            'class': 'nav',
+                            'events': {
+                                'click:relay(a)': function(event) {
+                                    event.preventDefault();
+
+                                    var container = document.getElement('[data-screen]');
+
+                                    container.dataset.screen = this.dataset.target;
+
+                                    new Fx.Scroll(container).toTop();
+
+                                    container.fireEvent('scroll');
+
+                                    this.getParent('ul').getElement('.active').removeClass('active');
+                                    this.getParent('li').addClass('active');
+                                }
+                            }},
+
+                            li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
+                            li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
+                            li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
+                            li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
                         )
                     )
                 )
@@ -453,1211 +831,2049 @@ var App = new Class({
         }),
 
         'container': new Template(function(data) {
-            div({'class': 'container-fluid'},
-                this.renderTemplate('sidebar'),
-                this.renderTemplate('content')
-            )
-        }),
+            div({
+                'class': 'main fluid-container sidebar-left',
+                'data-screen': 'main',
+                'events': {
+                    'scroll': function(event) {
+                        var position = this.getScroll().y;
 
-        'sidebar': new Template(function(data) {
-            div({'class': 'sidebar'},
-                div({'class': 'page'},
-                    h5('Services'),
+                        document.getElements('a[data-spy="scroll"]').each(function(link) {
+                            var target = link.get('href');
+                            var targetPosition = document.getElement(target).getCoordinates(this).top;
 
-                    select({'class': 'span3'},
-                        option('Twitter'),
-                        option('Facebook'),
-                        option('LinkedIn')
+                            if (targetPosition - 20 <= 0) {
+                                link.getParent('ul').getElement('.active').removeClass('active');
+                                link.getParent('li').addClass('active');
+                            }
+                        }.bind(this));
+                    }
+                }},
+
+                div({'class': 'fluid-sidebar'},
+                    div({'class': 'well'},
+                        h3('Navigation'),
+
+                        ul({'class': 'nav list navigation', 'data-screen': 'main'},
+                            li({'class': 'active'}, a({'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('T'), 'arget')),
+                            li(a({'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('P'), 'ayload')),
+                            li(a({'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('A'), 'uthorization')),
+                            li(a({'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('H'), 'eaders')),
+                            li(a({'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('R'), 'esponse'))
+                        ),
+
+                        ul({'class': 'nav list navigation', 'data-screen': 'settings'},
+                            li({'class': 'active'}, a({'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'General')),
+                            li(a({'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Display'))
+                        )
                     ),
 
-                    h5('History'),
-                    p('Coming Soon...'),
+                    div({'class': 'tabbable', 'data-screen': 'main'},
+                        ul({'class': 'nav tabs'},
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'star'}), 'Presets')),
+                            li(a({'data-toggle': 'tab'}, i({'class': 'history'}), 'History'))
+                        ),
 
-                    br()
+                        div({'class': 'tab-content'},
+                            div({'class': 'tab-pane active'},
+                                ul({'class': 'nav list presets'},
+                                    li({'class': 'nav-header'}, 'User'),
+                                    li(a({
+                                        'events': {
+                                            'click': function(event) {
+                                                event.stop();
+
+                                                alert('Coming Soon!');
+                                            }
+                                        }
+                                    }, i({'class': 'plus'}), 'Import WADL')),
+
+                                    li(a({
+                                        'events': {
+                                            'click': function(event) {
+                                                event.stop();
+
+                                                alert('Coming Soon!');
+                                            }
+                                        }
+                                    }, i({'class': 'plus'}), 'Import HAR')),
+
+                                    li({'class': 'nav-header'}, 'Defaults'),
+
+                                    this.renderTemplate('presets', this.presets)
+                                )
+                            ),
+
+                            div({'class': 'tab-pane'},
+                                ul({'class': 'nav list history'},
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
+                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
+                                )
+                            )
+                        )
+                    ),
+
+                    div({'class': 'well'},
+                        ul({'class': 'nav list'},
+                            li({'class': 'nav-header'}, 'Donate'),
+                            li(a({'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
+                            li(a({'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
+                            li(a({'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
+                        )
+                    )
+                ),
+
+                div({'class': 'fluid-content'},
+                    div({'data-screen': 'main'},
+                        form({'name': 'main', 'novalidate': true},
+                            this.renderSection('target'),
+                            this.renderSection('payload'),
+                            this.renderSection('authorization'),
+                            this.renderSection('headers')
+                        ),
+
+                        this.renderSection('response')
+                    ),
+
+                    div({'data-screen': 'settings'},
+                        this.renderTemplate('settings')
+                    ),
+
+                    div({'data-screen': 'help'},
+                        this.renderTemplate('help')
+                    ),
+
+                    div({'data-screen': 'about'},
+                        this.renderTemplate('about')
+                    )
                 )
             )
         }),
 
-        'content': new Template(function(data) {
-            div({'class': 'content'},
-                //~ this.renderTemplate('options'),
-                this.renderTemplate('target')
-            )
-        }),
+        'settings': new Template(function(data) {
+            section({'id': 'display'}
 
-        'options': new Template(function(data) {
-            section({'id': 'options'},
-                header(
-                    a({'href': '#', 'class': 'minimize'}, img({'src': 'images/minimize.png'})),
-                    h1('Options')
-                ),
+            ),
+
+            section({'id': 'general'},
+                this.renderTemplate('section-header', 'General'),
+
+                a({'events': {
+                    'click': function(event) {
+                        event.preventDefault();
+                        chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
+                    }
+                }}, 'Install Extension'),
 
                 form({
+                    'name': 'options',
                     'class': 'form-stacked',
-                    'novalidate': true
-                    },
+                    'novalidate': true,
+                    'events': {
+                        'init': function() {
+                            var options = new Storage('options');
+
+                            this.getElements('input[type="checkbox"]').each(function(checkbox) {
+                                var data = options.get(checkbox.get('name'));
+
+                                if (data != null) {
+                                    if (data == true) {
+                                        checkbox.set('checked', true);
+                                    } else {
+                                        checkbox.set('checked', false);
+                                    }
+                                }
+
+                                checkbox.fireEvent('change');
+                            });
+                        }
+                    }},
 
                     div({'class': 'row'},
-                        div({'class': 'span8'},
-                            div({'class': 'clearfix'},
-                                label('General'),
-                                div({'class': 'input'},
-                                    ul({'class': 'inputs-list'},
-                                        li(
-                                            label(
-                                                input({'type': 'checkbox', 'name': 'help'}),
-                                                span('Hide Help Lines')
-                                            )
-                                        ),
+                        div({'class': 'span6'},
+                            fieldset({'class': 'control-group'},
+                                label({'class': 'control-label'}, 'General'),
+                                div({'class': 'controls'},
+                                    label({'class': 'checkbox'},
+                                        input({
+                                            'type': 'checkbox',
+                                            'name': 'help',
+                                            'events': {
+                                                'change': function(event) {
+                                                    if (this.get('checked')) {
+                                                        document.body.addClass('no-help');
+                                                    } else {
+                                                        document.body.removeClass('no-help');
+                                                    }
+                                                }
+                                            }
+                                        }),
 
-                                        li(
-                                            label(
-                                                input({'type': 'checkbox', 'name': 'lines'}),
-                                                span('Hide Line Numbers *')
-                                            )
-                                        )
+                                        'Hide Help Lines'
                                     ),
 
-                                    span({'class': 'help-block'}, '* will affect next request.')
+                                    label({'class': 'checkbox'},
+                                        input({'type': 'checkbox', 'name': 'lines'}), 'Hide Line Numbers *'
+                                    ),
+
+                                    p({'class': 'help-text'}, '* will affect next request.')
                                 )
                             )
                         ),
 
                         div({'class': 'span'},
-                            div({'class': 'clearfix'},
-                                label('Color Theme'),
-                                div({'class': 'input'},
-                                    ul({'class': 'inputs-list'},
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'default'}),
-                                                span('Default')
-                                            )
-                                        ),
+                            fieldset({'class': 'control-group'},
+                                label({'class': 'control-label'}, 'Color Theme'),
+                                div({
+                                    'class': 'controls',
+                                    'events': {
+                                        'change:relay(input)': function(event) {
+                                            if (this.get('checked')) {
+                                                document.id('theme').set('href', 'css/prettify/{0}.css'.substitute([this.get('value')]));
+                                            }
+                                        }
+                                    }},
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}),
-                                                span('Bootstrap')
-                                            )
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
+                                    ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'desert'}),
-                                                span('Desert')
-                                            )
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}), 'Bootstrap'
+                                    ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}),
-                                                span('Sunburst')
-                                            )
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap-dark'}), 'Bootstrap Dark'
+                                    ),
 
-                                        li(
-                                            label(
-                                                input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}),
-                                                span('Sons of Obsidian')
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'desert'}), 'Desert'
+                                    ),
+
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}), 'Sunburst'
+                                    ),
+
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}), 'Sons of Obsidian'
+                                    ),
+
+                                    p({'class': 'help-text'}, 'Syntax highlighting default color theme')
+                                )
+                            )
+                        )
+                    )
+                ).fireEvent('init')
+            )
+        }),
+
+        'help': new Template(function(data) {
+            section({'id': 'help'},
+                this.renderTemplate('section-header', 'Help')
+            )
+        }),
+
+        'about': new Template(function(data) {
+            section({'id': 'about'},
+                this.renderTemplate('section-header', 'About')
+            )
+        }),
+
+        'controls': new Template(function(data) {
+            footer({'class': 'navbar navbar-fixed'},
+                div({'class': 'navbar-inner'},
+                    div({'class': 'fluid-container sidebar-left'},
+                        div({
+                            'class': 'fluid-content controls',
+                            'events': {
+                                'click:relay(button)': function(event) {
+                                    this.send();
+                                }.bind(this)
+                            }},
+
+                            button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
+                            button({'data-action': 'get', 'class': 'btn'}, 'GET'),
+                            button({'data-action': 'post', 'class': 'btn'}, 'POST'),
+                            button({'data-action': 'put', 'class': 'btn'}, 'PUT'),
+                            button({'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
+
+                            div({'class': 'pull-right'},
+                                button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
+                                button({'data-action': 'save', 'class': 'btn success'}, 'Save Request')
+                            )
+                        )
+                    )
+                )
+            )
+        }),
+
+        'httpRequest': new Template(function(data) {
+            span({'class': 'nocode'},
+                span({'class': 'kwd'}, data.method, ' ', data.path, data.queryString, ' ', 'HTTP/1.1 '), '\n',
+                span({'class': 'typ'}, 'HOST'),
+                span({'class': 'pun'}, ': '),
+                span({'class': 'pln'}, data.host),
+                span('\n'),
+                this.renderTemplate('httpHeaders', data.headers), '\n'
+            )
+        }),
+
+        'httpResponse': new Template(function(data) {
+            span({'class': 'nocode'},
+                span({'class': 'kwd'}, 'HTTP/1.1 ', data.status, ' ', data.statusText), '\n',
+                this.renderTemplate('httpHeaders', data.headers), '\n'
+            )
+        }),
+
+        'httpHeaders': new Template(function(header) {
+            span({'class': 'typ'}, header.name),
+            span({'class': 'pun'}, ': '),
+            span({'class': 'pln', 'text': header.value}),
+            span('\n')
+        })
+    },
+
+    'sections': {
+        'target': new Template(function(data) {
+            section({'id': 'target'},
+                this.renderTemplate('section-header', 'Target'),
+
+                div({'class': 'row'},
+                    div({'class': 'span2'},
+                        this.renderTemplate('standard-input', {
+                            'rfc': '5.1.1',
+                            'label': 'Method',
+                            'help': 'HTTP Verb',
+                            'attributes': {
+                                'class': 'span2',
+                                'type': 'text',
+                                'data-storage': 'option',
+                                'name': 'method',
+                                'tabindex': 2,
+                                'autocomplete': true,
+                                'placeholder': 'ex: POST',
+                                'list': 'methods',
+                                'required': true
+                            }
+                        })
+                    ),
+
+                    div({'class': 'span8'},
+                        this.renderTemplate('standard-input', {
+                            'rfc': '3.2',
+                            'label': 'URI',
+                            'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
+                            'attributes': {
+                                'class': 'span8',
+                                'type': 'text',
+                                'data-storage': 'option',
+                                'name': 'url',
+                                'tabindex': 2,
+                                'autocomplete': true,
+                                'placeholder': 'ex: http://example.com/resources/ef7d-xj36p',
+                                'required': true,
+                                'events': {
+                                    'change': function(event) {
+                                        var value = this.get('value');
+
+                                        if (value.length && value.substr(0, 4) != 'http') {
+                                            this.set('value', 'http://' + value);
+                                        }
+
+                                        this.fireEvent('highlight');
+                                    }
+                                }
+                            }
+                        })
+                    ),
+
+                    div({'class': 'span2'},
+                        this.renderTemplate('standard-input', {
+                            'label': 'Timeout',
+                            'help': 'seconds',
+                            'attributes': {
+                                'class': 'span2',
+                                'type': 'number',
+                                'data-storage': 'extra',
+                                'name': 'timeout',
+                                'value': 60,
+                                'tabindex': 2,
+                                'min': 1,
+                                'step': 1,
+                                'required': true
+                            }
+                        })
+                    )
+                ),
+
+                div({'class': 'row'},
+                    this.renderTemplate('pairs', [
+                        {
+                            'name': 'query',
+                            'label': 'Query String',
+                            'data-storage': 'queryString',
+                            'tabindex': 3
+                        },
+
+                        {
+                            'name': 'headers',
+                            'label': 'Headers',
+                            'data-storage': 'headerCollection',
+                            'tabindex': 3
+                        }
+                    ])
+                )
+            )
+        }),
+
+        'payload': new Template(function(data) {
+            section({'id': 'payload', 'class': 'collapsed'},
+                this.renderTemplate('section-header', 'Payload'),
+
+                div({'class': 'row'},
+                    div({'class': 'span6'},
+                        this.renderTemplate('optional-input', [
+                            {
+                                'label': 'Content-Type',
+                                'help': 'The mime type of the body of the request',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Content-Type',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: application/x-www-form-urlencoded',
+                                    'list': 'mimetypes',
+                                    'disabled': true,
+                                    'events': {
+                                        'change': function(event) {
+                                            var payload = this.getParent('#payload');
+                                            var tab = payload.getElement('.tab-pane.urlencoded');
+                                            var textarea = payload.getElement('textarea');
+
+                                            if (this.get('disabled') != true && this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                tab.addClass('enabled');
+                                                textarea.fireEvent('change');
+                                            } else {
+                                                tab.removeClass('enabled');
+                                            }
+
+                                            this.fireEvent('highlight');
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                'label': 'Content-Type Encoding',
+                                'help': 'Acceptable encodings',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'extra',
+                                    'name': 'content-encoding',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: utf-8',
+                                    'list': 'charset',
+                                    'disabled': true
+                                }
+                            },
+/*
+                            {
+                                'label': 'Content-Length',
+                                'help': 'The length of the request body in octets (8-bit bytes).',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Content-Length',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 348',
+                                    'disabled': true
+                                }
+                            },
+*/
+                            {
+                                'label': 'Content-MD5',
+                                'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
+                                'attributes': {
+                                    'class': 'span6',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Content-MD5',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
+
+                    div({'class': 'span6'},
+                        div({'class': 'tabbable', 'data-name': 'payload'},
+                            ul({'class': 'nav tabs'},
+                                li({'class': 'active'}, a({'data-toggle': 'tab'}, 'RAW Body')),
+                                li(a({'data-toggle': 'tab'}, 'Form Data')),
+                                li(a({'data-toggle': 'tab'}, 'Attachments'))
+                            ),
+
+                            div({'class': 'tab-content'},
+                                div({'class': 'tab-pane active'},
+                                    fieldset({'class': 'control-group'},
+                                        div({'class': 'controls'},
+                                            textarea({
+                                                'class': 'span6 padded',
+                                                'name': 'payload',
+                                                'data-storage': 'post-text',
+                                                'rows': 5,
+                                                'tabindex': 5,
+                                                'placeholder': 'ex: XML, JSON, etc ...',
+                                                'events': {
+                                                    'change': function(event) {
+                                                        var payload = this.get('value');
+                                                        var section = this.getParent('#payload');
+                                                        var type = section.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                                        var pairs = section.getElement('.pairs.payload');
+                                                        var controls = pairs.getElement('.controls');
+
+                                                        // remove all but last one
+                                                        pairs.getElements('.input-append:nth-last-of-type(n+2)').destroy();
+
+                                                        if (type == 'application/x-www-form-urlencoded') {
+                                                            if (payload != '') {
+                                                                payload = payload.parseQueryString();
+
+                                                                Object.each(payload, function(value, key) {
+                                                                    if (typeOf(value) == 'array') {
+                                                                        value.each(function(val) {
+                                                                            controls.fireEvent('addRow', {'name': key, 'value': val});
+                                                                        });
+                                                                    } else {
+                                                                        controls.fireEvent('addRow', {'name': key, 'value': value});
+                                                                    }
+                                                                }.bind(this));
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }),
+
+                                            p({'class': 'help-text'}, 'Remember to set the Content-Type header.')
+                                        )
+                                    )
+                                ),
+
+                                div({
+                                    'class': 'tab-pane urlencoded',
+                                    'events': {
+                                        'change:relay(input[type="text"])': function(event) {
+                                            var form = this.getParent('form');
+                                            var data = form.getPairs('payload');
+                                            var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                            var textarea = form.getElement('textarea[name="payload"]');
+
+                                            if (type == 'application/x-www-form-urlencoded') {
+                                                textarea.set('value', Object.toQueryString(data));
+
+                                                // trigger change event to store the resutls
+                                                document.fireEvent('change', new FakeEvent(textarea));
+                                            }
+                                        }
+                                    }},
+
+                                    p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
+
+                                    this.renderTemplate('pairs', {
+                                        'name': 'payload',
+                                        'tabindex': 3
+                                    })
+                                ),
+
+                                div({'class': 'tab-pane'},
+                                    fieldset({'class': 'control-group pairs'},
+                                        div({'class': 'controls'},
+                                            div({'class': 'input-append'},
+                                                input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
+                                                input({'class': 'span3', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                span({'class': 'add-on btn add success'})
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }),
+
+        'authorization': new Template(function(data) {
+            section({'id': 'authorization', 'class': 'collapsed'},
+                this.renderTemplate('section-header', 'Authorization'),
+
+                div({'class': 'tabbable', 'data-name': 'authorization'},
+                    ul({
+                        'class': 'nav tabs',
+                        'events': {
+                            'click:relay(li a)': function(event) {
+                                var tabbable = this.getParent('.tabbable');
+                                var tabs = tabbable.getElement('.tabs');
+                                var content = tabbable.getElements('.tab-content .tab-pane');
+                                var index = tabs.getChildren().indexOf(this.getParent('li'));
+
+                                content.getElements('input[name="Authorization"], input[type="text"]:not([disabled]), input[type="password"]:not([disabled]), input[type="hidden"], select').each(function(elements) {
+                                    elements.set('disabled', true);
+                                });
+
+                                content[index].getElements('input[name="Authorization"], input[type="hidden"], select').set('disabled', false);
+
+                                content[index].getElements('input[type="checkbox"]').each(function(checkbox) {
+                                    if (checkbox.get('checked')) {
+                                        var input = checkbox.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+
+                                        input.set('disabled', false);
+
+                                        document.fireEvent('keyup', new FakeEvent(input));
+                                    }
+                                });
+
+                                // trigger the Authorization value
+                                var firstInput = content[index].getElement('input[type="text"]')
+                                content[index].fireEvent('keyup', new FakeEvent(firstInput));
+                            }
+                        }},
+
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Custom')),
+                        li(a({'data-toggle': 'tab'}, 'Basic')),
+                        //li(a({'data-toggle': 'tab'}, 'Digest')),
+                        li(a({'data-toggle': 'tab'}, 'oAuth'))
+                    ),
+
+                    div({'class': 'tab-content'},
+                        div({'class': 'tab-pane active'},
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Authorization',
+                                    'help': 'Authentication credentials for HTTP authentication.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Authorization',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.34',
+                                    'label': 'Proxy-Authorization',
+                                    'help': 'Authorization credentials for connecting to a proxy.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Proxy-Authorization',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+
+                        div({
+                            'class': 'tab-pane',
+                            'events': {
+                                'keyup:relay(input[type="text"], input[type="password"])': function(event) {
+                                    var pane = this.getParent('.tab-pane');
+                                    var data = pane.toObject();
+
+                                    var str = data['basic-username'] + ':';
+
+                                    if (data['basic-password']) {
+                                        str += data['basic-password'];
+                                    }
+
+                                    pane.getElement('input[name="Authorization"]').set('value', 'Basic ' + btoa(str));
+                                }
+                            }},
+
+                            input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
+
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Username',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'authorization',
+                                        'name': 'basic-username',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: username',
+                                        'required': true,
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'Password',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'password',
+                                        'data-storage': 'authorization',
+                                        'name': 'basic-password',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: password',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+/*
+                        div({'class': 'tab-pane'},
+                            input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
+
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'label': 'Username',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'name': 'digest-username',
+                                        'tabindex': 7,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: username',
+                                        'required': true,
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'Password',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'password',
+                                        'name': 'digest-password',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: password',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+*/
+                        div({
+                            'class': 'tab-pane oauth',
+                            'events': {
+                                'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
+                            }},
+
+                            div({'class': 'tabbable tabs-left', 'data-name': 'oauth'},
+                                ul({'class': 'nav tabs'},
+                                    li(a({'class': 'active', 'data-toggle': 'tab'}, 'Options')),
+                                    li(a({'data-toggle': 'tab'}, 'Tokens')),
+                                    li(a({'data-toggle': 'tab'}, 'Authorize'))
+                                ),
+
+                                div({'class': 'tab-content'},
+                                    div({'class': 'tab-pane active'},
+                                        div({'class': 'row'},
+                                            div({'class': 'span2'},
+                                                this.renderTemplate('optional-input', {
+                                                    'label': 'Version',
+                                                    'help': '',
+                                                    'attributes': {
+                                                        'class': 'span2',
+                                                        'type': 'number',
+                                                        'data-storage': 'authorization',
+                                                        'name': 'version',
+                                                        'tabindex': 7,
+                                                        'autocomplete': true,
+                                                        'placeholder': 'ex: 1.0',
+                                                        'required': true,
+                                                        'disabled': true,
+                                                        'events': {
+                                                            'change': function(event) {
+                                                                this.set('value', parseInt(this.get('value')).toFixed(1));
+
+                                                                this.fireEvent('highlight');
+                                                            }
+                                                        }
+                                                    }
+                                                })
+                                            ),
+
+                                            div({'class': 'span2'},
+                                                fieldset({'class': 'control-group'},
+                                                    label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
+                                                    div({'class': 'controls'},
+                                                        select({'class': 'span2', 'name': 'signature', 'tabindex': 4, 'disabled': true},
+                                                            option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
+                                                            option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
+                                                        ),
+                                                        p({'class': 'help-text'}, '')
+                                                    )
+                                                )
+                                            ),
+
+                                            div({'class': 'span2'},
+                                                fieldset({'class': 'control-group'},
+                                                    label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
+                                                    div({'class': 'controls'},
+                                                        select({'class': 'span2', 'name': 'method', 'tabindex': 4, 'disabled': true},
+                                                            option({'value': 'header', 'selected': true}, 'Header'),
+                                                            option({'value': 'query'},'Query String')
+                                                        ),
+                                                        p({'class': 'help-text'}, '')
+                                                    )
+                                                )
                                             )
                                         )
                                     ),
 
-                                    span({'class': 'help-block'}, 'Syntax highlighting default color theme')
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        }),
+                                    div({'class': 'tab-pane'},
+                                        this.renderTemplate('optional-input', [
+                                            {
+                                                'label': 'Consumer Key',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'consumer_key',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'required': true,
+                                                    'disabled': true
+                                                }
+                                            },
 
-        'target': new Template(function(data) {
-            section({'id': 'marin'},
-                header(
-                    img({'src': 'images/minimize.png'}),
-                    h2('Main')
-                ),
+                                            {
+                                                'label': 'Consumer Secret',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'consumer_secret',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'required': true,
+                                                    'disabled': true
+                                                }
+                                            },
 
-                h3('Target'),
+                                            {
+                                                'label': 'Token Key',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'token_key',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'disabled': true
+                                                }
+                                            },
 
-                form({
-                    'class': 'form-stacked',
-                    'novalidate': true
-                    },
+                                            {
+                                                'label': 'Token Secret',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'token_secret',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'disabled': true
+                                                }
+                                            },
 
-                    div({'class': 'row'},
-                        div({'class': 'span10'},
-                            div({'class': 'clearfix'},
-                                label({'for': 'uri'}, 'URI'),
-                                div({'class': 'input'},
-                                    input({'class': 'span10', 'type': 'text', 'name': 'uri', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: http://example.com/resources/ef7d-xj36p', 'required': true}),
-                                    span({'class': 'help-block'}, 'Universal Resource Identifier. ex: https://www.sample.com:9000')
-                                )
-                            )
-                        ),
+                                            {
+                                                'label': 'Scope',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'scope',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: ',
+                                                    'disabled': true
+                                                }
+                                            },
 
-                        div({'class': 'span2 offset1'},
-                            div({'class': 'clearfix'},
-                                label({'for': 'method'}, 'Method'),
-                                div({'class': 'input'},
-                                    input({'class': 'span2', 'type': 'text', 'name': 'method', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: POST', 'list': 'methods', 'required': true}),
-                                    span({'class': 'help-block'}, 'HTTP Verb')
-                                )
-                            )
-                        ),
-
-                        div({'class': 'span2 offset1'},
-                            div({'class': 'clearfix'},
-                                label({'for': 'timeout'}, 'Timeout'),
-                                div({'class': 'input'},
-                                    input({'class': 'span2', 'type': 'number', 'name': 'timeout', 'value': 60, 'tabindex': 2, 'min': 1, 'step': 1, 'required': true}),
-                                    span({'class': 'help-block'}, 'seconds')
-                                )
-                            )
-                        )
-                    ),
-
-                    div({'class': 'row'},
-                        div({'class': 'clearfix'},
-                            label({'for': 'query'}, 'Query String'),
-                            div({'class': 'input'},
-                                ul({
-                                    'class': 'unstyled query',
-                                    'events': {
-                                        'click:relay(input[type="button"])': function(event) {
-                                            var row = this.getParent('li');
-                                            var next = row.getNext();
-
-                                            if (next != row.getParent('ul').getLast()) {
-                                                next.getFirst().focus();
+                                            {
+                                                'label': 'Realm',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'realm',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: ',
+                                                    'disabled': true
+                                                }
                                             }
+                                        ])
+                                    ),
 
-                                            row.destroy();
-                                        },
+                                    div({'class': 'tab-pane'},
+                                        this.renderTemplate('optional-input', [
+                                            {
+                                                'label': 'Request token URL',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'request_url',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://api.provider.com/oauth/request_token',
+                                                    'disabled': true
+                                                }
+                                            },
 
-                                        'keyup:input:relay(li.error input[type="text"]:first-of-type)': function(event) {
-                                            event.target.getParent('li').removeClass('error');
-                                        },
+                                            {
+                                                'label': 'Access token URL',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'access_url',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://api.provider.com/oauth/access_token',
+                                                    'disabled': true
+                                                }
+                                            },
 
-                                        'blur:relay(li:not(:last-of-type) input[type="text"]:first-of-type)': function(event) {
-                                            var value = this.get('value').trim();
+                                            {
+                                                'label': 'Authorize URL',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'authorize_url',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://api.provider.com/oauth/authorize',
+                                                    'disabled': true
+                                                }
+                                            },
 
-                                            if (value == '') {
-                                                this.getParent('li').addClass('error');
-                                            } else {
-                                                this.set('value', value);
+                                            {
+                                                'label': 'Oauth Callback',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'oauth_callback',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://www.domain.com',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Oauth Verifier',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'oauth_verifier',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'disabled': true
+                                                }
                                             }
-                                        },
-
-                                        'focus:relay(li:last-of-type input[type="text"])': function(event) {
-                                            var row = this.getParent('li');
-                                            var previous = row.getPrevious();
-                                            var index = row.getChildren().indexOf(this);
-
-                                            if (previous && previous.getChildren()[0].get('value') == '') {
-                                                previous.addClass('error').getFirst().focus();
-                                            } else {
-                                                var clone = row.clone();
-                                                clone.inject(row, 'before');
-                                                clone.getElement('input').focus();
-                                            }
-                                        }
-                                    }},
-                                    li({'class': 'clearfix row'},
-                                        input({'class': 'span4', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                        input({'class': 'span5', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                        input({'class': 'span1 btn danger', 'type': 'button', 'tabindex': 3, 'value': 'd'})
+                                        ])
                                     )
                                 )
-                            ),
-
-                            span({'class': 'help-block'},  '')
-                        )
-                    ),
-
-                    h3('Accept'),
-
-                    div({'class': 'row'},
-                        div({'class': 'span8'},
-                            div({'class': 'clearfix'},
-                                label({'for': 'accept'}, 'Content-Type'),
-                                div({'class': 'input'},
-                                    div({'class': 'input-prepend'},
-                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: text/plain', 'list': 'mimetypes', 'disabled': true})
-                                    ),
-                                    span({'class': 'help-block'}, 'Content-Types that are acceptable.')
-                                )
-                            ),
-
-                            div({'class': 'clearfix disabled'},
-                                label({'for': 'charset'}, 'Charset'),
-                                div({'class': 'input'},
-                                    div({'class': 'input-prepend'},
-                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Charset', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: utf-8', 'list': 'charset', 'disabled': true})
-                                    ),
-                                    span({'class': 'help-block'}, 'Character sets that are acceptable.')
-                                )
-                            ),
-
-                            div({'class': 'clearfix disabled'},
-                                label({'for': 'encoding'}, 'Encoding'),
-                                div({'class': 'input'},
-                                    div({'class': 'input-prepend'},
-                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Encoding', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: identity', 'list': 'encoding', 'disabled': true})
-                                    ),
-                                    span({'class': 'help-block'}, 'Acceptable encodings.', a({'href': 'http://en.wikipedia.org/wiki/HTTP_compression', 'target': '_blank'}, 'See HTTP compression.'))
-                                )
-                            ),
-
-                            div({'class': 'clearfix'},
-                                label({'for': 'language'}, 'Language'),
-                                div({'class': 'input'},
-                                    div({'class': 'input-prepend'},
-                                        label({'class': 'add-on'}, input({'type': 'checkbox'})),
-                                        input({'class': 'span7', 'type': 'text', 'name': 'Accept-Language', 'tabindex': 3, 'autocomplete': true, 'placeholder': 'ex: en-US', 'list': 'language', 'disabled': true})
-                                    ),
-                                    span({'class': 'help-block'}, 'Acceptable languages for response.')
-                                )
                             )
                         )
                     )
                 )
             )
         }),
+
+        'headers': new Template(function(data) {
+            section({'id': 'headers', 'class': 'collapsed'},
+                this.renderTemplate('section-header', 'Headers'),
+
+                div({'class': 'tabbable'},
+                    ul({'class': 'nav tabs'},
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Standard Headers')),
+                        li(a({'data-toggle': 'tab'}, 'Cache')),
+                        li(a({'data-toggle': 'tab'}, 'Common non-standard headers'))
+                    ),
+
+                    div({'class': 'tab-content'},
+                        div({'class': 'tab-pane active'},
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'rfc': '14.1',
+                                    'label': 'Accept',
+                                    'help': 'Content-Types that are acceptable.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: text/plain',
+                                        'list': 'mimetypes',
+                                        'disabled': true
+                                    }
+                                },
+/*
+                                {
+                                    'rfc': '14.2',
+                                    'label': 'Accept Charset',
+                                    'help': 'Character sets that are acceptable.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept-Charset',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: utf-8',
+                                        'list': 'charset',
+                                        'disabled': true
+                                    }
+                                },
+                                {
+                                    'rfc': '14.3',
+                                    'label': 'Accept Encoding',
+                                    'help': 'Acceptable encodings.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept-Encoding',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: identity',
+                                        'list': 'encoding',
+                                        'disabled': true
+                                    }
+                                },
+*/
+
+                                {
+                                    'rfc': '14.4',
+                                    'label': 'Accept Language',
+                                    'help': 'Acceptable languages for response.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Accept-Language',
+                                        'tabindex': 3,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: en-US',
+                                        'list': 'languages',
+                                        'disabled': true
+                                    }
+                                },
+/*
+                                {
+                                    'rfc': '14.10',
+                                    'label': 'Connection',
+                                    'help': 'What type of connection the user-agent would prefer',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Connection',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: keep-alive',
+                                        'disabled': true
+                                    }
+                                },
+                                *
+                                {
+                                    'label': 'Cookie',
+                                    'help': 'an HTTP cookie previously sent by the server',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Cookie',
+                                        'tabindex': 4,
+                                        'autocomplete': true,
+                                        'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.18',
+                                    'label': 'Date',
+                                    'help': 'The date and time that the message was sent',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Date',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.20',
+                                    'label': 'Expect',
+                                    'help': 'Indicates that particular server behaviors are by the client',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Expect',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 100-continue',
+                                        'disabled': true
+                                    }
+                                },
+*/
+                                {
+                                    'rfc': '14.22',
+                                    'label': 'From',
+                                    'help': 'The email address of the user making the request.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'From',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: user@example.com',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.31',
+                                    'label': 'Max-Forwards',
+                                    'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Max-Forwards',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 10',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.32',
+                                    'label': 'Pragma',
+                                    'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Pragma',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: no-cache',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.35',
+                                    'label': 'Range',
+                                    'help': 'Request only part of an entity. Bytes are numbered from 0.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Range',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: bytes=500-999',
+                                        'disabled': true
+                                    }
+                                },
+/*
+                                {
+                                    'rfc': '14.36',
+                                    'label': 'Referer',
+                                    'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Referer',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: http://www.restconsole.com/',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.41',
+                                    'label': 'Transfer-Encoding',
+                                    'help': 'The transfer encodings the user agent is willing to accept.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'TE',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: trailers, deflate',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.42',
+                                    'label': 'Upgrade',
+                                    'help': 'Ask the server to upgrade to another protocol.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Upgrade',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.43',
+                                    'label': 'User-Agent',
+                                    'help': 'The user agent string of the user agent.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'User-Agent',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.45',
+                                    'label': 'Via',
+                                    'help': 'Informs the server of proxies through which the request was sent.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Via',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
+                                        'disabled': true
+                                    }
+                                },
+*/
+                                {
+                                    'rfc': '14.64',
+                                    'label': 'Warning',
+                                    'help': 'A general warning about possible problems with the entity body.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Warning',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 199 Miscellaneous warning',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            this.renderTemplate('optional-input', [
+                                {
+                                    'rfc': '14.9',
+                                    'label': 'Cache-Control',
+                                    'help': 'Used to specify caching mechanisms along the request/response chain',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Cache-Control',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: no-cache',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.24',
+                                    'label': 'If-Match',
+                                    'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Match',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.25',
+                                    'label': 'If-Modified-Since',
+                                    'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Modified-Since',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.26',
+                                    'label': 'If-None-Match',
+                                    'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-None-Match',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.27',
+                                    'label': 'If-Range',
+                                    'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Range',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'rfc': '14.28',
+                                    'label': 'If-Unmodified-Since',
+                                    'help': 'Only send the response if the entity has not been modified since a specific time.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'If-Unmodified-Since',
+                                        'tabindex': 6,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            this.renderTemplate('optional-input', [
+/*
+                                {
+                                    'label': 'Origin',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'Origin',
+                                        'tabindex': 5,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: chrome-extension',
+                                        'disabled': true
+                                    }
+                                },
+*/
+                                {
+                                    'label': 'X-HTTP-Method-Override',
+                                    'help': 'mainly used bypass firewalls and browsers limitations.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-HTTP-Method-Override',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: PUT',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-Requested-With',
+                                    'help': 'mainly used to identify Ajax requests.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-Requested-With',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: XMLHttpRequest',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-Forwarded-For',
+                                    'help': '',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-Forwarded-For',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: ',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'X-Do-Not-Track',
+                                    'help': 'Requests a web application to disable their tracking of a user.',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'X-Do-Not-Track',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1',
+                                        'disabled': true
+                                    }
+                                },
+
+                                {
+                                    'label': 'DNT',
+                                    'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
+                                    'attributes': {
+                                        'class': 'span12 padded',
+                                        'type': 'text',
+                                        'data-storage': 'header',
+                                        'name': 'DNT',
+                                        'tabindex': 7,
+                                        'autocomplete': false,
+                                        'placeholder': 'ex: 1',
+                                        'disabled': true
+                                    }
+                                }
+                            ])
+                        )
+                    )
+                )
+            )
+        }),
+
+        'response': new Template(function(data) {
+            section({'id': 'response'},
+                this.renderTemplate('section-header', 'Response'),
+
+                div({'class': 'tabbable', 'data-name': 'response'},
+                    ul({'class': 'nav tabs'},
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Request')),
+                        li(a({'data-toggle': 'tab'}, 'Response')),
+                        li(a({'data-toggle': 'tab'}, 'Preview')),
+                        li(a({'data-toggle': 'tab'}, 'HTTP Archive (HAR)'))
+                    ),
+
+                    div({'class': 'tab-content'},
+                        div({'class': 'tab-pane'},
+                            pre({'class': 'prettyprint linenums request'})
+                        ),
+
+                        div({'class': 'tab-pane active'},
+                            pre({
+                                'class': 'prettyprint linenums response',
+                                'events': {
+                                    // clicks within the response body
+                                    'click:relay(a[href])': function(event) {
+                                        event.preventDefault();
+
+                                        document.getElement('input[name="url"]').set('value', this.get('href'));
+                                        document.getElement('input[name="method"]').set('value', 'GET');
+                                        //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
+                                    }
+                                }
+                            })
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            div({'id': 'preview'})
+                        ),
+
+                        div({'class': 'tab-pane'},
+                            pre({'class': 'prettyprint linenums har lang-json'})
+                        )
+                    )
+                )
+            )
+        })
     },
 
-    initialize: function() {
-        var body = document.body;
+    'resizeEvent': function(event) {
+        document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
+        document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
+        document.getElement('#response').setStyle('min-height', window.getHeight() - 140);
+        document.getElements('#response pre').setStyle('height', window.getHeight() - 260);
+        document.getElement('#preview').setStyle('height', window.getHeight() - 260);
+    },
 
-        body.adopt(this.renderTemplate('header'));
-        body.adopt(this.renderTemplate('container'));
+    'signOAuth': function() {
+        return;
+        var tab = document.getElement('.tab-pane.oauth');
+        var data = tab.toObject();
 
-        Object.each(this.datalists, function(datalist, id) {
-            body.adopt(this.renderTemplate('datalist', {'id': id, 'values': datalist}));
-        }.bind(this));
-    }
-});
+        var request = {
+            'query': document.getElement('form[name="target"]').getPairs('query'),
+            'target': document.getElement('form[name="target"]').toObjectNoPairs(),
+            'payload': document.getElement('form[name="payload"]').toObjectNoPairs()
+        };
 
-// error messages
-Error = function(title, text, element) {
-    var messages = document.getElement('.messages').removeClass('hide');
-    var message = messages.getElement('.alert-message.error').removeClass('hide');
-    message.getElement('p').set('html', '<strong>{0}</strong> {1}'.substitute([title, text]));
-    message.getElement('a').fireEvent('click', event, 3000);
+        // start oauth
+        var accessor = {
+            'consumerKey': data.consumer_key,
+            'consumerSecret': data.consumer_secret
+        };
 
-    if (element) {
-        element.getParent('.clearfix').addClass('error');
-    }
-};
+        var message = {
+            'action': request.target.url,
+            'method': request.target.method,
+            'parameters': [
+                ['oauth_version', data.version],
+                ['oauth_signature_method', data.signature]
+            ]
+        };
 
-// add events
-window.addEvent('domready', function() {
-    return;
-    // enable smooth scrolling
-    new Fx.SmoothScroll({
-        'offset': { 'y': -50 },
-        'links': 'a[scroll][href^="#"]',
-        'wheelStops': true
-    });
-
-    // special scroll listener for the request form actions bar
-    window.addEvent('scroll', function(event) {
-        var scroll = window.getSize().y + window.getScroll().y;
-        var form = document.getElement('form[name="request"]');
-        var coordinates = form.getCoordinates();
-
-        var element = form.getElement('.actions');
-
-        if (scroll - 200 <= coordinates.top || scroll >= coordinates.bottom) {
-            element.removeClass('fixed');
-        } else {
-            element.addClass('fixed');
+        // optional params
+        if (data.token_key) {
+            accessor.token = data.token_key;
         }
-    });
 
-    // sections
-    document.getElements('a.minimize').addEvent('click', function(event) {
-        event.preventDefault();
-
-        var section = this.getParent('.page').getElement('section');
-
-        if (section.isDisplayed()) {
-            section.hide();
-        } else {
-            section.show();
+        if (data.token_secret) {
+            accessor.tokenSecret = data.token_secret;
         }
-    });
 
-    // setup autocomplete
-    if ('options' in document.createElement('datalist') == false) {
-        new AutoComplete();
-    }
-
-    // pills actions
-    document.getElements('ul.pills li a').addEvent('click', function(event) {
-        event.preventDefault();
-
-        var ul = this.getParent('ul');
-
-        ul.getElements('.active').removeClass('active');
-        this.getParent().addClass('active');
-
-        // hide all then show the selected one
-        ul.getNext('ul').getElements(' > li').addClass('hide');
-        ul.getNext('ul').getElement(this.get('href')).getParent().removeClass('hide');
-
-        _gaq.push(['_trackEvent', this.get('text'), 'clicked']);
-    });
-
-    // remove errors
-    document.addEvent('blur:relay(.error)', function(event) {
-        this.removeClass('error');
-    });
-
-    // show/hide help blocks
-    document.getElement('form[name="options"] input[name="help"]').addEvent('change', function(event) {
-        if (this.get('checked')) {
-            document.getElements('.help-block').addClass('hide');
-        } else {
-            document.getElements('.help-block').removeClass('hide');
+        if (data.scope) {
+            oauth.parameters.push(['scope', data.scope]);
         }
-    });
 
-    // show/hide line numbers
-    document.getElement('form[name="options"] input[name="lines"]').addEvent('change', function(event) {
-        if (this.get('checked')) {
-            document.getElements('.prettyprint').removeClass('linenums');
-        } else {
-            document.getElements('.prettyprint').addClass('linenums');
+        if (data.oauth_verifier) {
+            oauth.parameters.push(['oauth_verifier', data.oauth_verifier]);
         }
-    });
 
-    // theme changer
-    document.getElements('form[name="options"] input[name="theme"]').addEvent('change', function(event) {
-        if (this.get('checked')) {
-            var theme = this.get('value');
-            document.getElement('select[name="theme"] option[value="' + theme + '"]').set('selected', true);
-            document.head.getElementById('theme').set('href', 'style/prettify/' + theme + '.css');
+        // query string params
+        Object.each(request.query, function(value, key) {
+            message.parameters.push([key, value]);
+        });
 
-            _gaq.push(['_trackEvent', 'Theme', theme]);
-        }
-    }).fireEvent('change');
-
-    document.getElements('select[name="theme"]').addEvent('change', function(event) {
-        document.head.getElementById('theme').set('href', 'style/prettify/' + this.get('value') + '.css');
-
-        _gaq.push(['_trackEvent', 'Theme Swap', this.get('value')]);
-    });
-
-    // options form
-    document.getElement('form[name="options"]').addEvents({
-        'click:relay(input[type="button"], input[type="submit"], input[type="reset"])': function(event) {
-            event.preventDefault();
-
-            this.getParent('form').fireEvent(this.dataset.action, event);
-        },
-
-        'submit': function(event) {
-            var data = this.toQueryString().parseQueryString();
-            localStorage.setItem('options', JSON.encode(data));
-        },
-
-        'reset': function(event) {
-            var defaults = JSON.decode(localStorage.getItem('options'));
-
-            Object.each(defaults, function(value, key) {
-                var input = document.getElement('input[name="{0}"]:not([type="radio"]), input[type="radio"][name="{0}"][value="{1}"]'.substitute([key, value]));
-
-                switch (input.get('type')) {
-                    case 'checkbox':
-                        input.set('checked', value == 'on' ? true : false).fireEvent('change');
-                        break;
-
-                    case 'radio':
-                        input.set('checked', true).fireEvent('change');
-                        break;
-                }
+        if (request.payload['Content-Type'] == 'application/x-www-form-urlencoded' && request.payload.payload.length) {
+            // payload body
+            Object.each(request.payload.payload.parseQueryString(), function(value, key) {
+                message.parameters.push([key, value]);
             });
-        }
-    }).fireEvent('reset', new DOMEvent);
+        };
 
-    // messages close action
-    document.getElements('.messages .alert-message a.close').addEvent('click', function(event) {
-        event.preventDefault();
+        // sign
+        OAuth.completeRequest(message, accessor);
 
-        this.getParent('.messages').addClass('hide').getElements('.alert-message').addClass('hide');
-    });
+        // debug
+        //console.log(OAuth.SignatureMethod.getBaseString(message));
 
-    // modals backdrop action
-    document.getElements('.modals .modal-backdrop').addEvent('click', function(event) {
-        this.getParent('.modals').addClass('hide').getElements('.modal').addClass('hide');
-    });
+        if (data.method == 'header') {
+            var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
 
-    // modals close action
-    document.getElements('.modals .modal-header a.close').addEvent('click', function(event) {
-        event.preventDefault();
+            var input = tab.getElement('input[name="Authorization"]').set('value', header);
+        } else {
+            OAuth.formEncode(OAuth.getParameterList(message.parameters));
+            /*
+            var input = this.getParent('.tab-pane').getElement('input[name="Authorization"]').set('value', '');
 
-        this.getParent('.modals').getElement('.modal-backdrop').fireEvent('click');
-    });
+            var oauth_params = oauth.signed_url.replace(request.uri + '?', '').parseQueryString();
 
-    // field checkboxes
-    document.getElements('div.input-prepend > label.add-on > input[type="checkbox"]').addEvent('change', function(event) {
-        this.getParent('div.input-prepend > input, div.input-prepend > textarea').set('disabled', !this.get('checked'));
-    }).fireEvent('change');
-
-    // headers & params
-    document.getElements('ul.params, ul.headers').addEvents({
-        'click:relay(.btn.success)': function(event) {
-            event.preventDefault();
-
-            row = this.getParent().clone();
-            this.getParent().grab(row, 'before');
-            row.getElements('input').set('disabled', false)[0].focus();
-        },
-
-        'click:relay(.btn.danger)': function(event) {
-            event.preventDefault();
-
-            this.getParent().dispose();
-        }
-    });
-
-    // basic auth submit event
-    document.getElement('form.authorization.basic').addEvents({
-        'submit': function(event) {
-            event.preventDefault();
-
-            var auth = this.toQueryString().parseQueryString();
-
-            var input = document.getElement('input[name="Authorization"]');
-            input.set('value', 'Basic ' + btoa(auth.username + ':' + auth.password));
-            input.getPrevious('.add-on').getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
-
-            this.getParent('.modals').getElement('.modal-backdrop').fireEvent('click');
-        },
-
-        'reset': function(event) {
-            document.getElement('input[name="Authorization"]').set('value', null);
-
-            this.getParent('.modals').getElement('.modal-backdrop').fireEvent('click');
-        }
-    });
-
-    // ensure oauth version is of the right format
-    document.getElement('form.authorization.oauth input[name="version"]').addEvent('change', function() {
-        this.set('value', parseInt(this.get('value')).toFixed(1));
-    });
-
-    // oauth form
-    document.getElement('form.authorization.oauth').addEvents({
-        'click:relay(input[type="button"], input[type="submit"], input[type="reset"])': function(event) {
-            event.preventDefault();
-
-            this.getParent('form').fireEvent(this.dataset.action, event);
-
-            _gaq.push(['_trackEvent', 'oAuth Form', this.dataset.action]);
-        },
-
-        'submit': function(event) {
-            event.preventDefault();
-
-            var form = document.getElement('form[name="request"]');
-            var request = form.toQueryString().parseQueryString();
-
-            var data = this.toQueryString().parseQueryString();
-
-            // start oauth
-            var accessor = {
-                'consumerKey': data.consumer_key,
-                'consumerSecret': data.consumer_secret,
-                'token': data.token_key,
-                'tokenSecret': data.token_secret
-            };
-
-            var message = {
-                'action': request.uri,
-                'method': request.method,
-                'parameters': [
-                    ['oauth_version', data.version],
-                    ['oauth_signature_method', data.signature]
-                ]
-            };
-
-/*
-            // optional params
-            if (data.scope.length > 0) {
-                oauth.parameters.scope = data.scope;
-            }
-
-            if (data.oauth_verifier.length > 0) {
-                oauth.parameters.oauth_verifier = data.oauth_verifier;
-            }
-*/
-            // params container
-            var container = document.getElement('ul.params');
-
-            // remove old rows if any
-            container.getElements('li').each(function(row) {
-                if (row.dataset.oauth) {
-                    row.destroy();
-                }
-            });
-
-            // GET/POST params
-            var elements = {
-                'keys': container.getElements('input[name="key"]').get('value'),
-                'values': container.getElements('input[name="value"]').get('value')
-            };
-
-            elements.keys.each(function(key, index) {
-                if (key.length > 0) {
-                    message.parameters.push([key, elements.values[index]]);
-                }
-            });
-
-            // sign
-            OAuth.completeRequest(message, accessor);
-
-            console.log(message);
-
-            if (data.method == 'header') {
-                var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
-                var input = document.getElement('input[name="Authorization"]').set('value', header);
-                input.getPrevious('.add-on').getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
-            } else {
-                var input = document.getElement('input[name="Authorization"]').set('value', '');
-                input.getPrevious('.add-on').getElement('input[type="checkbox"]').set('checked', false).fireEvent('change');
-
-                var oauth_params = oauth.signed_url.replace(request.uri + '?', '').parseQueryString();
-
-                Object.each(oauth_params, function(value, key) {
-                    row = container.getElement('li:last-of-type').clone();
-                    row.dataset.oauth = true;
-                    row.getElement('input[name="key"]').set('value', key);
-                    row.getElement('input[name="value"]').set('value', value);
-                    row.getElements('input').set('disabled', false);
-                    row.inject(container, 'top');
-                });
-            }
-
-            if (data.oauth_callback.length > 0) {
+            Object.each(oauth_params, function(value, key) {
                 row = container.getElement('li:last-of-type').clone();
                 row.dataset.oauth = true;
-                row.getElement('input[name="key"]').set('value', 'oauth_callback');
-                row.getElement('input[name="value"]').set('value', data.oauth_callback);
-                row.getElements('input').set('disabled', false);
-                row.inject(container, 'top');
-            }
-
-            this.getParent('.modals').getElement('.modal-backdrop').fireEvent('click');
-        },
-
-        'reset': function(event) {
-            // clear oAuth tokens
-            chrome.extension.getBackgroundPage().oAuth.clear();
-
-            // load stored defaults
-            defaults = JSON.decode(localStorage.getItem('oauth-defaults'));
-
-            Object.each(defaults, function(value, key) {
-                var input = document.getElement('input[name="{0}"]'.substitute([key]));
-
-                // set the value
-                if (input) {
-                    input.set('value', value).fireEvent('change', new DOMEvent);
-                }
-            });
-        },
-
-        'save': function(event) {
-            // get all form data
-            var defaults = {};
-
-            defaults = this.toQueryString().parseQueryString();
-
-            localStorage.setItem('oauth-defaults', JSON.encode(defaults));
-        },
-
-        'authorize': function(event) {
-            var oAuth = chrome.extension.getBackgroundPage().oAuth;
-
-            var data = this.toQueryString().parseQueryString();
-
-            var missing = false;
-
-            this.getElements('*[required], *[required-authorize]').each(function(element) {
-                if (element.get('value') == '') {
-                    Error('Missing Data', 'Please Fill out all the required fields', element);
-                    missing = true;
-                }
-            }.bind(this));
-
-            if (missing) {
-                return;
-            } else {
-                oAuth.initialize({
-                    'request_url': data.request_url,
-                    'authorize_url': data.authorize_url,
-                    'access_url': data.access_url,
-                    'consumer_key': data.consumer_key,
-                    'consumer_secret': data.consumer_secret,
-                    'scope' : data.scope,
-                    'app_name' : 'REST Console'
-                });
-                oAuth.authorize();
-            }
-        }
-    }).fireEvent('reset', new DOMEvent);
-
-    // disable the authorize button when an access token is present
-    document.getElements('form.authorization.oauth input[name="token_key"], form.authorization.oauth input[name="token_secret"]').addEvent('change', function(event) {
-        var form = this.getParent('form');
-        var token_key = form.getElement('input[name="token_key"]').get('value');
-        var token_secret = form.getElement('input[name="token_secret"]').get('value');
-
-        if (token_key.length > 0 && token_secret.length > 0) {
-            form.getElement('input[data-action="authorize"]').set('disabled', true);
-        } else {
-            form.getElement('input[data-action="authorize"]').set('disabled', false);
-        }
-    })
-
-    // syntax highlighting
-    document.getElements('input[name="highlight"]').addEvents({
-        'change': function(event) {
-            document.getElements('.prettyprint').each(function (element) {
-                element.set('text', element.retrieve('unstyled'));
-            });
-
-            if (this.get('checked')) {
-                var value = this.get('value');
-
-                var responseBody = document.id('responseBody');
-
-                responseBody.set('class', 'prettyprint lang-' + value);
-
-                document.getElement('form[name="options"] input[name="lines"]').fireEvent('change');
-
-                // init google prettify
-                prettyPrint();
-
-                // find links
-                // TODO parse query string params into fields
-                var body = responseBody.get('html');
-                var exp = new RegExp('\\b((https?|ftp|file)://[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])', 'gim');
-                body = body.replace(exp, '<a target="_blank" href="$1">$1</a>');
-                responseBody.set('html', body);
-                responseBody.scrollTo(0, 0);
-            }
-        },
-
-        'click': function(event) {
-            this.set('checked', true);
-            this.fireEvent('change', event);
-        }
-    });
-
-    document.id('responseBody').addEvent('click:relay(a[href])', function(event) {
-        event.preventDefault();
-
-        document.getElement('input[name="uri"]').set('value', this.get('href'));
-        document.getElement('input[name="method"]').set('value', 'GET');
-        document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
-    });
-
-    document.getElement('form[name="request"] input[name="uri"]').addEvent('change', function(event) {
-        if (this.get('value').length > 0 && this.get('value').substr(0, 4) != 'http') {
-            this.set('value', 'http://' + this.get('value'));
-        }
-    });
-
-    // request form actions
-    document.getElement('form[name="request"]').addEvents({
-        'click:relay(input[type="button"], input[type="submit"], input[type="reset"])': function(event) {
-            event.preventDefault();
-
-            if (this.dataset.action) {
-                this.getParent('form').fireEvent(this.dataset.action, event);
-
-                _gaq.push(['_trackEvent', 'Request Form', this.dataset.action]);
-            }
-        },
-
-        'basic-auth': function(event) {
-            document.getElement('.modals').removeClass('hide').getElement('.modal.authorization.basic').removeClass('hide');
-        },
-
-        'oauth-setup': function(event) {
-            var element = document.getElement('input[name="uri"]');
-
-            // special
-            document.getElement('.modal.authorization.oauth').getElement('input[name="token_secret"]').fireEvent('change');
-
-            if (element.get('value').length == 0) {
-                element.focus();
-                Error('Missing Data', 'Please provide a target URI before setting oAuth Authorization', element);
-                return;
-            }
-
-            document.getElement('.modals').removeClass('hide').getElement('.modal.authorization.oauth').removeClass('hide');
-        },
-
-        'oauth-refresh': function(event) {
-            document.getElement('form.authorization.oauth').fireEvent('submit', new DOMEvent);
-        },
-
-        'save': function(event) {
-            // get all form data
-            var defaults = {};
-
-            defaults = this.toQueryString().parseQueryString();
-
-            delete defaults.key;
-            delete defaults.value;
-
-            var params = {};
-            var headers = {};
-
-            // save custom headers
-            var elements = {
-                'keys': this.getElements('ul.headers input[name="key"]:not(:last-of-type)').get('value'),
-                'values': this.getElements('ul.headers input[name="value"]:not(:last-of-type)').get('value')
-            };
-
-            elements.keys.each(function(key, index) {
-                if (key.length > 0) {
-                    headers[key] = elements.values[index];
-                }
-            });
-
-            // set custom params
-            var elements = {
-                'keys': this.getElements('ul.params input[name="key"]:not(:last-of-type)').get('value'),
-                'values': this.getElements('ul.params input[name="value"]:not(:last-of-type)').get('value')
-            };
-
-            elements.keys.each(function(key, index) {
-                if (key.length > 0) {
-                    params[key] = elements.values[index];
-                }
-            });
-
-            localStorage.setItem('request-headers-defaults', JSON.encode(headers));
-            localStorage.setItem('request-params-defaults', JSON.encode(params));
-            localStorage.setItem('request-defaults', JSON.encode(defaults));
-        },
-
-        'reset': function(event) {
-            event.preventDefault();
-
-            var defaults = {
-                'request': JSON.decode(localStorage.getItem('request-defaults')),
-                'params': JSON.decode(localStorage.getItem('request-params-defaults')),
-                'headers': JSON.decode(localStorage.getItem('request-headers-defaults'))
-            }
-
-            Object.each(defaults.request, function(value, key) {
-                var input = document.getElement('input[name="{0}"]'.substitute([key]));
-
-                // set the value
-                input.set('value', value);
-
-                // enabled if a disabled field
-                if (input.get('disabled')) {
-                    var label = input.getPrevious('.add-on');
-
-                    input.set('disabled', false);
-
-                    if (label) {
-                        label.getElement('input[type="checkbox"]').set('checked', true);
-                    }
-                }
-            });
-
-            var container = document.getElement('ul.params');
-
-            // cleanup
-            container.getElements('li:not(:last-of-type)').destroy();
-
-            Object.each(defaults.params, function(value, key) {
-                row = container.getElement('li:last-of-type').clone();
                 row.getElement('input[name="key"]').set('value', key);
                 row.getElement('input[name="value"]').set('value', value);
                 row.getElements('input').set('disabled', false);
                 row.inject(container, 'top');
             });
-
-            var container = document.getElement('ul.headers');
-
-            // cleanup
-            container.getElements('li:not(:last-of-type)').destroy();
-
-            Object.each(defaults.headers, function(value, key) {
-                row = container.getElement('li:last-of-type').clone();
-                row.getElement('input[name="key"]').set('value', key);
-                row.getElement('input[name="value"]').set('value', value);
-                row.getElements('input').set('disabled', false);
-                row.inject(container, 'top');
-            });
-        },
-
-        'submit': function(event) {
-            event.preventDefault();
-
-            var error = false;
-
-            // get all form data
-            var request = this.toQueryString().parseQueryString();
-
-            // extract the headers
-            var headers = Object.clone(request);
-
-            // delete none headers
-            delete headers.uri;
-            delete headers.method;
-            delete headers.timeout;
-            delete headers.raw;
-            delete headers.encoding;
-            delete headers.key;
-            delete headers.value;
-            delete headers.file_key;
-
-            // unsecure headers:
-            var unsafe = [
-                'accept-charset',
-                'accept-encoding',
-                'content-length',
-                'cookie',
-                'date',
-                'connection',
-                'expect',
-                'referer',
-                'user-agent',
-                'via',
-                'proxy-authorization',
-                'te',
-                'upgrade'
-            ];
-
-            // get custom fields
-            var custom = {
-                'headers': {
-                    'keys': this.getElements('ul.headers input[name="key"]').get('value'),
-                    'values': this.getElements('ul.headers input[name="value"]').get('value')
-                },
-
-                'data': {
-                    'keys': this.getElements('ul.params input[name="key"]').get('value'),
-                    'values': this.getElements('ul.params input[name="value"]').get('value')
-                }
-            }
-
-            // init variables
-            request.data = {};
-
-            // set custom params data
-            custom.data.keys.each(function(key, index) {
-                if (key.length > 0) {
-                    request.data[key] = custom.data.values[index];
-                }
-            });
-
-            // validate headers
-            custom.headers.keys.each(function(key, index) {
-                if (unsafe.contains(key.toLowerCase())) {
-                    Error('Unsafe Header', 'Refused to set unsafe header "' + key +'"', this.getElement('ul.headers input[name="key"]:nth-of-type(' + (index + 1) + ')'));
-                    error = true;
-                } else if (key.length > 0) {
-                    headers[key] = custom.headers.values[index];
-                }
-            }.bind(this));
-
-            // check for required fields
-            this.getElements('*[required]').each(function(element) {
-                if (element.get('value').length == 0) {
-                    Error('Missing Data', 'Please Fill out all the required fields', element);
-                    error = true;
-                }
-            });
-
-            if (error) {
-                // stop on error
-                return false;
-            } else {
-                // special condition for encoding
-                if (request.encoding) {
-                    request['Content-Type'] = request['Content-Type'] + '; charset=' + request.encoding;
-                }
-
-                var options = {
-                    'url': request.uri,
-                    'method': request.method,
-                    'encoding': request.encoding,
-                    'timeout': request.timeout * 1000,
-                    'raw': request.raw,
-                    'data': request.data,
-                    'files': this.getElement('input[name="files"]').files,
-                    'file_key': request.file_key,
-                    'headers': headers,
-
-                    'onRequest': function() {
-                        // replace buttons with animation
-                        document.getElement('form[name="request"] .actions').addClass('progress');
-                    },
-
-                    'onProgress': function(event, xhr){
-                        //var loaded = event.loaded, total = event.total;
-                    },
-
-                    'onTimeout': function() {
-                        // TODO replace with notice
-                        Error('Error', 'Connection Timed-out');
-
-                        // remove loading animation
-                        document.getElement('form[name="request"] .actions').removeClass('progress');
-                    },
-
-                    'onCancel': function() {
-                        this.fireEvent('stop');
-                    }.bind(this),
-
-                    'onComplete': function() {
-                        // for non-success
-                        var responseText = this.xhr.responseText;
-                        var responseXML = this.xhr.responseXML;
-
-                        // rest response fields
-                        //document.id('har').empty();
-                        document.id('rawBody').empty().set('class');
-                        document.id('responseBody').empty().set('class', 'prettyprint');
-                        document.id('responseHeaders').empty().set('class', 'prettyprint');
-                        document.id('responsePreview').empty();
-                        document.id('requestBody').empty().set('class', 'prettyprint');
-                        document.id('requestHeaders').empty().set('class', 'prettyprint');
-
-                        // trigger show/hide line numbers
-                        document.getElement('form[name="options"] input[name="lines"]').fireEvent('change');
-
-                        if (this.xhr.status == 0) {
-                            Error('Connection Failed!', 'Check your connectivity and try again');
-
-                            document.getElement('form[name="request"]').fireEvent('stop');
-                        } else {
-                            // construct request text
-                            var requestText = 'Request Url: {0}\nRequest Method: {1}\nStatus Code: {2}\n'.substitute([this.options.url, this.options.method, this.xhr.status]);
-
-                            // uploaded files?
-                            if (this.options.files.length > 0) {
-                                requestText += 'Files: {0}\n'.substitute([beautify.js(JSON.encode(this.options.files))]);
-                            }
-
-                            // data
-                            if (this.options.data != '') {
-                                switch (typeOf(this.options.data)) {
-                                    case 'string':
-                                        requestText += 'Params: ' + this.options.data;
-                                        break;
-
-                                    case 'object':
-                                        requestText += 'Params: ' + beautify.js(JSON.encode(this.options.data));
-                                        break;
-                                }
-                            }
-
-                            var requestHeaders = '';
-
-                            Object.each(this.options.headers, function(value, key) {
-                                requestHeaders += key + ': ' + value + "\n";
-                            });
-
-                            var defaultHeaders = {
-                                'Accept': '*/\*',
-                                //'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-                                //'Accept-Encoding': 'gzip,deflate,sdch',
-                                //'Accept-Language': 'en-US,en;q=0.8',
-                                'Connection': 'keep-alive',
-                                //'Content-Length': '34',
-                                'Content-Type': 'application/xml',
-                                //'Cookie': '__qca=P0-2074128619-1316995740016; __utma=71985868.1147819601.1316995740.1317068965.1317073948.4; __utmc=71985868; __utmz=71985868.1316995740.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
-                                //'Host': 'www.codeinchaos.com',
-                                'Origin': 'chrome-extension: //rest-console-id',
-                                'User-Agent': navigator.userAgent
-                            };
-
-                            Object.each(defaultHeaders, function(value, key) {
-                                if (this.options.headers[key] == undefined) {
-                                    requestHeaders += key + ': ' + value + "\n";
-                                }
-                            }.bind(this));
-
-                            var responseHeaders = 'Status Code: {0}\n{1}'.substitute([this.xhr.status, this.xhr.getAllResponseHeaders()]);
-
-                            // setup response area
-                            document.id('rawBody').set('text', responseText)
-                            document.id('responseBody').set('text', responseText);
-                            document.id('responseHeaders').set('text', responseHeaders).store('unstyled', responseHeaders);
-                            document.id('requestBody').set('text', requestText).store('unstyled', requestText);
-                            document.id('requestHeaders').set('text', requestHeaders).store('unstyled', requestHeaders);
-
-                            // extract content type
-                            var contentType = this.xhr.getResponseHeader('Content-Type');
-
-                            if (contentType != null) {
-                                var index = contentType.indexOf(';');
-
-                                if (index > 1) {
-                                    contentType = contentType.slice(0, index);
-                                }
-                            }
-
-                            var style = 'auto';
-
-                            switch (contentType) {
-                                case 'text/css':
-                                    style = 'css';
-
-                                    responseText = beautify.css(responseText);
-                                    document.id('responseBody').set('text', responseText);
-                                    break;
-
-                                case 'application/ecmascript':
-                                case 'application/javascript':
-                                case 'application/json':
-                                    style = 'js';
-
-                                    responseText = beautify.js(responseText);
-                                    document.id('responseBody').set('text', responseText);
-                                    break;
-
-                                case 'application/atom+xml':
-                                case 'application/atomcat+xml':
-                                case 'application/atomserv+xml':
-                                case 'application/beep+xml':
-                                case 'application/davmount+xml':
-                                case 'application/docbook+xml':
-                                case 'application/rdf+xml':
-                                case 'application/rss+xml':
-                                case 'application/xml':
-                                case 'application/xspf+xml':
-                                case 'application/vnd.google-earth.kml+xml':
-                                case 'application/vnd.mozilla.xul+xml':
-                                case 'image/svg+xml':
-                                case 'text/xml':
-                                    style = 'xml';
-
-                                    var declaration = responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
-
-                                    responseText = declaration[2] + "\n" + beautify.xml(responseXML).firstChild.nodeValue;
-
-                                    document.id('responseBody').set('text', responseText);
-                                    break;
-
-                                case 'text/html':
-                                case 'application/xhtml+xml':
-                                    style = 'html';
-
-                                    document.id('responseBody').set('text', responseText);
-                                    document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
-
-                                    // create and inject the iframe object
-                                    var iframe = new IFrame();
-                                    document.id('responsePreview').adopt(iframe);
-
-                                    // start writing
-                                    var doc = iframe.contentWindow.document;
-                                    doc.open();
-                                    doc.write(responseText);
-                                    doc.close();
-                                    break;
+            */
+        }
 /*
- * requires xhr.responseType to be set BEFORE the request is sent
- * this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
-
-                                case 'image/jpeg':
-                                    // create and inject the iframe object
-                                    var iframe = new IFrame();
-                                    document.id('responsePreview').adopt(iframe);
-
-                                    // render the image blob
-                                    var bb = new window.WebKitBlobBuilder();
-                                    bb.append(this.xhr.response);
-
-                                    // if using arraybuffer do this
-                                    // other wise just use blob method
-                                    // but its not currently implemented in chrome
-                                    var blob = bb.getBlob('image/png');
-
-                                    //~ var img = document.createElement('img');
-                                    //~ img.onload = function(e) {
-                                      //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
-                                    //~ };
-                                    var src = window.webkitURL.createObjectURL(blob);
-
-                                    // start writing
-                                    var doc = iframe.contentWindow.document;
-                                    doc.open();
-                                    doc.write('<img src="' + src + '"/>');
-                                    doc.close();
-                                    break;
- */
-                            }
-
-                            // store the text for later use
-                            document.id('responseBody').store('unstyled', responseText);
-
-                            // trigger syntax highlighting
-                            document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
-
-                            // scroll to the response area
-                            document.getElement('a[href="#response"]').fireEvent('click', new DOMEvent());
-
-                            // remove loading animation
-                            document.getElement('form[name="request"] .actions').removeClass('progress');
-                        }
-                    }
-                };
-
-                // don't force the content-type header
-                if (options.files.length > 0) {
-                    delete options.headers['Content-Type'];
-                }
-
-                window.XHR = new RESTRequest(options).send();
-            }
-        },
-
-        'get': function(event) {
-            this.getElement('input[name="method"]').set('value', 'GET');
-            this.fireEvent('submit', event);
-        },
-
-        'post': function(event) {
-            this.getElement('input[name="method"]').set('value', 'POST');
-            this.fireEvent('submit', event);
-        },
-
-        'put': function(event) {
-            this.getElement('input[name="method"]').set('value', 'PUT');
-            this.fireEvent('submit', event);
-        },
-
-        'delete': function(event) {
-            this.getElement('input[name="method"]').set('value', 'DELETE');
-            this.fireEvent('submit', event);
-        },
-
-        'stop': function(event) {
-            if (window.XHR) {
-                window.XHR.cancel();
-            }
-
-            // remove loading animation
-            document.getElement('form[name="request"] .actions').removeClass('progress');
+        if (data.oauth_callback && data.oauth_callback.length > 0) {
+            row = container.getElement('li:last-of-type').clone();
+            row.dataset.oauth = true;
+            row.getElement('input[name="key"]').set('value', 'oauth_callback');
+            row.getElement('input[name="value"]').set('value', data.oauth_callback);
+            row.getElements('input').set('disabled', false);
+            row.inject(container, 'top');
         }
-    }).fireEvent('reset', new DOMEvent);
+        */
+    },
+
+    'setProgress': function(progress) {
+        //document.body.getElement('.progress .bar').setStyle('width', progress + '%');
+    },
+
+    'initialize': function() {
+        var body = document.body.empty();
+
+        // render the body templates
+        body.adopt(this.renderTemplate('header'));
+        body.adopt(this.renderTemplate('container'));
+        body.adopt(this.renderTemplate('controls'));
+
+        // assign global events
+        document.addEvents(this.events);
+
+        // add the datalists
+        Object.each(this.datalists, function(datalist, id) {
+            datalist.sort();
+            body.adopt(this.renderTemplate('datalist', {'id': id, 'values': datalist}));
+        }.bind(this));
+
+        // load default values
+        this.loadDefaults();
+
+        // fix sizing
+        window.addEvent('resize', this.resizeEvent).fireEvent('resize');
+
+        // setup autocomplete
+        if ('options' in document.createElement('datalist') == false) {
+            new AutoComplete();
+        }
+    },
+
+    'applyValues': function(request) {
+        document.getElement('[name="method"]').set('value', request.method);
+        document.getElement('[name="url"]').set('value', request.url);
+
+        request.headers.each(function(value, key) {
+            var input = document.getElement('[name="' + key + '"]');
+
+            if (input) {
+                input.set('value', value);
+            }
+        });
+
+        request.queryString.each(function(value, key) {
+        });
+    },
+
+    'saveValues': function() {
+        var form = document.getElement('form[name="main"]');
+        var data = form.toObjectNoPairs();
+        var query = form.getPairs('query');
+
+        console.log(form);
+        console.log(data);
+        console.log(query);
+    },
+
+    'loadDefaults': function() {
+        var tabs        = new Storage('tabs');
+        var defaults    = new Storage('defaults');
+        var sections    = new Storage('sections');
+
+        // sections
+        document.getElements('section').each(function(section) {
+            var data = sections.get(section.get('id'));
+
+            if (data != null) {
+                section.removeClass('collapsed');
+
+                if (data == false) {
+                    section.addClass('collapsed');
+                }
+            }
+        });
+
+        // tabs
+        document.getElements('.tabbable .tabs').each(function(tab) {
+            var index = tabs.get(tab.getParent('.tabbable').dataset.name);
+
+            var link = tab.getElement('li:nth-of-type({0}) a'.substitute([index + 1]));
+
+            document.fireEvent('click', new FakeEvent(link));
+
+            tab.fireEvent('click', new FakeEvent(link));
+        });
+
+        // main fields
+        document.getElement('input[name="url"]').set('value', defaults.get('url')).fireEvent('change');
+        document.getElement('input[name="method"]').set('value', defaults.get('method')).fireEvent('change');
+        document.getElement('textarea[name="payload"]').set('value', defaults.get('postData').text).fireEvent('change');
+
+        // query string params
+        defaults.get('queryString').each(function(param) {
+            document.getElement('.pairs.query .controls').fireEvent('addRow', param)
+        });
+
+        // headers
+        defaults.get('headers').each(function(header) {
+            var input = document.getElement('[data-storage="header"][name="' + header.name + '"]');
+
+            if (input) {
+                var container = input.set('value', header.value).getParent('.input-prepend');
+
+                if (container) {
+                    container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
+                }
+            } else {
+                document.getElement('.pairs.headers .controls').fireEvent('addRow', header)
+            }
+        });
+
+        // extra fields
+        Object.each(defaults.get('extra'), function(value, name) {
+            var input = document.getElement('[data-storage="extra"][name="' + name + '"]');
+
+            if (input) {
+                var container = input.set('value', value).getParent('.input-prepend');
+
+                if (container) {
+                    container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
+                }
+            }
+        });
+    },
+
+    'send': function() {
+        var error = false;
+
+       // this.signOAuth();
+
+        var data = new Storage('defaults').data;
+
+        console.log(data);
+
+        var options = {
+            'url': data.url,
+            'query': {},
+            'payload': {},
+            'files': {},
+            'headers': {},
+            'async': true,
+            'method': data.method,
+            'link': 'ignore',
+            'isSuccess': null,
+            'emulation': false,
+            'evalScripts': false,
+            'evalResponse': false,
+            'timeout': data.extra.timeout * 1000,
+
+            'onRequest': function() {
+                // replace buttons with animation
+                document.getElement('footer').addClass('progress');
+
+                // scroll to the response area
+                document.fireEvent('click', new FakeEvent(document.getElement('a[href="#response"]')));
+            },
+
+            'onProgress': function(event, xhr) {
+                //var loaded = event.loaded, total = event.total;
+            },
+
+            'onTimeout': function() {
+                // TODO replace with notice
+                Error('Error', 'Connection Timed-out');
+
+                // remove loading animation
+                document.getElement('footer').removeClass('progress');
+            },
+
+            'onCancel': function() {
+                //this.fireEvent('stop');
+            }.bind(this),
+
+            'onComplete': this.processResponse
+        };
+
+        // queryString
+        data.queryString.each(function(param) {
+            options.query[param.name] = param.value;
+        });
+
+        // headers
+        data.headers.each(function(header) {
+            options.headers[header.name] = header.value;
+        });
+
+        // modify Content-Type header based on encoding charset
+        // TODO: shouldn't this be done as a rule in the REQUEST object?
+        if (data.extra['content-encoding']) {
+            options.encoding = data.extra['content-encoding'],
+            options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.encoding;
+        }
+/*
+        if (data.authorization.Authorization && data.authorization.Authorization != '') {
+            if (data.authorization.Authorization.substring(0, 5) == 'OAuth') {
+                //this.signOAuth();
+            }
+
+            options.headers.Authorization = data.authorization.Authorization;
+        }
+*/
+        // set payload
+        if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
+            options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
+        } else {
+            options.payload = data.postData.text;
+        };
+/*
+        // check for required fields
+        document.getElements('*[required]').each(function(element) {
+            if (element.get('value').length == 0) {
+                Error('Missing Data', 'Please Fill out all the required fields', element);
+                error = true;
+            }
+        });
+*/
+
+        // clear response area
+        document.getElement('#preview').empty();
+
+        document.getElement('pre.har').empty();
+        document.getElement('pre.request').empty();
+        document.getElement('pre.response').empty();
+
+        if (error) {
+            // stop on error
+            return false;
+        } else {
+            window.XHR = new Request(options).send();
+        }
+    },
+
+    'processResponse': function() {
+        var mimeType = this.xhr.getResponseHeader('Content-Type');
+
+        if (mimeType != null) {
+            var index = mimeType.indexOf(';');
+
+            if (index > 1) {
+                mimeType = mimeType.slice(0, index);
+            }
+        }
+
+        var style = 'auto';
+
+        switch (mimeType) {
+            case 'text/css':
+                style = 'css';
+
+                this.xhr.responseText = beautify.css(this.xhr.responseText);
+                break;
+
+            case 'application/ecmascript':
+            case 'application/javascript':
+            case 'application/json':
+                style = 'js';
+
+                this.xhr.responseText = beautify.js(this.xhr.responseText);
+                break;
+
+            case 'application/atom+xml':
+            case 'application/atomcat+xml':
+            case 'application/atomserv+xml':
+            case 'application/beep+xml':
+            case 'application/davmount+xml':
+            case 'application/docbook+xml':
+            case 'application/rdf+xml':
+            case 'application/rss+xml':
+            case 'application/xml':
+            case 'application/xspf+xml':
+            case 'application/vnd.google-earth.kml+xml':
+            case 'application/vnd.mozilla.xul+xml':
+            case 'image/svg+xml':
+            case 'text/xml':
+                style = 'xml';
+
+                var declaration = this.xhr.responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
+
+                this.xhr.responseText = declaration[2] + "\n" + beautify.xml(this.xhr.responseXML).firstChild.nodeValue;
+                break;
+
+            case 'text/html':
+            case 'application/xhtml+xml':
+                style = 'html';
+
+                //document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
+
+                // create and inject the iframe object
+                var iframe = new IFrame();
+                document.id('preview').adopt(iframe);
+
+                // start writing
+                var doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(this.xhr.responseText);
+                doc.close();
+                break;
+/*
+* requires xhr.responseType to be set BEFORE the request is sent
+* this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
+
+            case 'image/jpeg':
+                // create and inject the iframe object
+                var iframe = new IFrame();
+                document.id('responsePreview').adopt(iframe);
+
+                // render the image blob
+                var bb = new window.WebKitBlobBuilder();
+                bb.append(this.xhr.response);
+
+                // if using arraybuffer do this
+                // other wise just use blob method
+                // but its not currently implemented in chrome
+                var blob = bb.getBlob('image/png');
+
+                //~ var img = document.createElement('img');
+                //~ img.onload = function(e) {
+                  //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
+                //~ };
+                var src = window.webkitURL.createObjectURL(blob);
+
+                // start writing
+                var doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write('<img src="' + src + '"/>');
+                doc.close();
+                break;
+*/
+        }
+
+        // construct HAR objects
+        var request = new Storage('defaults').data;
+
+        var response = new HAR.Response();
+        response.fromXHR(this.xhr);
+
+        var har = new HAR.Log();
+        var harResponse = response.toObject();
+        harResponse.content.text = btoa(harResponse.content.text);
+
+        har.addEntry(new HAR.Entry({
+            'request': request,
+            'response': harResponse
+        }).toObject());
+
+        // modify request object for templates
+        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
+        var parts = exp.exec(request.url);
+
+        if (parts[3] == undefined) {
+            parts[3] = '/';
+        }
+
+        request.host = parts[2];
+        request.path = parts[3];
+
+        var queryString = {};
+
+        request.queryString.each(function(param) {
+            queryString[param.name] = param.value;
+        });
+
+        request.queryString = Object.toQueryString(queryString);
+
+        document.getElement('pre.har').set('text', beautify.js(JSON.encode(har.toObject())));
+        document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
+        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(this.xhr.responseText);
+
+        // init google prettify
+        prettyPrint();
+
+        document.getElement('footer').removeClass('progress');
+return;
+
+        if (this.xhr.status == 0) {
+            Error('Connection Failed!', 'Check your connectivity and try again');
+
+            //document.getElement('form[name="request"]').fireEvent('stop');
+        } else {
+            // trigger syntax highlighting
+            document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
+        }
+    }
 });
