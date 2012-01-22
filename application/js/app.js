@@ -35,6 +35,12 @@ DOMEvent.definePseudo('input', function(split, fn, args) {
     fn.apply(this, args);
 });
 
+String.implement({
+    'htmlEntities': function() {
+        return this.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+});
+
 Element.implement({
     'toObject': function() {
         var str = this.toQueryString();
@@ -56,8 +62,8 @@ Element.implement({
     },
 
     'getPairs': function(name) {
-        var keys = this.getElements('.pairs[name="' + name + '"] input[name="key"]:not([value=""])').get('value');
-        var values = this.getElements('.pairs[name="' + name + '"] input[name="value"]:not([value=""])').get('value');
+        var keys = this.getElements('.pairs.' + name + ' input[name="key"]:not([value=""])').get('value');
+        var values = this.getElements('.pairs.' + name + ' input[name="value"]:not([value=""])').get('value');
 
         // remove the last one because its always empty
         keys.pop();
@@ -495,27 +501,54 @@ var App = new Class({
             var data = {
                 'url': form.getElement('[name="url"]').get('value'),
                 'method': form.getElement('[name="method"]').get('value'),
-                'options': []
+                'extra': {}
             };
 
-            // construct custom "options" array
-            form.getElements('[data-storage="option"]').each(function(option) {
-                data.options.push({
-                    'name': option.get('name'),
-                    'value': option.get('value'),
-                    'disabled': option.get('disabled')
-                });
+            // construct extras array
+            form.getElements('[data-storage="extra"]').each(function(field) {
+                if (!field.get('disabled')) {
+                    data.extra[field.get('name')] = field.get('value');
+                }
             });
 
             // init HAR.Request
             var request = new HAR.Request(data);
 
-            // add headers
+            // post text
+            request.addPostText(form.getElement('[data-storage="post-text"]').get('value'));
+
+            // headers
             form.getElements('[data-storage="header"]').each(function(header) {
-                request.addHeader(header.get('name'), header.get('value'), header.get('disabled'));
+                if (!header.get('disabled')) {
+                    request.addHeader(header.get('name'), header.get('value'));
+                }
             });
 
-            console.log(request.toObject());
+            // custom headers
+            var headers = {
+                'keys': form.getElements('[data-storage="headerCollection"][name="key"]').get('value'),
+                'values': form.getElements('[data-storage="headerCollection"][name="value"]').get('value')
+            };
+
+            headers.keys.each(function(key, index) {
+                if (key != '') {
+                    request.addHeader(key, headers.values[index]);
+                }
+            });
+
+            // query string data
+            var query = {
+                'keys': form.getElements('[data-storage="queryString"][name="key"]').get('value'),
+                'values': form.getElements('[data-storage="queryString"][name="value"]').get('value')
+            };
+
+            query.keys.each(function(key, index) {
+                if (key != '') {
+                    request.addQueryParam(key, query.values[index]);
+                }
+            });
+
+            localStorage.setItem('defaults', JSON.encode(request.toObject()));
         },
 
         // loads panels
@@ -568,10 +601,10 @@ var App = new Class({
                             var section = this.getParent('section');
 
                             // change class
-                            section.toggleClass('minimize')
+                            section.toggleClass('collapsed')
 
                             // store status
-                            new Storage('sections').set(section.get('id'), !section.hasClass('minimize'));
+                            new Storage('sections').set(section.get('id'), !section.hasClass('collapsed'));
 
                             // fire resize event to trigger hidden elements resize
                             window.fireEvent('resize');
@@ -591,93 +624,77 @@ var App = new Class({
         }),
 
         'pairs': new Template(function(data) {
-            fieldset({
-                'class': 'control-group span6 pairs',
-                'name': data.name,
-                'events': {
-                    'save': function(event) {
-                        var data = this.toObject();
-
-                        var storage = {};
-
-                        // is there any?
-                        if (data.key.length) {
-                            // loop through
-                            data.key.each(function(key, index) {
-                                // only store ones with keys
-                                if (key.length > 0) {
-                                    storage[key] = data.value[index];
-                                }
-                            });
-                        }
-
-                        new Storage('pairs').set(this.get('name'), storage);
-                    },
-
-                    // clear error highlight on pairs
-                    'keyup:relay(.controls.error input[type="text"]:first-child)': function(event) {
-                        event.target.getParent('.controls').removeClass('error');
-                    },
-
-                    // check for empty keys on pairs
-                    'blur:relay(.controls:not(:last-child) input[type="text"]:first-child)': function(event) {
-                        var value = this.get('value').trim();
-
-                        if (value == '') {
-                            this.getParent('.controls').addClass('error');
-                        } else {
-                            this.set('value', value);
-                        }
-                    },
-
-                    'focus:relay(.controls:last-of-type input[type="text"])': function(event) {
-                        this.getNext('.add-on.add').fireEvent('click');
-                    }
-                }},
-
-                label({'for': data.name}, data.label),
+            fieldset({'class': 'control-group span6 pairs ' + data.name},
+                label({'class': 'control-label', 'for': data.name}, data.label),
 
                 div({
                     'class': 'controls',
                     'events': {
-                        'change:relay(input[type="text"])': function(event) {
-                            this.getParent('.control-group').fireEvent('save');
+                        'focus:relay(.pair:last-child input[type="text"])': function(event) {
+                            this.getParent('.controls').fireEvent('click', new FakeEvent(this.getNext('.add')));
                         },
 
-                        'click:relay(.btn.add)': function(event) {
-                            var row = this.getParent('.controls');
-                            var previous = row.getPrevious('.controls');
+                        // clear error highlight on pairs
+                        'keyup:relay(.error input[type="text"]:first-child)': function(event) {
+                            this.getParent('.pair').removeClass('error');
+                        },
+
+                        // check for empty keys on pairs
+                        'blur:relay(.pair:not(:last-child) input[type="text"]:first-child)': function(event) {
+                            var value = this.get('value').trim();
+
+                            if (value == '') {
+                                this.getParent('.pair').addClass('error');
+                            } else {
+                                this.set('value', value);
+                            }
+                        },
+
+                        'addRow': function(header) {
+                            var pair = this.getElement('.pair:last-child');
+                            var clone = pair.clone().cloneEvents(pair);
+
+                            if (header) {
+                                clone.getElement('input[name="key"]').set('value', header.name);
+                                clone.getElement('input[name="value"]').set('value', header.value);
+                            }
+
+                            clone.inject(pair, 'before');
+                            clone.getElement('input').focus();
+                        },
+
+                        'click:relay(.add)': function(event) {
+                            var pair = this.getParent('.pair');
+                            var previous = pair.getPrevious('.pair');
 
                             if (previous && previous.getElement('input').get('value') == '') {
                                 previous.addClass('error').getElement('input').focus();
                             } else {
-                                var clone = row.clone().cloneEvents(row);
-                                clone.inject(row, 'before');
-                                clone.getElement('input').focus();
+                                this.getParent('.controls').fireEvent('addRow');
                             }
                         },
 
-                        'click:relay(.btn.remove)': function(event) {
-                            var row = this.getParent('.controls');
-                            var group = this.getParent('.control-group');
-                            var next = row.getNext();
+                        'click:relay(.remove)': function(event) {
+                            var pair = this.getParent('.pair');
+                            var next = pair.getNext();
 
-                            // don't focus on the next row if its the last
+                            // don't focus on the next pair if its the last
                             // otherwise you get stuck in a loop
-                            if (next != group.getLast()) {
+                            if (next != pair.getParent().getLast()) {
                                 next.getElement('input').focus();
-                            } else if (row.getPrevious('.controls')) {
-                                row.getPrevious('.controls').getElement('input').focus();
+                            } else if (pair.getPrevious('.controls')) {
+                                pair.getPrevious('.pair').getElement('input').focus();
                             }
-                            row.destroy();
 
-                            group.fireEvent('save');
+                            pair.destroy();
+
+                            document.fireEvent('change', new FakeEvent(next.getElement('input')));
                         }
                     }},
 
-                    div({'class': 'input-append'},
-                        input({'class': 'span2', 'type': 'text', 'name': 'key', 'data-type': data['data-type'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: key'}),
-                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-type': data['data-type'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: value'}),
+                    div({'class': 'input-append pair'},
+                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
 
                         span({'class': 'add-on btn add success'}),
                         span({'class': 'add-on btn remove danger'})
@@ -702,21 +719,24 @@ var App = new Class({
 
             // highlight event
             attributes.events.highlight = function(event) {
-                var group = this.getParent('.control-group');
                 var value = this.get('value');
+                var disabled = this.get('disabled');
+                var group = this.getParent('.control-group');
 
                 // reset classes
                 group.removeClass('success').removeClass('error').removeClass('warning');
 
                 // empty check
-                if (value == '') {
-                    if (this.get('required')) {
-                        group.addClass('error');
+                if (!disabled) {
+                    if (value == '') {
+                        if (this.get('required')) {
+                            group.addClass('error');
+                        } else {
+                            group.addClass('warning');
+                        }
                     } else {
-                        group.addClass('warning');
+                        group.addClass('success');
                     }
-                } else {
-                    group.addClass('success');
                 }
             }
 
@@ -750,11 +770,16 @@ var App = new Class({
                                             input.set('disabled', false).fireEvent('highlight').fireEvent('focus').focus();
 
                                             // prevent autoComplete
-                                            event.stopPropagation();
+                                            if (event) {
+                                                event.stopPropagation();
+                                            }
                                         } else {
-                                            input.set('disabled', true);
+                                            input.set('disabled', true).fireEvent('highlight');
                                             this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
                                         }
+
+                                        input.fireEvent('change');
+                                        document.fireEvent('change', new FakeEvent(input));
                                     }
                                 }
                             })
@@ -810,7 +835,7 @@ var App = new Class({
                 'class': 'main fluid-container sidebar-left',
                 'data-screen': 'main',
                 'events': {
-                    'scroll': function() {
+                    'scroll': function(event) {
                         var position = this.getScroll().y;
 
                         document.getElements('a[data-spy="scroll"]').each(function(link) {
@@ -829,7 +854,7 @@ var App = new Class({
                     div({'class': 'well'},
                         h3('Navigation'),
 
-                        ul({'class': 'nav list navigation', 'data-screen-name': 'main'},
+                        ul({'class': 'nav list navigation', 'data-screen': 'main'},
                             li({'class': 'active'}, a({'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('T'), 'arget')),
                             li(a({'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('P'), 'ayload')),
                             li(a({'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('A'), 'uthorization')),
@@ -837,13 +862,13 @@ var App = new Class({
                             li(a({'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('R'), 'esponse'))
                         ),
 
-                        ul({'class': 'nav list navigation', 'data-screen-name': 'settings'},
+                        ul({'class': 'nav list navigation', 'data-screen': 'settings'},
                             li({'class': 'active'}, a({'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'General')),
                             li(a({'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Display'))
                         )
                     ),
 
-                    div({'class': 'tabbable', 'data-screen-name': 'main'},
+                    div({'class': 'tabbable', 'data-screen': 'main'},
                         ul({'class': 'nav tabs'},
                             li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'star'}), 'Presets')),
                             li(a({'data-toggle': 'tab'}, i({'class': 'history'}), 'History'))
@@ -861,7 +886,17 @@ var App = new Class({
                                                 alert('Coming Soon!');
                                             }
                                         }
-                                    }, i({'class': 'plus'}), 'Add WADL')),
+                                    }, i({'class': 'plus'}), 'Import WADL')),
+
+                                    li(a({
+                                        'events': {
+                                            'click': function(event) {
+                                                event.stop();
+
+                                                alert('Coming Soon!');
+                                            }
+                                        }
+                                    }, i({'class': 'plus'}), 'Import HAR')),
 
                                     li({'class': 'nav-header'}, 'Defaults'),
 
@@ -898,7 +933,7 @@ var App = new Class({
                 ),
 
                 div({'class': 'fluid-content'},
-                    div({'data-screen-name': 'main'},
+                    div({'data-screen': 'main'},
                         form({'name': 'main', 'novalidate': true},
                             this.renderSection('target'),
                             this.renderSection('payload'),
@@ -909,15 +944,15 @@ var App = new Class({
                         this.renderSection('response')
                     ),
 
-                    div({'data-screen-name': 'settings'},
+                    div({'data-screen': 'settings'},
                         this.renderTemplate('settings')
                     ),
 
-                    div({'data-screen-name': 'help'},
+                    div({'data-screen': 'help'},
                         this.renderTemplate('help')
                     ),
 
-                    div({'data-screen-name': 'about'},
+                    div({'data-screen': 'about'},
                         this.renderTemplate('about')
                     )
                 )
@@ -926,6 +961,7 @@ var App = new Class({
 
         'settings': new Template(function(data) {
             section({'id': 'display'}
+
             ),
 
             section({'id': 'general'},
@@ -967,27 +1003,26 @@ var App = new Class({
                             fieldset({'class': 'control-group'},
                                 label({'class': 'control-label'}, 'General'),
                                 div({'class': 'controls'},
-                                    div({'class': 'control-list'},
-                                        label({'class': 'checkbox'},
-                                            input({
-                                                'type': 'checkbox',
-                                                'name': 'help',
-                                                'events': {
-                                                    'change': function(event) {
-                                                        if (this.get('checked')) {
-                                                            document.body.addClass('no-help');
-                                                        } else {
-                                                            document.body.removeClass('no-help');
-                                                        }
+                                    label({'class': 'checkbox'},
+                                        input({
+                                            'type': 'checkbox',
+                                            'name': 'help',
+                                            'events': {
+                                                'change': function(event) {
+                                                    if (this.get('checked')) {
+                                                        document.body.addClass('no-help');
+                                                    } else {
+                                                        document.body.removeClass('no-help');
                                                     }
                                                 }
-                                            }),
+                                            }
+                                        }),
 
-                                            'Hide Help Lines'
-                                        ),
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'checkbox', 'name': 'lines'}), 'Hide Line Numbers *'
-                                        )
+                                        'Hide Help Lines'
+                                    ),
+
+                                    label({'class': 'checkbox'},
+                                        input({'type': 'checkbox', 'name': 'lines'}), 'Hide Line Numbers *'
                                     ),
 
                                     p({'class': 'help-text'}, '* will affect next request.')
@@ -998,40 +1033,38 @@ var App = new Class({
                         div({'class': 'span'},
                             fieldset({'class': 'control-group'},
                                 label({'class': 'control-label'}, 'Color Theme'),
-                                div({'class': 'controls'},
-                                    div({
-                                        'class': 'control-list',
-                                        'events': {
-                                            'change:relay(input)': function(event) {
-                                                if (this.get('checked')) {
-                                                    document.id('theme').set('href', 'css/prettify/{0}.css'.substitute([this.get('value')]));
-                                                }
+                                div({
+                                    'class': 'controls',
+                                    'events': {
+                                        'change:relay(input)': function(event) {
+                                            if (this.get('checked')) {
+                                                document.id('theme').set('href', 'css/prettify/{0}.css'.substitute([this.get('value')]));
                                             }
-                                        }},
+                                        }
+                                    }},
 
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
+                                    ),
 
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}), 'Bootstrap'
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}), 'Bootstrap'
+                                    ),
 
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap-dark'}), 'Bootstrap Dark'
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap-dark'}), 'Bootstrap Dark'
+                                    ),
 
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'radio', 'name': 'theme', 'value': 'desert'}), 'Desert'
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'desert'}), 'Desert'
+                                    ),
 
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}), 'Sunburst'
-                                        ),
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}), 'Sunburst'
+                                    ),
 
-                                        label({'class': 'checkbox'},
-                                            input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}), 'Sons of Obsidian'
-                                        )
+                                    label({'class': 'radio'},
+                                        input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}), 'Sons of Obsidian'
                                     ),
 
                                     p({'class': 'help-text'}, 'Syntax highlighting default color theme')
@@ -1081,6 +1114,31 @@ var App = new Class({
                     )
                 )
             )
+        }),
+
+        'httpRequest': new Template(function(data) {
+            span({'class': 'nocode'},
+                span({'class': 'kwd'}, data.method, ' ', data.path, data.queryString, ' ', 'HTTP/1.1 '), '\n',
+                span({'class': 'typ'}, 'HOST'),
+                span({'class': 'pun'}, ': '),
+                span({'class': 'pln'}, data.host),
+                span('\n'),
+                this.renderTemplate('httpHeaders', data.headers), '\n'
+            )
+        }),
+
+        'httpResponse': new Template(function(data) {
+            span({'class': 'nocode'},
+                span({'class': 'kwd'}, 'HTTP/1.1 ', data.status, ' ', data.statusText), '\n',
+                this.renderTemplate('httpHeaders', data.headers), '\n'
+            )
+        }),
+
+        'httpHeaders': new Template(function(header) {
+            span({'class': 'typ'}, header.name),
+            span({'class': 'pun'}, ': '),
+            span({'class': 'pln', 'text': header.value}),
+            span('\n')
         })
     },
 
@@ -1098,7 +1156,7 @@ var App = new Class({
                             'attributes': {
                                 'class': 'span2',
                                 'type': 'text',
-                                'data-storage': 'property',
+                                'data-storage': 'option',
                                 'name': 'method',
                                 'tabindex': 2,
                                 'autocomplete': true,
@@ -1109,15 +1167,15 @@ var App = new Class({
                         })
                     ),
 
-                    div({'class': 'span9'},
+                    div({'class': 'span8'},
                         this.renderTemplate('standard-input', {
                             'rfc': '3.2',
                             'label': 'URI',
                             'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
                             'attributes': {
-                                'class': 'span9',
+                                'class': 'span8',
                                 'type': 'text',
-                                'data-storage': 'property',
+                                'data-storage': 'option',
                                 'name': 'url',
                                 'tabindex': 2,
                                 'autocomplete': true,
@@ -1138,14 +1196,14 @@ var App = new Class({
                         })
                     ),
 
-                    div({'class': 'span1'},
+                    div({'class': 'span2'},
                         this.renderTemplate('standard-input', {
                             'label': 'Timeout',
                             'help': 'seconds',
                             'attributes': {
-                                'class': 'span1',
+                                'class': 'span2',
                                 'type': 'number',
-                                'data-storage': 'option',
+                                'data-storage': 'extra',
                                 'name': 'timeout',
                                 'value': 60,
                                 'tabindex': 2,
@@ -1160,16 +1218,16 @@ var App = new Class({
                 div({'class': 'row'},
                     this.renderTemplate('pairs', [
                         {
-                            'name': 'headers',
-                            'label': 'Headers',
-                            'data-type': 'header',
+                            'name': 'query',
+                            'label': 'Query String',
+                            'data-storage': 'queryString',
                             'tabindex': 3
                         },
 
                         {
-                            'name': 'query',
-                            'label': 'Query String',
-                            'data-type': 'query',
+                            'name': 'headers',
+                            'label': 'Headers',
+                            'data-storage': 'headerCollection',
                             'tabindex': 3
                         }
                     ])
@@ -1178,7 +1236,7 @@ var App = new Class({
         }),
 
         'payload': new Template(function(data) {
-            section({'id': 'payload', 'class': 'minimize'},
+            section({'id': 'payload', 'class': 'collapsed'},
                 this.renderTemplate('section-header', 'Payload'),
 
                 div({'class': 'row'},
@@ -1199,15 +1257,15 @@ var App = new Class({
                                     'disabled': true,
                                     'events': {
                                         'change': function(event) {
-                                            var form = this.getParent('form');
-                                            var tab = form.getElement('.tab-pane.urlencoded');
-                                            var textarea = form.getElement('textarea');
+                                            var payload = this.getParent('#payload');
+                                            var tab = payload.getElement('.tab-pane.urlencoded');
+                                            var textarea = payload.getElement('textarea');
 
-                                            if (this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
-                                                tab.addClass('true');
+                                            if (this.get('disabled') != true && this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
+                                                tab.addClass('enabled');
                                                 textarea.fireEvent('change');
                                             } else {
-                                                tab.removeClass('true');
+                                                tab.removeClass('enabled');
                                             }
 
                                             this.fireEvent('highlight');
@@ -1222,7 +1280,7 @@ var App = new Class({
                                 'attributes': {
                                     'class': 'span6',
                                     'type': 'text',
-                                    'data-storage': 'option',
+                                    'data-storage': 'extra',
                                     'name': 'content-encoding',
                                     'tabindex': 4,
                                     'autocomplete': true,
@@ -1231,7 +1289,7 @@ var App = new Class({
                                     'disabled': true
                                 }
                             },
-
+/*
                             {
                                 'label': 'Content-Length',
                                 'help': 'The length of the request body in octets (8-bit bytes).',
@@ -1246,7 +1304,7 @@ var App = new Class({
                                     'disabled': true
                                 }
                             },
-
+*/
                             {
                                 'label': 'Content-MD5',
                                 'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
@@ -1277,35 +1335,35 @@ var App = new Class({
                                     fieldset({'class': 'control-group'},
                                         div({'class': 'controls'},
                                             textarea({
-                                                'class': 'span6',
+                                                'class': 'span6 padded',
                                                 'name': 'payload',
+                                                'data-storage': 'post-text',
                                                 'rows': 5,
                                                 'tabindex': 5,
                                                 'placeholder': 'ex: XML, JSON, etc ...',
                                                 'events': {
                                                     'change': function(event) {
-                                                        var form = this.getParent('form');
-                                                        var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                                        var payload = this.get('value');
+                                                        var section = this.getParent('#payload');
+                                                        var type = section.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                                        var pairs = section.getElement('.pairs.payload');
+                                                        var controls = pairs.getElement('.controls');
 
-                                                        form.getElements('.pairs .controls:nth-last-of-type(n+2)').destroy();
+                                                        // remove all but last one
+                                                        pairs.getElements('.input-append:nth-last-of-type(n+2)').destroy();
 
                                                         if (type == 'application/x-www-form-urlencoded') {
-                                                            var payload = this.get('value');
-
                                                             if (payload != '') {
                                                                 payload = payload.parseQueryString();
 
                                                                 Object.each(payload, function(value, key) {
-                                                                    // construct fake event object
-                                                                    var event = new FakeEvent(form.getElement('.pairs .controls:last-of-type .add-on'));
-
-                                                                    // trigger focus event to insert more rows
-                                                                    document.fireEvent('click', event);
-
-                                                                    var last = form.getElement('.pairs .controls:nth-last-child(-n+2)');
-
-                                                                    last.getElement('input[type="text"]:first-of-type').set('value', key);
-                                                                    last.getElement('input[type="text"]:last-of-type').set('value', value);
+                                                                    if (typeOf(value) == 'array') {
+                                                                        value.each(function(val) {
+                                                                            controls.fireEvent('addRow', {'name': key, 'value': val});
+                                                                        });
+                                                                    } else {
+                                                                        controls.fireEvent('addRow', {'name': key, 'value': value});
+                                                                    }
                                                                 }.bind(this));
                                                             }
                                                         }
@@ -1318,37 +1376,30 @@ var App = new Class({
                                     )
                                 ),
 
-                                div({'class': 'tab-pane urlencoded'},
+                                div({
+                                    'class': 'tab-pane urlencoded',
+                                    'events': {
+                                        'change:relay(input[type="text"])': function(event) {
+                                            var form = this.getParent('form');
+                                            var data = form.getPairs('payload');
+                                            var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                            var textarea = form.getElement('textarea[name="payload"]');
+
+                                            if (type == 'application/x-www-form-urlencoded') {
+                                                textarea.set('value', Object.toQueryString(data));
+
+                                                // trigger change event to store the resutls
+                                                document.fireEvent('change', new FakeEvent(textarea));
+                                            }
+                                        }
+                                    }},
+
                                     p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
 
-                                    fieldset({
-                                        'class': 'control-group pairs',
+                                    this.renderTemplate('pairs', {
                                         'name': 'payload',
-                                        'ignore': true,
-                                        'events': {
-                                            'change:relay(input[type="text"])': function(event) {
-                                                var form = this.getParent('form');
-                                                var data = form.getPairs('payload');
-                                                var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
-                                                var textarea = form.getElement('textarea[name="payload"]');
-
-                                                if (type == 'application/x-www-form-urlencoded') {
-                                                    textarea.set('value', Object.toQueryString(data));
-
-                                                    // trigger change event to store the resutls
-                                                    document.fireEvent('change', new FakeEvent(textarea));
-                                                }
-                                            }
-                                        }},
-
-                                        div({'class': 'controls'},
-                                            div({'class': 'input-append'},
-                                                input({'class': 'span2 smaller', 'type': 'text', 'name': 'key', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key'}),
-                                                input({'class': 'span3', 'type': 'text', 'name': 'value', 'tabindex': 3, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value'}),
-                                                span({'class': 'add-on btn success'})
-                                            )
-                                        )
-                                    )
+                                        'tabindex': 3
+                                    })
                                 ),
 
                                 div({'class': 'tab-pane'},
@@ -1356,8 +1407,8 @@ var App = new Class({
                                         div({'class': 'controls'},
                                             div({'class': 'input-append'},
                                                 input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
-                                                input({'class': 'span2 smaller', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
-                                                span({'class': 'add-on btn success'})
+                                                input({'class': 'span3', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                span({'class': 'add-on btn add success'})
                                             )
                                         )
                                     )
@@ -1370,7 +1421,7 @@ var App = new Class({
         }),
 
         'authorization': new Template(function(data) {
-            section({'id': 'authorization', 'class': 'minimize'},
+            section({'id': 'authorization', 'class': 'collapsed'},
                 this.renderTemplate('section-header', 'Authorization'),
 
                 div({'class': 'tabbable', 'data-name': 'authorization'},
@@ -1418,7 +1469,7 @@ var App = new Class({
                                     'label': 'Authorization',
                                     'help': 'Authentication credentials for HTTP authentication.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Authorization',
@@ -1434,7 +1485,7 @@ var App = new Class({
                                     'label': 'Proxy-Authorization',
                                     'help': 'Authorization credentials for connecting to a proxy.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Proxy-Authorization',
@@ -1471,7 +1522,7 @@ var App = new Class({
                                     'label': 'Username',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'authorization',
                                         'name': 'basic-username',
@@ -1487,7 +1538,7 @@ var App = new Class({
                                     'label': 'Password',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'password',
                                         'data-storage': 'authorization',
                                         'name': 'basic-password',
@@ -1508,7 +1559,7 @@ var App = new Class({
                                     'label': 'Username',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'name': 'digest-username',
                                         'tabindex': 7,
@@ -1523,7 +1574,7 @@ var App = new Class({
                                     'label': 'Password',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'password',
                                         'name': 'digest-password',
                                         'tabindex': 5,
@@ -1541,254 +1592,243 @@ var App = new Class({
                                 'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
                             }},
 
-                            div({'class': 'row'},
-                                div({'class': 'span12'},
-                                    this.renderTemplate('standard-input', {
-                                        'label': 'Authorization Header',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span12',
-                                            'type': 'text',
-                                            'data-storage': 'authorization',
-                                            'name': 'Authorization',
-                                            'tabindex': 7,
-                                            'autocomplete': false,
-                                            'placeholder': 'ex: ',
-                                            'required': false,
-                                            'disabled': false,
-                                            'readonly': true
-                                        }
-                                    })
-                                )
-                            ),
+                            div({'class': 'tabbable tabs-left', 'data-name': 'oauth'},
+                                ul({'class': 'nav tabs'},
+                                    li(a({'class': 'active', 'data-toggle': 'tab'}, 'Options')),
+                                    li(a({'data-toggle': 'tab'}, 'Tokens')),
+                                    li(a({'data-toggle': 'tab'}, 'Authorize'))
+                                ),
 
-                            div({'class': 'row'},
-                                div({'class': 'span2'},
-                                    this.renderTemplate('optional-input', {
-                                        'label': 'Version',
-                                        'help': '',
-                                        'attributes': {
-                                            'class': 'span2',
-                                            'type': 'number',
-                                            'data-storage': 'authorization',
-                                            'name': 'version',
-                                            'tabindex': 7,
-                                            'autocomplete': true,
-                                            'placeholder': 'ex: 1.0',
-                                            'required': true,
-                                            'disabled': true,
-                                            'events': {
-                                                'change': function(event) {
-                                                    this.set('value', parseInt(this.get('value')).toFixed(1));
+                                div({'class': 'tab-content'},
+                                    div({'class': 'tab-pane active'},
+                                        div({'class': 'row'},
+                                            div({'class': 'span2'},
+                                                this.renderTemplate('optional-input', {
+                                                    'label': 'Version',
+                                                    'help': '',
+                                                    'attributes': {
+                                                        'class': 'span2',
+                                                        'type': 'number',
+                                                        'data-storage': 'authorization',
+                                                        'name': 'version',
+                                                        'tabindex': 7,
+                                                        'autocomplete': true,
+                                                        'placeholder': 'ex: 1.0',
+                                                        'required': true,
+                                                        'disabled': true,
+                                                        'events': {
+                                                            'change': function(event) {
+                                                                this.set('value', parseInt(this.get('value')).toFixed(1));
 
-                                                    this.fireEvent('highlight');
+                                                                this.fireEvent('highlight');
+                                                            }
+                                                        }
+                                                    }
+                                                })
+                                            ),
+
+                                            div({'class': 'span2'},
+                                                fieldset({'class': 'control-group'},
+                                                    label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
+                                                    div({'class': 'controls'},
+                                                        select({'class': 'span2', 'name': 'signature', 'tabindex': 4, 'disabled': true},
+                                                            option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
+                                                            option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
+                                                        ),
+                                                        p({'class': 'help-text'}, '')
+                                                    )
+                                                )
+                                            ),
+
+                                            div({'class': 'span2'},
+                                                fieldset({'class': 'control-group'},
+                                                    label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
+                                                    div({'class': 'controls'},
+                                                        select({'class': 'span2', 'name': 'method', 'tabindex': 4, 'disabled': true},
+                                                            option({'value': 'header', 'selected': true}, 'Header'),
+                                                            option({'value': 'query'},'Query String')
+                                                        ),
+                                                        p({'class': 'help-text'}, '')
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    ),
+
+                                    div({'class': 'tab-pane'},
+                                        this.renderTemplate('optional-input', [
+                                            {
+                                                'label': 'Consumer Key',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'consumer_key',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'required': true,
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Consumer Secret',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'consumer_secret',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'required': true,
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Token Key',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'token_key',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Token Secret',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'token_secret',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Scope',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'scope',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: ',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Realm',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'realm',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: ',
+                                                    'disabled': true
                                                 }
                                             }
-                                        }
-                                    })
-                                ),
+                                        ])
+                                    ),
 
-                                div({'class': 'span2'},
-                                    fieldset({'class': 'control-group'},
-                                        label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
-                                        div({'class': 'controls'},
-                                            select({'class': 'span2', 'name': 'signature', 'tabindex': 4, 'disabled': true},
-                                                option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
-                                                option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
-                                            ),
-                                            p({'class': 'help-text'}, '')
-                                        )
+                                    div({'class': 'tab-pane'},
+                                        this.renderTemplate('optional-input', [
+                                            {
+                                                'label': 'Request token URL',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'request_url',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://api.provider.com/oauth/request_token',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Access token URL',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'access_url',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://api.provider.com/oauth/access_token',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Authorize URL',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'authorize_url',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://api.provider.com/oauth/authorize',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Oauth Callback',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'oauth_callback',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: https://www.domain.com',
+                                                    'disabled': true
+                                                }
+                                            },
+
+                                            {
+                                                'label': 'Oauth Verifier',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span9',
+                                                    'type': 'text',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'oauth_verifier',
+                                                    'tabindex': 7,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                    'disabled': true
+                                                }
+                                            }
+                                        ])
                                     )
-                                ),
-
-                                div({'class': 'span2'},
-                                    fieldset({'class': 'control-group'},
-                                        label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
-                                        div({'class': 'controls'},
-                                            select({'class': 'span2', 'name': 'method', 'tabindex': 4, 'disabled': true},
-                                                option({'value': 'header', 'selected': true}, 'Header'),
-                                                option({'value': 'query'},'Query String')
-                                            ),
-                                            p({'class': 'help-text'}, '')
-                                        )
-                                    )
-                                )
-                            ),
-
-                            div({'class': 'row'},
-                                div({'class': 'span6'},
-                                    this.renderTemplate('optional-input', [
-                                        {
-                                            'label': 'Consumer Key',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'consumer_key',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                'required': true,
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Consumer Secret',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'consumer_secret',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                'required': true,
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Token Key',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'token_key',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Token Secret',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'token_secret',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Scope',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'scope',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: ',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Realm',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'realm',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: ',
-                                                'disabled': true
-                                            }
-                                        }
-                                    ])
-                                ),
-
-                                div({'class': 'span6'},
-                                    this.renderTemplate('optional-input', [
-                                        {
-                                            'label': 'Request token URL',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'request_url',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: https://api.provider.com/oauth/request_token',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Access token URL',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'access_url',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: https://api.provider.com/oauth/access_token',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Authorize URL',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'authorize_url',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: https://api.provider.com/oauth/authorize',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Oauth Callback',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'oauth_callback',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: https://www.domain.com',
-                                                'disabled': true
-                                            }
-                                        },
-
-                                        {
-                                            'label': 'Oauth Verifier',
-                                            'help': '',
-                                            'attributes': {
-                                                'class': 'span6',
-                                                'type': 'text',
-                                                'data-storage': 'authorization',
-                                                'name': 'oauth_verifier',
-                                                'tabindex': 7,
-                                                'autocomplete': true,
-                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                'disabled': true
-                                            }
-                                        }
-                                    ])
                                 )
                             )
                         )
@@ -1798,7 +1838,7 @@ var App = new Class({
         }),
 
         'headers': new Template(function(data) {
-            section({'id': 'headers', 'class': 'minimize'},
+            section({'id': 'headers', 'class': 'collapsed'},
                 this.renderTemplate('section-header', 'Headers'),
 
                 div({'class': 'tabbable'},
@@ -1816,7 +1856,7 @@ var App = new Class({
                                     'label': 'Accept',
                                     'help': 'Content-Types that are acceptable.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept',
@@ -1827,13 +1867,13 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+/*
                                 {
                                     'rfc': '14.2',
                                     'label': 'Accept Charset',
                                     'help': 'Character sets that are acceptable.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept-Charset',
@@ -1844,13 +1884,12 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
                                 {
                                     'rfc': '14.3',
                                     'label': 'Accept Encoding',
                                     'help': 'Acceptable encodings.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept-Encoding',
@@ -1861,13 +1900,14 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
+*/
 
                                 {
                                     'rfc': '14.4',
                                     'label': 'Accept Language',
                                     'help': 'Acceptable languages for response.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept-Language',
@@ -1878,13 +1918,13 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+/*
                                 {
                                     'rfc': '14.10',
                                     'label': 'Connection',
                                     'help': 'What type of connection the user-agent would prefer',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Connection',
@@ -1894,12 +1934,12 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+                                *
                                 {
                                     'label': 'Cookie',
                                     'help': 'an HTTP cookie previously sent by the server',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Cookie',
@@ -1915,7 +1955,7 @@ var App = new Class({
                                     'label': 'Date',
                                     'help': 'The date and time that the message was sent',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Date',
@@ -1931,7 +1971,7 @@ var App = new Class({
                                     'label': 'Expect',
                                     'help': 'Indicates that particular server behaviors are by the client',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Expect',
@@ -1941,13 +1981,13 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+*/
                                 {
                                     'rfc': '14.22',
                                     'label': 'From',
                                     'help': 'The email address of the user making the request.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'From',
@@ -1963,7 +2003,7 @@ var App = new Class({
                                     'label': 'Max-Forwards',
                                     'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Max-Forwards',
@@ -1979,7 +2019,7 @@ var App = new Class({
                                     'label': 'Pragma',
                                     'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Pragma',
@@ -1995,7 +2035,7 @@ var App = new Class({
                                     'label': 'Range',
                                     'help': 'Request only part of an entity. Bytes are numbered from 0.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Range',
@@ -2005,13 +2045,13 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+/*
                                 {
                                     'rfc': '14.36',
                                     'label': 'Referer',
                                     'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Referer',
@@ -2027,7 +2067,7 @@ var App = new Class({
                                     'label': 'Transfer-Encoding',
                                     'help': 'The transfer encodings the user agent is willing to accept.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'TE',
@@ -2043,7 +2083,7 @@ var App = new Class({
                                     'label': 'Upgrade',
                                     'help': 'Ask the server to upgrade to another protocol.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Upgrade',
@@ -2059,7 +2099,7 @@ var App = new Class({
                                     'label': 'User-Agent',
                                     'help': 'The user agent string of the user agent.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'User-Agent',
@@ -2075,7 +2115,7 @@ var App = new Class({
                                     'label': 'Via',
                                     'help': 'Informs the server of proxies through which the request was sent.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Via',
@@ -2085,13 +2125,13 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+*/
                                 {
                                     'rfc': '14.64',
                                     'label': 'Warning',
                                     'help': 'A general warning about possible problems with the entity body.',
                                     'attributes': {
-                                        'class': 'span12',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Warning',
@@ -2106,13 +2146,12 @@ var App = new Class({
 
                         div({'class': 'tab-pane'},
                             this.renderTemplate('optional-input', [
-
                                 {
                                     'rfc': '14.9',
                                     'label': 'Cache-Control',
                                     'help': 'Used to specify caching mechanisms along the request/response chain',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Cache-Control',
@@ -2128,7 +2167,7 @@ var App = new Class({
                                     'label': 'If-Match',
                                     'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Match',
@@ -2144,7 +2183,7 @@ var App = new Class({
                                     'label': 'If-Modified-Since',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Modified-Since',
@@ -2160,7 +2199,7 @@ var App = new Class({
                                     'label': 'If-None-Match',
                                     'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-None-Match',
@@ -2176,7 +2215,7 @@ var App = new Class({
                                     'label': 'If-Range',
                                     'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Range',
@@ -2192,7 +2231,7 @@ var App = new Class({
                                     'label': 'If-Unmodified-Since',
                                     'help': 'Only send the response if the entity has not been modified since a specific time.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Unmodified-Since',
@@ -2207,11 +2246,12 @@ var App = new Class({
 
                         div({'class': 'tab-pane'},
                             this.renderTemplate('optional-input', [
+/*
                                 {
                                     'label': 'Origin',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Origin',
@@ -2221,12 +2261,12 @@ var App = new Class({
                                         'disabled': true
                                     }
                                 },
-
+*/
                                 {
                                     'label': 'X-HTTP-Method-Override',
                                     'help': 'mainly used bypass firewalls and browsers limitations.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-HTTP-Method-Override',
@@ -2241,7 +2281,7 @@ var App = new Class({
                                     'label': 'X-Requested-With',
                                     'help': 'mainly used to identify Ajax requests.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-Requested-With',
@@ -2256,7 +2296,7 @@ var App = new Class({
                                     'label': 'X-Forwarded-For',
                                     'help': '',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-Forwarded-For',
@@ -2271,7 +2311,7 @@ var App = new Class({
                                     'label': 'X-Do-Not-Track',
                                     'help': 'Requests a web application to disable their tracking of a user.',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-Do-Not-Track',
@@ -2286,7 +2326,7 @@ var App = new Class({
                                     'label': 'DNT',
                                     'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
                                     'attributes': {
-                                        'class': 'span6',
+                                        'class': 'span12 padded',
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'DNT',
@@ -2307,20 +2347,22 @@ var App = new Class({
             section({'id': 'response'},
                 this.renderTemplate('section-header', 'Response'),
 
-                ul({'class': 'tabbable', 'data-name': 'response'},
+                div({'class': 'tabbable', 'data-name': 'response'},
                     ul({'class': 'nav tabs'},
-                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Response Body')),
-                        li(a({'data-toggle': 'tab'}, 'RAW Response')),
-                        li(a({'data-toggle': 'tab'}, 'Response Preview')),
-                        li(a({'data-toggle': 'tab'}, 'RAW Request')),
+                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Request')),
+                        li(a({'data-toggle': 'tab'}, 'Response')),
+                        li(a({'data-toggle': 'tab'}, 'Preview')),
                         li(a({'data-toggle': 'tab'}, 'HTTP Archive (HAR)'))
                     ),
 
                     div({'class': 'tab-content'},
+                        div({'class': 'tab-pane'},
+                            pre({'class': 'prettyprint linenums request'})
+                        ),
+
                         div({'class': 'tab-pane active'},
                             pre({
-                                'id': 'response-body',
-                                'class': 'prettyprint',
+                                'class': 'prettyprint linenums response',
                                 'events': {
                                     // clicks within the response body
                                     'click:relay(a[href])': function(event) {
@@ -2335,17 +2377,11 @@ var App = new Class({
                         ),
 
                         div({'class': 'tab-pane'},
-                            pre({'class': 'prettyprint'})
-                        ),
-
-                        div({'class': 'tab-pane'}),
-
-                        div({'class': 'tab-pane'},
-                            pre({'class': 'prettyprint'})
+                            div({'id': 'preview'})
                         ),
 
                         div({'class': 'tab-pane'},
-                            pre({'id': 'har', 'class': 'prettyprint lang-json'})
+                            pre({'class': 'prettyprint linenums har lang-json'})
                         )
                     )
                 )
@@ -2357,9 +2393,12 @@ var App = new Class({
         document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
         document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
         document.getElement('#response').setStyle('min-height', window.getHeight() - 140);
+        document.getElements('#response pre').setStyle('height', window.getHeight() - 260);
+        document.getElement('#preview').setStyle('height', window.getHeight() - 260);
     },
 
     'signOAuth': function() {
+        return;
         var tab = document.getElement('.tab-pane.oauth');
         var data = tab.toObject();
 
@@ -2513,38 +2552,18 @@ var App = new Class({
 
     'loadDefaults': function() {
         var tabs        = new Storage('tabs');
-        var pairs       = new Storage('pairs');
+        var defaults    = new Storage('defaults');
         var sections    = new Storage('sections');
-
-        // process pairs
-        document.getElements('.control-group.pairs[name]').each(function(group) {
-            var storage = pairs.get(group.get('name'));
-
-            Object.each(storage, function(value, key) {
-                // construct fake event object
-                var event = new FakeEvent(group.getElement('.controls:last-of-type .add-on'));
-
-                // trigger focus event on document to insert more rows
-                document.fireEvent('click', event);
-
-                // get the newly inserted row
-                var row = group.getElement('.controls:nth-last-child(-n+2)');
-
-                // finally, assign the values to the row input fields
-                row.getElement('input[type="text"]:first-of-type').set('value', key);
-                row.getElement('input[type="text"]:last-of-type').set('value', value);
-            }.bind(this));
-        }.bind(this));
 
         // sections
         document.getElements('section').each(function(section) {
             var data = sections.get(section.get('id'));
 
             if (data != null) {
-                section.removeClass('minimize');
+                section.removeClass('collapsed');
 
                 if (data == false) {
-                    section.addClass('minimize');
+                    section.addClass('collapsed');
                 }
             }
         });
@@ -2559,94 +2578,76 @@ var App = new Class({
 
             tab.fireEvent('click', new FakeEvent(link));
         });
+
+        // main fields
+        document.getElement('input[name="url"]').set('value', defaults.get('url')).fireEvent('change');
+        document.getElement('input[name="method"]').set('value', defaults.get('method')).fireEvent('change');
+        document.getElement('textarea[name="payload"]').set('value', defaults.get('postData').text).fireEvent('change');
+
+        // query string params
+        defaults.get('queryString').each(function(param) {
+            document.getElement('.pairs.query .controls').fireEvent('addRow', param)
+        });
+
+        // headers
+        defaults.get('headers').each(function(header) {
+            var input = document.getElement('[data-storage="header"][name="' + header.name + '"]');
+
+            if (input) {
+                var container = input.set('value', header.value).getParent('.input-prepend');
+
+                if (container) {
+                    container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
+                }
+            } else {
+                document.getElement('.pairs.headers .controls').fireEvent('addRow', header)
+            }
+        });
+
+        // extra fields
+        Object.each(defaults.get('extra'), function(value, name) {
+            var input = document.getElement('[data-storage="extra"][name="' + name + '"]');
+
+            if (input) {
+                var container = input.set('value', value).getParent('.input-prepend');
+
+                if (container) {
+                    container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
+                }
+            }
+        });
     },
 
     'send': function() {
         var error = false;
 
-        this.signOAuth();
+       // this.signOAuth();
 
-        var data = {
-            'query': document.getElement('form[name="target"]').getPairs('query'),
-            'target': document.getElement('form[name="target"]').toObjectNoPairs(),
-            'payload': document.getElement('form[name="payload"]').toObjectNoPairs(),
-            'headers': document.getElement('form[name="headers"]').toObject(),
-            'custom_headers': document.getElement('form[name="target"]').getPairs('headers'),
-            'authorization': document.getElement('form[name="authorization"]').toObject()
-        };
+        var data = new Storage('defaults').data;
 
-        //console.log('plain data', data);
-
-        // auth
-        /*
-         *
-
-            this.getParent('.modals').getElement('.modal-backdrop').fireEvent('click');
-            *
-            * // authorize
-            *         'authorize': function(event) {
-            var oAuth = chrome.extension.getBackgroundPage().oAuth;
-
-            var data = this.toQueryString().parseQueryString();
-
-            var missing = false;
-
-            this.getElements('*[required], *[required-authorize]').each(function(element) {
-                if (element.get('value') == '') {
-                    Error('Missing Data', 'Please Fill out all the required fields', element);
-                    missing = true;
-                }
-            }.bind(this));
-
-            if (missing) {
-                return;
-            } else {
-                oAuth.initialize({
-                    'request_url': data.request_url,
-                    'authorize_url': data.authorize_url,
-                    'access_url': data.access_url,
-                    'consumer_key': data.consumer_key,
-                    'consumer_secret': data.consumer_secret,
-                    'scope' : data.scope,
-                    'app_name' : 'REST Console'
-                });
-                oAuth.authorize();
-            }
-        }
-        *
-        * //// disable the authorize button when an access token is present
-    document.getElements('form.authorization.oauth input[name="token_key"], form.authorization.oauth input[name="token_secret"]').addEvent('change', function(event) {
-        var form = this.getParent('form');
-        var token_key = form.getElement('input[name="token_key"]').get('value');
-        var token_secret = form.getElement('input[name="token_secret"]').get('value');
-
-        if (token_key.length > 0 && token_secret.length > 0) {
-            form.getElement('input[data-action="authorize"]').set('disabled', true);
-        } else {
-            form.getElement('input[data-action="authorize"]').set('disabled', false);
-        }
-    })
-        */
+        console.log(data);
 
         var options = {
-            'url': data.target.url,
-            'query': data.query,
+            'url': data.url,
+            'query': {},
             'payload': {},
             'files': {},
-            'headers': Object.merge({}, data.payload, data.headers, data.custom_headers),
+            'headers': {},
             'async': true,
-            'method': data.target.method,
+            'method': data.method,
             'link': 'ignore',
             'isSuccess': null,
             'emulation': false,
             'evalScripts': false,
             'evalResponse': false,
-            'timeout': data.target.timeout * 1000,
-            'noCache': false,
+            'timeout': data.extra.timeout * 1000,
 
             'onRequest': function() {
                 // replace buttons with animation
-                //document.id('controls').addClass('progress');
+                document.getElement('footer').addClass('progress');
+
+                // scroll to the response area
+                document.fireEvent('click', new FakeEvent(document.getElement('a[href="#response"]')));
             },
 
             'onProgress': function(event, xhr) {
@@ -2658,7 +2659,7 @@ var App = new Class({
                 Error('Error', 'Connection Timed-out');
 
                 // remove loading animation
-                //document.id('controls').removeClass('progress');
+                document.getElement('footer').removeClass('progress');
             },
 
             'onCancel': function() {
@@ -2668,19 +2669,23 @@ var App = new Class({
             'onComplete': this.processResponse
         };
 
+        // queryString
+        data.queryString.each(function(param) {
+            options.query[param.name] = param.value;
+        });
+
+        // headers
+        data.headers.each(function(header) {
+            options.headers[header.name] = header.value;
+        });
+
         // modify Content-Type header based on encoding charset
         // TODO: shouldn't this be done as a rule in the REQUEST object?
-        if (data.payload['content-encoding'] != '') {
-            options.encoding = data.payload['content-encoding'],
-            options.headers['Content-Type'] = data.payload['Content-Type'] + '; charset=' + options.encoding;
+        if (data.extra['content-encoding']) {
+            options.encoding = data.extra['content-encoding'],
+            options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.encoding;
         }
-
-        // cleanup
-        delete options.headers.payload;
-        delete options.headers.name;
-        delete options.headers.files;
-        delete options.headers['content-encoding'];
-
+/*
         if (data.authorization.Authorization && data.authorization.Authorization != '') {
             if (data.authorization.Authorization.substring(0, 5) == 'OAuth') {
                 //this.signOAuth();
@@ -2688,12 +2693,12 @@ var App = new Class({
 
             options.headers.Authorization = data.authorization.Authorization;
         }
-
+*/
         // set payload
-        if (data.payload['Content-Type'] == 'application/x-www-form-urlencoded') {
-            options.payload = (data.payload.payload.length) ? data.payload.payload.parseQueryString() : {};
+        if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
+            options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
         } else {
-            options.payload = data.payload.payload;
+            options.payload = data.postData.text;
         };
 /*
         // check for required fields
@@ -2704,95 +2709,36 @@ var App = new Class({
             }
         });
 */
-        //console.log('request options', options);
+
+        // clear response area
+        document.getElement('#preview').empty();
+
+        document.getElement('pre.har').empty();
+        document.getElement('pre.request').empty();
+        document.getElement('pre.response').empty();
 
         if (error) {
             // stop on error
             return false;
         } else {
-            if (options.files.length) {
-                //delete options.headers['Content-Type'];
-            }
-
             window.XHR = new Request(options).send();
         }
     },
 
     'processResponse': function() {
-        var defaults = {
-            'Accept': '*/\*',
-            //'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-            //'Accept-Encoding': 'gzip,deflate,sdch',
-            //'Accept-Language': 'en-US,en;q=0.8',
-            'Connection': 'keep-alive',
-            //'Content-Length': '34',
-            'Content-Type': 'application/xml',
-            //'Cookie': '__qca=P0-2074128619-1316995740016; __utma=71985868.1147819601.1316995740.1317068965.1317073948.4; __utmc=71985868; __utmz=71985868.1316995740.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
-            'Origin': 'chrome-extension://bjdlekdiiieofkpjfhpcmlhalmbnpjnh',
-            'User-Agent': navigator.userAgent
-        };
+        var mimeType = this.xhr.getResponseHeader('Content-Type');
 
-        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
-        var parts = exp.exec(this.options.url);
-
-        if (parts[3] == undefined) {
-            parts[3] = '/';
-        }
-
-        if (Object.getLength(this.options.query)) {
-            parts[4] = '?' + Object.toQueryString(this.options.query);
-        }
-
-        var request = [
-            this.options.method + ' {3}{4} HTTP/1.1'.substitute(parts),
-            'HOST: ' + parts[2],
-        ];
-
-        var response = ['HTTP/1.0 ' + this.xhr.status + ' ' + this.xhr.statusText];
-
-        response.push(this.xhr.getAllResponseHeaders());
-
-        // headers
-        Object.each(this.options.headers, function(value, key) {
-            request.push(key + ': ' + value);
-        });
-
-        // loop through default headers and assign them only if applicable
-        Object.each(defaults, function(value, key) {
-            if (this.options.headers[key] == undefined) {
-                request.push(key + ': ' + value);
-            }
-        }.bind(this));
-
-        // payload
-        switch (typeOf(this.options.payload)) {
-            case 'string':
-                request.push('\n' + this.options.payload);
-                break;
-
-            case 'object':
-                request.push('\n' + Object.toQueryString(this.options.payload));
-                break;
-        }
-
-        // uploaded files?
-        if (this.options.files.length > 0) {
-            //requestText += 'Attachments: {0}\n'.substitute([beautify.js(JSON.encode(this.options.files))]);
-        }
-
-        var contentType = this.xhr.getResponseHeader('Content-Type');
-
-        if (contentType != null) {
-            var index = contentType.indexOf(';');
+        if (mimeType != null) {
+            var index = mimeType.indexOf(';');
 
             if (index > 1) {
-                contentType = contentType.slice(0, index);
+                mimeType = mimeType.slice(0, index);
             }
         }
 
         var style = 'auto';
 
-        switch (contentType) {
+        switch (mimeType) {
             case 'text/css':
                 style = 'css';
 
@@ -2836,7 +2782,7 @@ var App = new Class({
 
                 // create and inject the iframe object
                 var iframe = new IFrame();
-                document.id('response-preview').adopt(iframe);
+                document.id('preview').adopt(iframe);
 
                 // start writing
                 var doc = iframe.contentWindow.document;
@@ -2877,18 +2823,48 @@ var App = new Class({
 */
         }
 
-        // setup response area
-        response = response.join("\n") + "\n" + this.xhr.responseText;
-        request = request.join("\n");
+        // construct HAR objects
+        var request = new Storage('defaults').data;
 
-        document.id('response-body').set('text', this.xhr.responseText)
-        document.id('response-raw').set('text', response);
-        document.id('request-raw').set('text', request);
+        var response = new HAR.Response();
+        response.fromXHR(this.xhr);
+
+        var har = new HAR.Log();
+        var harResponse = response.toObject();
+        harResponse.content.text = btoa(harResponse.content.text);
+
+        har.addEntry(new HAR.Entry({
+            'request': request,
+            'response': harResponse
+        }).toObject());
+
+        // modify request object for templates
+        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
+        var parts = exp.exec(request.url);
+
+        if (parts[3] == undefined) {
+            parts[3] = '/';
+        }
+
+        request.host = parts[2];
+        request.path = parts[3];
+
+        var queryString = {};
+
+        request.queryString.each(function(param) {
+            queryString[param.name] = param.value;
+        });
+
+        request.queryString = Object.toQueryString(queryString);
+
+        document.getElement('pre.har').set('text', beautify.js(JSON.encode(har.toObject())));
+        document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
+        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(this.xhr.responseText);
 
         // init google prettify
         prettyPrint();
 
-        //document.id('controls').removeClass('progress');
+        document.getElement('footer').removeClass('progress');
 return;
 
         if (this.xhr.status == 0) {
@@ -2896,89 +2872,8 @@ return;
 
             //document.getElement('form[name="request"]').fireEvent('stop');
         } else {
-
-
-            // store the text for later use
-            document.id('responseBody').store('unstyled', responseText);
-
             // trigger syntax highlighting
             document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
-
-            // scroll to the response area
-            document.getElement('a[href="#response"]').fireEvent('click', new FakeEvent());
-
-            // remove loading animation
-            document.getElement('form[name="request"] .actions').removeClass('progress');
         }
     }
 });
-
-/*
-// add events
-window.addEvent('domready', function() {
-    return;
-
-    // show/hide line numbers
-    document.getElement('form[name="options"] input[name="lines"]').addEvent('change', function(event) {
-        if (this.get('checked')) {
-            document.getElements('.prettyprint').removeClass('linenums');
-        } else {
-            document.getElements('.prettyprint').addClass('linenums');
-        }
-    });
-
-    // theme changer
-    document.getElements('form[name="options"] input[name="theme"]').addEvent('change', function(event) {
-        if (this.get('checked')) {
-            var theme = this.get('value');
-            document.getElement('select[name="theme"] option[value="' + theme + '"]').set('selected', true);
-            document.head.getElementById('theme').set('href', 'style/prettify/' + theme + '.css');
-
-            _gaq.push(['_trackEvent', 'Theme', theme]);
-        }
-    }).fireEvent('change');
-
-    document.getElements('select[name="theme"]').addEvent('change', function(event) {
-        document.head.getElementById('theme').set('href', 'style/prettify/' + this.get('value') + '.css');
-
-        _gaq.push(['_trackEvent', 'Theme Swap', this.get('value')]);
-    });
-
-
-
-
-    // syntax highlighting
-    document.getElements('input[name="highlight"]').addEvents({
-        'change': function(event) {
-            document.getElements('.prettyprint').each(function (element) {
-                element.set('text', element.retrieve('unstyled'));
-            });
-
-            if (this.get('checked')) {
-                var value = this.get('value');
-
-                var responseBody = document.id('responseBody');
-
-                responseBody.set('class', 'prettyprint lang-' + value);
-
-                document.getElement('form[name="options"] input[name="lines"]').fireEvent('change');
-
-                // init google prettify
-                prettyPrint();
-
-                // find links
-                // TODO parse query string params into fields
-                var body = responseBody.get('html');
-                var exp = new RegExp('\\b((https?|ftp|file)://[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])', 'gim');
-                body = body.replace(exp, '<a target="_blank" href="$1">$1</a>');
-                responseBody.set('html', body);
-                responseBody.scrollTo(0, 0);
-            }
-        },
-
-        'click': function(event) {
-            this.set('checked', true);
-            this.fireEvent('change', event);
-        }
-    });
-*/

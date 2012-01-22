@@ -36,6 +36,10 @@ var HAR = {
 
         'toObject': function() {
             return this.options;
+        },
+
+        'fromXHR': function(xhr) {
+
         }
     }),
 
@@ -116,6 +120,12 @@ var HAR = {
             return this;
         },
 
+        'addPostText': function(value) {
+            this.options.postData.text = value;
+
+            return this;
+        },
+
         'toJson': function() {
             return JSON.encode(this.options);
         },
@@ -157,6 +167,35 @@ var HAR = {
             });
 
             return this;
+        },
+
+        'toObject': function() {
+            return this.options;
+        },
+
+        'fromXHR': function(xhr) {
+            var mimeType = xhr.getResponseHeader('Content-Type');
+
+            if (mimeType != null) {
+                var index = mimeType.indexOf(';');
+
+                if (index > 1) {
+                    mimeType = mimeType.slice(0, index);
+                }
+            }
+
+            this.options.status = xhr.status;
+            this.options.statusText = xhr.statusText;
+            this.options.content.mimeType = mimeType;
+            this.options.content.text = xhr.responseText;
+
+            xhr.getAllResponseHeaders().split('\n').each(function(header) {
+                if (header.trim() != '') {
+                    header = header.trim().split(': ', 2)
+
+                    this.addHeader(header[0], header[1]);
+                }
+            }.bind(this));
         }
     })
 }

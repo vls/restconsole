@@ -26,6 +26,8 @@ window.addEvent('domready', function(event) {
             var index = tabs.indexOf(this);
 
             panes.removeClass('active')[index].addClass('active');
+
+            new Storage('tabs').set(tabbable.dataset.name, index);
         },
 
         'click:relay(.nav.list summary)': function(event) {
