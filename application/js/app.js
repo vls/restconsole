@@ -1,136 +1,4 @@
 /**
- * Template class for Mooml templates
- */
-Template = new Class({
-    'Extends': Mooml.Template,
-
-    'initialize': function(code) {
-        this.name = null;
-        this.code = code;
-        this.prepared = false;
-    }
-});
-
-Templates = new Class({
-    'Implements': [Mooml.Templates],
-
-    'renderSection': function(name, data, bind) {
-        var template = this.sections[name];
-        return (template)? template.render(data, [bind, this].pick()) : null;
-    }
-});
-
-DOMEvent.definePseudo('input', function(split, fn, args) {
-    // args[0] is the Event instance
-    var char = args[0].code;
-
-    if (char < 16 ||                // non printables
-        (char == 16) ||             // avoid shift
-        (char > 32 && char < 41) || // navigation keys
-        char == 46)                 // Delete Key (Add to these if you need)
-    {
-        return;
-    }
-
-    fn.apply(this, args);
-});
-
-String.implement({
-    'htmlEntities': function() {
-        return this.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-});
-
-Element.implement({
-    'toObject': function() {
-        var str = this.toQueryString();
-
-        if (str == '') {
-            return {};
-        } else {
-            return str.parseQueryString();
-        }
-    },
-
-    'toObjectNoPairs': function() {
-        var obj = this.toObject();
-
-        delete obj.key;
-        delete obj.value;
-
-        return obj;
-    },
-
-    'getPairs': function(name) {
-        var keys = this.getElements('.pairs.' + name + ' input[name="key"]:not([value=""])').get('value');
-        var values = this.getElements('.pairs.' + name + ' input[name="value"]:not([value=""])').get('value');
-
-        // remove the last one because its always empty
-        keys.pop();
-
-        return values.associate(keys);
-    },
-
-    'getPadding': function() {
-        var size = [
-            this.getStyle('padding-left'),
-            this.getStyle('padding-left'),
-            this.getStyle('border-left-width'),
-            this.getStyle('border-right-width')
-        ];
-
-        size.each(function(px, index) {
-            size[index] = parseInt(px);
-        });
-
-        return size.sum();
-    }
-});
-
-var Storage = new Class({
-    'name': false,
-
-    'initialize': function(item) {
-        this.item = item;
-        this.data = JSON.decode(localStorage.getItem(this.item));
-
-        if (this.data == null) {
-            this.data = {};
-        }
-    },
-
-    'save': function() {
-        localStorage.setItem(this.item, JSON.encode(this.data));
-    },
-
-    'get': function(key) {
-        return this.data[key];
-    },
-
-    'set': function(key, value) {
-        this.data[key] = value;
-        this.save();
-    },
-
-    'remove': function(key) {
-        delete this.data[key];
-        this.save();
-    }
-});
-
-FakeEvent = new Class({
-    'initialize': function(target) {
-        var event = new DOMEvent(document.createEvent('CustomEvent'));
-
-        if (target) {
-            event.target = target;
-        }
-
-        return event;
-    }
-});
-
-/**
  * Main App logic
  */
 var App = new Class({
@@ -801,29 +669,46 @@ var App = new Class({
                             img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
                         ),
 
-                        ul({
-                            'class': 'nav',
-                            'events': {
-                                'click:relay(a)': function(event) {
-                                    event.preventDefault();
+                        div({'class': 'fluid-content'},
 
-                                    var container = document.getElement('[data-screen]');
+                            ul({
+                                'class': 'nav',
+                                'events': {
+                                    'click:relay(a)': function(event) {
+                                        event.preventDefault();
 
-                                    container.dataset.screen = this.dataset.target;
+                                        var container = document.getElement('[data-screen]');
 
-                                    new Fx.Scroll(container).toTop();
+                                        container.dataset.screen = this.dataset.target;
 
-                                    container.fireEvent('scroll');
+                                        new Fx.Scroll(container).toTop();
 
-                                    this.getParent('ul').getElement('.active').removeClass('active');
-                                    this.getParent('li').addClass('active');
-                                }
-                            }},
+                                        container.fireEvent('scroll');
 
-                            li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
-                            li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
-                            li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
-                            li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
+                                        this.getParent('ul').getElement('.active').removeClass('active');
+                                        this.getParent('li').addClass('active');
+                                    }
+                                }},
+
+                                li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
+                                li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
+                                li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
+                                li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
+                            ),
+
+                            ul({'class': 'social pull-right'},
+                                li(a({'href': 'https://twitter.com/share', 'class': 'twitter-share-button', 'data-url': 'https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn', 'data-text': 'Checkout @RESTConsole App for Google #Chrome for #REST #API development', 'data-via': 'CodeInChaos', 'data-related': 'CodeInChaos,AhmadNassri', 'data-hashtags': 'HTTP,RESTful'}, 'Tweet')),
+                                li(iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'sandbox': 'allow-same-origin allow-top-navigation allow-forms allow-scripts', 'src': 'http://www.facebook.com/plugins/like.php?href=https%3A%2F%2Fchrome.google.com%2Fwebstore%2Fdetail%2Fcokgbflfommojglbmbpenpphppikmonn&send=false&layout=button_count&width=450&show_faces=false&action=like&amp&height=21&appId=199139246805784'})),
+                                li(iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'sandbox': 'allow-same-origin allow-top-navigation allow-forms allow-scripts', 'src': 'https://plusone.google.com/_/+1/fastbutton?url=https%3A%2F%2Fchrome.google.com%2Fwebstore%2Fdetail%2Fcokgbflfommojglbmbpenpphppikmonn&size=medium&count=true&annotation=&hl=en-US&jsh=m%3B%2F_%2Fapps-static%2F_%2Fjs%2Fwidget%2F__features__%2Frt%3Dj%2Fver%3DXsa0GTewdqg.en.%2Fsv%3D1%2Fam%3D!KW4lzGmbF_KIhSW8Og%2Fd%3D1%2F#id=I1_1327261815981&parent=chrome-extension%3A%2F%2Fbjdlekdiiieofkpjfhpcmlhalmbnpjnh&rpctoken=858197945&_methods=onPlusOne%2C_ready%2C_close%2C_open%2C_resizeMe'})),
+                                li(script({'type': 'IN/Share', 'data-url': 'https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn', 'data-counter': 'right'}))
+
+                                /*
+                                li(a({'href': 'https://twitter.com/CodeInChaos', 'class': 'twitter-follow-button', 'data-width': '155px', 'data-link-color': '#0069D6', 'data-show-count': false}, 'Follow @CodeInChaos')),
+                                li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=mobile-screens&type=watch&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '70px', 'height': '20px'})),
+                                li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=mobile-screens&type=fork&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '60px', 'height': '20px'})),
+                                li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&type=follow&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '150px', 'height': '20px'}))
+                                */
+                            )
                         )
                     )
                 )
@@ -961,7 +846,6 @@ var App = new Class({
 
         'settings': new Template(function(data) {
             section({'id': 'display'}
-
             ),
 
             section({'id': 'general'},
@@ -2857,7 +2741,12 @@ var App = new Class({
 
         request.queryString = Object.toQueryString(queryString);
 
-        document.getElement('pre.har').set('text', beautify.js(JSON.encode(har.toObject())));
+        var harText = beautify.js(JSON.encode(har.toObject()), {
+            'indent_size': 1,
+            'indent_char': '\t'
+        });
+
+        document.getElement('pre.har').set('text', harText);
         document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
         document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(this.xhr.responseText);
 
@@ -2876,4 +2765,8 @@ return;
             document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
         }
     }
+});
+
+window.addEvent('domready', function(event) {
+    $App = new App;
 });

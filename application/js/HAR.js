@@ -10,8 +10,8 @@ var HAR = {
             },
 
             'browser': {
-                'name': navigator.appName,
-                'version': navigator.appVersion,
+                'name': Browser.name,
+                'version': Browser.version,
                 'comment': navigator.userAgent
             },
 
