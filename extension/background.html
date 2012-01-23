@@ -14,9 +14,8 @@
 
                         // found it!
                         if (app.id == ID) {
-                            console.log(app)
-                            if (app.enabled) {
                             // is it enabled?
+                            if (app.enabled) {
                                 //launch it
                                 chrome.management.launchApp(app.id);
                             } else {

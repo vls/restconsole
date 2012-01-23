@@ -416,7 +416,7 @@ var App = new Class({
                 }
             });
 
-            localStorage.setItem('defaults', JSON.encode(request.toObject()));
+            localStorage.setItem('defaults', JSON.stringify(request.toObject()));
         },
 
         // loads panels
@@ -2745,7 +2745,7 @@ var App = new Class({
 
         request.queryString = Object.toQueryString(queryString);
 
-        var harText = beautify.js(JSON.encode(har.toObject()), {
+        var harText = beautify.js(JSON.stringify(har.toObject()), {
             'indent_size': 1,
             'indent_char': '\t'
         });

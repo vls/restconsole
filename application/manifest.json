@@ -28,8 +28,12 @@
 
     "permissions": [
         "tabs",
-        "cookies",
-        "unlimitedStorage",
-        "*://*/*"
+        "*://*/*",
+        "contextMenus",
+        "unlimitedStorage"
+    ],
+
+    "optional_permissions": [
+        "cookies"
     ]
 }

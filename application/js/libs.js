@@ -80,7 +80,7 @@ var Storage = new Class({
 
     'initialize': function(item) {
         this.item = item;
-        this.data = JSON.decode(localStorage.getItem(this.item));
+        this.data = JSON.parse(localStorage.getItem(this.item));
 
         if (this.data == null) {
             this.data = {};
@@ -88,7 +88,7 @@ var Storage = new Class({
     },
 
     'save': function() {
-        localStorage.setItem(this.item, JSON.encode(this.data));
+        localStorage.setItem(this.item, JSON.stringify(this.data));
     },
 
     'get': function(key) {
