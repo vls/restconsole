@@ -767,7 +767,11 @@ html {
                 }
             }
 
-            &.progress {
+            &.active {
+                .progress {
+                    display: block;
+                }
+
                 button {
                     &[data-action="stop"] {
                         display: inline-block;
@@ -785,6 +789,12 @@ html {
                 &[data-action="stop"] {
                     display: none;
                 }
+            }
+
+            .progress {
+                display: none;
+                margin: 10px 0px;
+                .transition(width 5s ease);
             }
 
             .pull-right {

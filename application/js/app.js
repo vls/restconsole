@@ -977,15 +977,23 @@ var App = new Class({
                                 }.bind(this)
                             }},
 
-                            button({'tabindex': -1, 'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
-                            button({'tabindex': -1, 'data-action': 'get', 'class': 'btn'}, 'GET'),
-                            button({'tabindex': -1, 'data-action': 'post', 'class': 'btn'}, 'POST'),
-                            button({'tabindex': -1, 'data-action': 'put', 'class': 'btn'}, 'PUT'),
-                            button({'tabindex': -1, 'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
+                            div({'class': 'row'},
+                                div({'class': 'span10'},
+                                    div({'class': 'progress info striped active'},
+                                        div({'class': 'bar', 'style': 'width: 0%'})
+                                    ),
 
-                            div({'class': 'pull-right'},
-                                button({'tabindex': -1, 'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
-                                button({'tabindex': -1, 'data-action': 'save', 'class': 'btn success'}, 'Save Request')
+                                    button({'tabindex': -1, 'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
+                                    button({'tabindex': -1, 'data-action': 'get', 'class': 'btn'}, 'GET'),
+                                    button({'tabindex': -1, 'data-action': 'post', 'class': 'btn'}, 'POST'),
+                                    button({'tabindex': -1, 'data-action': 'put', 'class': 'btn'}, 'PUT'),
+                                    button({'tabindex': -1, 'data-action': 'delete', 'class': 'btn'}, 'DELETE')
+                                ),
+
+                                div({'class': 'pull-right'},
+                                    button({'tabindex': -1, 'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
+                                    button({'tabindex': -1, 'data-action': 'save', 'class': 'btn success'}, 'Save Request')
+                                )
                             )
                         )
                     )
@@ -2368,10 +2376,6 @@ var App = new Class({
         */
     },
 
-    'setProgress': function(progress) {
-        //document.body.getElement('.progress .bar').setStyle('width', progress + '%');
-    },
-
     'initialize': function() {
         var body = document.body.empty();
 
@@ -2506,14 +2510,16 @@ var App = new Class({
         });
     },
 
+    'setProgress': function(progress) {
+        document.getElement('.progress .bar').setStyle('width', progress + '%');
+    },
+
     'send': function() {
         var error = false;
 
-       // this.signOAuth();
+        //this.signOAuth();
 
         var data = new Storage('defaults').data;
-
-        console.log(data);
 
         var options = {
             'url': data.url,
@@ -2532,14 +2538,25 @@ var App = new Class({
 
             'onRequest': function() {
                 // replace buttons with animation
-                document.getElement('footer').addClass('progress');
+                document.getElement('footer').addClass('active');
 
                 // scroll to the response area
                 document.fireEvent('click', new FakeEvent(document.getElement('a[href="#response"]')));
+
+                // set progress
+                $App.setProgress(10);
             },
 
             'onProgress': function(event, xhr) {
-                //var loaded = event.loaded, total = event.total;
+                /*
+                if (event.lengthComputable) {
+                    var loaded = event.loaded, total = event.total;
+
+                    console.log(parseInt(loaded / total * 100, 10));
+                }
+                */
+
+                $App.setProgress(50);
             },
 
             'onTimeout': function() {
@@ -2547,7 +2564,7 @@ var App = new Class({
                 Error('Error', 'Connection Timed-out');
 
                 // remove loading animation
-                document.getElement('footer').removeClass('progress');
+                document.getElement('footer').removeClass('active');
             },
 
             'onCancel': function() {
@@ -2614,6 +2631,8 @@ var App = new Class({
     },
 
     'processResponse': function() {
+        $App.setProgress(75);
+
         var mimeType = this.xhr.getResponseHeader('Content-Type');
 
         if (mimeType != null) {
@@ -2675,7 +2694,7 @@ var App = new Class({
                 // start writing
                 var doc = iframe.contentWindow.document;
                 doc.open();
-                doc.write(this.xhr.responseText);
+                //doc.write(this.xhr.responseText);
                 doc.close();
                 break;
 /*
@@ -2754,10 +2773,12 @@ var App = new Class({
         document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
         document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(this.xhr.responseText);
 
+        $App.setProgress(100);
+
         // init google prettify
         prettyPrint();
 
-        document.getElement('footer').removeClass('progress');
+        document.getElement('footer').removeClass('active');
 return;
 
         if (this.xhr.status == 0) {
