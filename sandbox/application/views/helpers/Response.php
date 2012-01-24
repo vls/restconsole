@@ -61,7 +61,7 @@ class Api_View_Helper_Response extends Zend_View_Helper_Abstract
         509 => 'Bandwidth Limit Exceeded'
     );
 
-    public function Response($code, $headers = array())
+    public function Response($code, $headers = array(), $body = array())
     {
         $headers = array(
             'Date' => http_date(),
@@ -80,6 +80,38 @@ class Api_View_Helper_Response extends Zend_View_Helper_Abstract
             $headers_out = '';
         }
 
-        return sprintf("<span class=\"nocode\"><span class=\"kwd\">HTTP/1.1 %s %s</span>%s\n\n</span>", $code, self::$messages[$code], $headers_out);
+        if (count($body) > 0) {
+            switch ($headers['Content-Type']) {
+                case 'application/php':
+                    $body_out = sprintf('<span class="nocode"><span class="str">%s</span></span>', serialize($body));
+                    break;
+
+                case 'application/json':
+                    $body_out = Zend_Json::prettyPrint(Zend_Json::encode($body), array('indent' => '    '));
+                    break;
+
+                case 'application/xml':
+                    $serializer = new REST_Serializer_Adapter_Xml(array('rootNode' => 'response'));
+                    $body_out = $serializer->serialize($payload);
+
+                    $tidy = new tidy;
+                    $body_out = $tidy->repairString($body_out, array(
+                        'indent' => true,
+                        'indent-spaces' => 4,
+                        'output-xml' => true,
+                        'input-xml' => true,
+                    ));
+
+                    $body_out = htmlspecialchars($body_out);
+                    break;
+
+                default:
+                    $body_out = '';
+            }
+        } else {
+            $body_out = '';
+        }
+
+        return sprintf("<pre class=\"prettyprint\"><span class=\"nocode\"><span class=\"kwd\">HTTP/1.1 %s %s</span>%s\n\n</span>%s</pre>", $code, self::$messages[$code], $headers_out, $body_out);
     }
 }

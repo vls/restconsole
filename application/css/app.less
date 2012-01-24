@@ -203,6 +203,37 @@ html {
                     }
                 }
             }
+
+            .social {
+                list-style: none;
+                height: 20px;
+                margin: 10px 0px;
+
+                li {
+                    height: 20px;
+                    width: 100px;
+                    display: inline-block;
+
+                    &:nth-of-type(2) {
+                        width: 90px;
+                    }
+
+                    &:nth-of-type(3) {
+                        width: 85px;
+                    }
+
+                    &:nth-of-type(4) {
+                        width: 100px;
+                    }
+
+                    iframe {
+                        border: none;
+                        overflow: hidden;
+                        width: 100px !important;
+                        height: 21px;
+                    }
+                }
+            }
         }
 
         .nav {
@@ -555,18 +586,18 @@ html {
         .input-prepend {
             input {
                 &.span2 {
-                    .prependInputColumns(2, 26)
+                    .prependInputColumns(2, 26);
                 }
 
                 &.span6 {
-                    .prependInputColumns(6, 26)
+                    .prependInputColumns(6, 26);
                 }
 
                 &.span12 {
-                    .prependInputColumns(12, 26)
+                    .prependInputColumns(12, 26);
 
                     &.padded {
-                        .prependInputColumns(11.75, 26)
+                        .prependInputColumns(11.75, 26);
                     }
                 }
             }
@@ -736,7 +767,11 @@ html {
                 }
             }
 
-            &.progress {
+            &.active {
+                .progress {
+                    display: block;
+                }
+
                 button {
                     &[data-action="stop"] {
                         display: inline-block;
@@ -754,6 +789,12 @@ html {
                 &[data-action="stop"] {
                     display: none;
                 }
+            }
+
+            .progress {
+                display: none;
+                margin: 10px 0px;
+                .transition(width 5s ease);
             }
 
             .pull-right {

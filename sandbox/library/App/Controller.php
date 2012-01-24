@@ -1,6 +1,11 @@
 <?php
 abstract class App_Controller extends REST_Controller
 {
+    public function preDispatch()
+    {
+        $this->_response->setHeader('X-Powered-By', 'MiraVitae API');
+    }
+
     public function indexAction()
     {
         $this->notAllowed();

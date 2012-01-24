@@ -7,13 +7,14 @@ class Bootstrap extends Zend_Application_Bootstrap_Bootstrap
 
         // set custom request object
         $frontController->setRequest(new REST_Controller_Request_Http);
-
-        // register the RestHandler plugin
-        $frontController->registerPlugin(new REST_Controller_Plugin_RestHandler($frontController));
+        $frontController->setResponse(new REST_Response);
 
         // add the REST route
         $restRoute = new App_Rest_Route($frontController);
         $frontController->getRouter()->addRoute('rest', $restRoute);
+
+        // register the RestHandler plugin
+        $frontController->registerPlugin(new REST_Controller_Plugin_RestHandler($frontController));
 
         // add REST contextSwitch helper
         $contextSwitch = new REST_Controller_Action_Helper_ContextSwitch();

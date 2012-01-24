@@ -1,136 +1,4 @@
 /**
- * Template class for Mooml templates
- */
-Template = new Class({
-    'Extends': Mooml.Template,
-
-    'initialize': function(code) {
-        this.name = null;
-        this.code = code;
-        this.prepared = false;
-    }
-});
-
-Templates = new Class({
-    'Implements': [Mooml.Templates],
-
-    'renderSection': function(name, data, bind) {
-        var template = this.sections[name];
-        return (template)? template.render(data, [bind, this].pick()) : null;
-    }
-});
-
-DOMEvent.definePseudo('input', function(split, fn, args) {
-    // args[0] is the Event instance
-    var char = args[0].code;
-
-    if (char < 16 ||                // non printables
-        (char == 16) ||             // avoid shift
-        (char > 32 && char < 41) || // navigation keys
-        char == 46)                 // Delete Key (Add to these if you need)
-    {
-        return;
-    }
-
-    fn.apply(this, args);
-});
-
-String.implement({
-    'htmlEntities': function() {
-        return this.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-});
-
-Element.implement({
-    'toObject': function() {
-        var str = this.toQueryString();
-
-        if (str == '') {
-            return {};
-        } else {
-            return str.parseQueryString();
-        }
-    },
-
-    'toObjectNoPairs': function() {
-        var obj = this.toObject();
-
-        delete obj.key;
-        delete obj.value;
-
-        return obj;
-    },
-
-    'getPairs': function(name) {
-        var keys = this.getElements('.pairs.' + name + ' input[name="key"]:not([value=""])').get('value');
-        var values = this.getElements('.pairs.' + name + ' input[name="value"]:not([value=""])').get('value');
-
-        // remove the last one because its always empty
-        keys.pop();
-
-        return values.associate(keys);
-    },
-
-    'getPadding': function() {
-        var size = [
-            this.getStyle('padding-left'),
-            this.getStyle('padding-left'),
-            this.getStyle('border-left-width'),
-            this.getStyle('border-right-width')
-        ];
-
-        size.each(function(px, index) {
-            size[index] = parseInt(px);
-        });
-
-        return size.sum();
-    }
-});
-
-var Storage = new Class({
-    'name': false,
-
-    'initialize': function(item) {
-        this.item = item;
-        this.data = JSON.decode(localStorage.getItem(this.item));
-
-        if (this.data == null) {
-            this.data = {};
-        }
-    },
-
-    'save': function() {
-        localStorage.setItem(this.item, JSON.encode(this.data));
-    },
-
-    'get': function(key) {
-        return this.data[key];
-    },
-
-    'set': function(key, value) {
-        this.data[key] = value;
-        this.save();
-    },
-
-    'remove': function(key) {
-        delete this.data[key];
-        this.save();
-    }
-});
-
-FakeEvent = new Class({
-    'initialize': function(target) {
-        var event = new DOMEvent(document.createEvent('CustomEvent'));
-
-        if (target) {
-            event.target = target;
-        }
-
-        return event;
-    }
-});
-
-/**
  * Main App logic
  */
 var App = new Class({
@@ -548,7 +416,7 @@ var App = new Class({
                 }
             });
 
-            localStorage.setItem('defaults', JSON.encode(request.toObject()));
+            localStorage.setItem('defaults', JSON.stringify(request.toObject()));
         },
 
         // loads panels
@@ -619,7 +487,7 @@ var App = new Class({
             if (data) {
                 section = data.split('.')[0];
 
-                a({'data-type': 'panel', 'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])})
+                a({'tabindex': -1, 'data-type': 'panel', 'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])})
             }
         }),
 
@@ -693,8 +561,8 @@ var App = new Class({
                     }},
 
                     div({'class': 'input-append pair'},
-                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
-                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': false, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
+                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
 
                         span({'class': 'add-on btn add success'}),
                         span({'class': 'add-on btn remove danger'})
@@ -760,6 +628,7 @@ var App = new Class({
                     div({'class': 'input-prepend'},
                         label({'class': 'add-on'},
                             input({
+                                'tabindex': -1,
                                 'type': 'checkbox',
                                 'events': {
                                     'change': function(event) {
@@ -801,29 +670,46 @@ var App = new Class({
                             img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
                         ),
 
-                        ul({
-                            'class': 'nav',
-                            'events': {
-                                'click:relay(a)': function(event) {
-                                    event.preventDefault();
+                        div({'class': 'fluid-content'},
 
-                                    var container = document.getElement('[data-screen]');
+                            ul({
+                                'class': 'nav',
+                                'events': {
+                                    'click:relay(a)': function(event) {
+                                        event.preventDefault();
 
-                                    container.dataset.screen = this.dataset.target;
+                                        var container = document.getElement('[data-screen]');
 
-                                    new Fx.Scroll(container).toTop();
+                                        container.dataset.screen = this.dataset.target;
 
-                                    container.fireEvent('scroll');
+                                        new Fx.Scroll(container).toTop();
 
-                                    this.getParent('ul').getElement('.active').removeClass('active');
-                                    this.getParent('li').addClass('active');
-                                }
-                            }},
+                                        container.fireEvent('scroll');
 
-                            li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
-                            li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
-                            li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
-                            li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
+                                        this.getParent('ul').getElement('.active').removeClass('active');
+                                        this.getParent('li').addClass('active');
+                                    }
+                                }},
+
+                                li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
+                                li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
+                                li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
+                                li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
+                            ),
+
+                            ul({'class': 'social pull-right'},
+                                li(a({'tabindex': -1, 'href': 'https://twitter.com/share', 'class': 'twitter-share-button', 'data-url': 'https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn', 'data-text': 'Checkout @RESTConsole App for Google #Chrome for #REST #API development', 'data-via': 'CodeInChaos', 'data-related': 'CodeInChaos,AhmadNassri', 'data-hashtags': 'HTTP,RESTful'}, 'Tweet')),
+                                li(iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'sandbox': 'allow-same-origin allow-top-navigation allow-forms allow-scripts', 'src': 'http://www.facebook.com/plugins/like.php?href=https%3A%2F%2Fchrome.google.com%2Fwebstore%2Fdetail%2Fcokgbflfommojglbmbpenpphppikmonn&send=false&layout=button_count&width=450&show_faces=false&action=like&amp&height=21&appId=199139246805784'})),
+                                li(iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'sandbox': 'allow-same-origin allow-top-navigation allow-forms allow-scripts', 'src': 'https://plusone.google.com/_/+1/fastbutton?url=https%3A%2F%2Fchrome.google.com%2Fwebstore%2Fdetail%2Fcokgbflfommojglbmbpenpphppikmonn&size=medium&count=true&annotation=&hl=en-US&jsh=m%3B%2F_%2Fapps-static%2F_%2Fjs%2Fwidget%2F__features__%2Frt%3Dj%2Fver%3DXsa0GTewdqg.en.%2Fsv%3D1%2Fam%3D!KW4lzGmbF_KIhSW8Og%2Fd%3D1%2F#id=I1_1327261815981&parent=chrome-extension%3A%2F%2Fbjdlekdiiieofkpjfhpcmlhalmbnpjnh&rpctoken=858197945&_methods=onPlusOne%2C_ready%2C_close%2C_open%2C_resizeMe'})),
+                                li(script({'type': 'IN/Share', 'data-url': 'https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn', 'data-counter': 'right'}))
+
+                                /*
+                                li(a({'tabindex': -1, 'href': 'https://twitter.com/CodeInChaos', 'class': 'twitter-follow-button', 'data-width': '155px', 'data-link-color': '#0069D6', 'data-show-count': false}, 'Follow @CodeInChaos')),
+                                li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=mobile-screens&type=watch&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '70px', 'height': '20px'})),
+                                li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=mobile-screens&type=fork&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '60px', 'height': '20px'})),
+                                li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&type=follow&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '150px', 'height': '20px'}))
+                                */
+                            )
                         )
                     )
                 )
@@ -855,16 +741,16 @@ var App = new Class({
                         h3('Navigation'),
 
                         ul({'class': 'nav list navigation', 'data-screen': 'main'},
-                            li({'class': 'active'}, a({'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('T'), 'arget')),
-                            li(a({'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('P'), 'ayload')),
-                            li(a({'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('A'), 'uthorization')),
-                            li(a({'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('H'), 'eaders')),
-                            li(a({'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('R'), 'esponse'))
+                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('T'), 'arget')),
+                            li(a({'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('P'), 'ayload')),
+                            li(a({'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('A'), 'uthorization')),
+                            li(a({'tabindex': -1, 'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('H'), 'eaders')),
+                            li(a({'tabindex': -1, 'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('R'), 'esponse'))
                         ),
 
                         ul({'class': 'nav list navigation', 'data-screen': 'settings'},
-                            li({'class': 'active'}, a({'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'General')),
-                            li(a({'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Display'))
+                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'General')),
+                            li(a({'tabindex': -1, 'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Display'))
                         )
                     ),
 
@@ -906,17 +792,7 @@ var App = new Class({
 
                             div({'class': 'tab-pane'},
                                 ul({'class': 'nav list history'},
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas')),
-                                    li(a({'href': ''}, i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
+                                    li(a(i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
                                 )
                             )
                         )
@@ -925,9 +801,9 @@ var App = new Class({
                     div({'class': 'well'},
                         ul({'class': 'nav list'},
                             li({'class': 'nav-header'}, 'Donate'),
-                            li(a({'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
-                            li(a({'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
-                            li(a({'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
+                            li(a({'tabindex': -1, 'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
+                            li(a({'tabindex': -1, 'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
+                            li(a({'tabindex': -1, 'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
                         )
                     )
                 ),
@@ -961,18 +837,19 @@ var App = new Class({
 
         'settings': new Template(function(data) {
             section({'id': 'display'}
-
             ),
 
             section({'id': 'general'},
                 this.renderTemplate('section-header', 'General'),
 
-                a({'events': {
-                    'click': function(event) {
-                        event.preventDefault();
-                        chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
+                a({
+                    'events': {
+                        'click': function(event) {
+                            event.preventDefault();
+                            chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
+                        }
                     }
-                }}, 'Install Extension'),
+                }, 'Install Extension'),
 
                 form({
                     'name': 'options',
@@ -1100,15 +977,23 @@ var App = new Class({
                                 }.bind(this)
                             }},
 
-                            button({'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
-                            button({'data-action': 'get', 'class': 'btn'}, 'GET'),
-                            button({'data-action': 'post', 'class': 'btn'}, 'POST'),
-                            button({'data-action': 'put', 'class': 'btn'}, 'PUT'),
-                            button({'data-action': 'delete', 'class': 'btn'}, 'DELETE'),
+                            div({'class': 'row'},
+                                div({'class': 'span10'},
+                                    div({'class': 'progress info striped active'},
+                                        div({'class': 'bar', 'style': 'width: 0%'})
+                                    ),
 
-                            div({'class': 'pull-right'},
-                                button({'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
-                                button({'data-action': 'save', 'class': 'btn success'}, 'Save Request')
+                                    button({'tabindex': -1, 'data-action': 'submit', 'class': 'btn primary'}, 'Send'),
+                                    button({'tabindex': -1, 'data-action': 'get', 'class': 'btn'}, 'GET'),
+                                    button({'tabindex': -1, 'data-action': 'post', 'class': 'btn'}, 'POST'),
+                                    button({'tabindex': -1, 'data-action': 'put', 'class': 'btn'}, 'PUT'),
+                                    button({'tabindex': -1, 'data-action': 'delete', 'class': 'btn'}, 'DELETE')
+                                ),
+
+                                div({'class': 'pull-right'},
+                                    button({'tabindex': -1, 'data-action': 'stop', 'class': 'btn danger'}, 'Stop'),
+                                    button({'tabindex': -1, 'data-action': 'save', 'class': 'btn success'}, 'Save Request')
+                                )
                             )
                         )
                     )
@@ -1118,7 +1003,7 @@ var App = new Class({
 
         'httpRequest': new Template(function(data) {
             span({'class': 'nocode'},
-                span({'class': 'kwd'}, data.method, ' ', data.path, data.queryString, ' ', 'HTTP/1.1 '), '\n',
+                span({'class': 'kwd'}, data.method, ' ', data.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 '), '\n',
                 span({'class': 'typ'}, 'HOST'),
                 span({'class': 'pun'}, ': '),
                 span({'class': 'pln'}, data.host),
@@ -1158,7 +1043,7 @@ var App = new Class({
                                 'type': 'text',
                                 'data-storage': 'option',
                                 'name': 'method',
-                                'tabindex': 2,
+                                'tabindex': 1,
                                 'autocomplete': true,
                                 'placeholder': 'ex: POST',
                                 'list': 'methods',
@@ -1177,7 +1062,7 @@ var App = new Class({
                                 'type': 'text',
                                 'data-storage': 'option',
                                 'name': 'url',
-                                'tabindex': 2,
+                                'tabindex': 1,
                                 'autocomplete': true,
                                 'placeholder': 'ex: http://example.com/resources/ef7d-xj36p',
                                 'required': true,
@@ -1206,7 +1091,7 @@ var App = new Class({
                                 'data-storage': 'extra',
                                 'name': 'timeout',
                                 'value': 60,
-                                'tabindex': 2,
+                                'tabindex': 1,
                                 'min': 1,
                                 'step': 1,
                                 'required': true
@@ -1221,14 +1106,14 @@ var App = new Class({
                             'name': 'query',
                             'label': 'Query String',
                             'data-storage': 'queryString',
-                            'tabindex': 3
+                            'tabindex': -1
                         },
 
                         {
                             'name': 'headers',
                             'label': 'Headers',
                             'data-storage': 'headerCollection',
-                            'tabindex': 3
+                            'tabindex': -1
                         }
                     ])
                 )
@@ -1250,8 +1135,8 @@ var App = new Class({
                                     'type': 'text',
                                     'data-storage': 'header',
                                     'name': 'Content-Type',
-                                    'tabindex': 4,
-                                    'autocomplete': true,
+                                    'tabindex': 2,
+                                    'autocomplete': false,
                                     'placeholder': 'ex: application/x-www-form-urlencoded',
                                     'list': 'mimetypes',
                                     'disabled': true,
@@ -1282,8 +1167,8 @@ var App = new Class({
                                     'type': 'text',
                                     'data-storage': 'extra',
                                     'name': 'content-encoding',
-                                    'tabindex': 4,
-                                    'autocomplete': true,
+                                    'tabindex': 2,
+                                    'autocomplete': false,
                                     'placeholder': 'ex: utf-8',
                                     'list': 'charset',
                                     'disabled': true
@@ -1298,7 +1183,7 @@ var App = new Class({
                                     'type': 'text',
                                     'data-storage': 'header',
                                     'name': 'Content-Length',
-                                    'tabindex': 4,
+                                    'tabindex': 2,
                                     'autocomplete': true,
                                     'placeholder': 'ex: 348',
                                     'disabled': true
@@ -1313,7 +1198,7 @@ var App = new Class({
                                     'type': 'text',
                                     'data-storage': 'header',
                                     'name': 'Content-MD5',
-                                    'tabindex': 4,
+                                    'tabindex': 2,
                                     'autocomplete': true,
                                     'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==',
                                     'disabled': true
@@ -1339,7 +1224,7 @@ var App = new Class({
                                                 'name': 'payload',
                                                 'data-storage': 'post-text',
                                                 'rows': 5,
-                                                'tabindex': 5,
+                                                'tabindex': 2,
                                                 'placeholder': 'ex: XML, JSON, etc ...',
                                                 'events': {
                                                     'change': function(event) {
@@ -1398,7 +1283,7 @@ var App = new Class({
 
                                     this.renderTemplate('pairs', {
                                         'name': 'payload',
-                                        'tabindex': 3
+                                        'tabindex': 2
                                     })
                                 ),
 
@@ -1406,8 +1291,8 @@ var App = new Class({
                                     fieldset({'class': 'control-group pairs'},
                                         div({'class': 'controls'},
                                             div({'class': 'input-append'},
-                                                input({'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
-                                                input({'class': 'span3', 'type': 'text', 'name': 'name', 'tabindex': 5, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
+                                                input({'tabindex': -1, 'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
+                                                input({'class': 'span3', 'type': 'text', 'name': 'name', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
                                                 span({'class': 'add-on btn add success'})
                                             )
                                         )
@@ -1473,7 +1358,7 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Authorization',
-                                        'tabindex': 7,
+                                        'tabindex': 3,
                                         'autocomplete': true,
                                         'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
                                         'disabled': true
@@ -1489,8 +1374,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Proxy-Authorization',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 3,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
                                         'disabled': true
                                     }
@@ -1526,7 +1411,7 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'authorization',
                                         'name': 'basic-username',
-                                        'tabindex': 7,
+                                        'tabindex': 3,
                                         'autocomplete': true,
                                         'placeholder': 'ex: username',
                                         'required': true,
@@ -1542,8 +1427,8 @@ var App = new Class({
                                         'type': 'password',
                                         'data-storage': 'authorization',
                                         'name': 'basic-password',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 3,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: password',
                                         'disabled': true
                                     }
@@ -1562,7 +1447,7 @@ var App = new Class({
                                         'class': 'span12 padded',
                                         'type': 'text',
                                         'name': 'digest-username',
-                                        'tabindex': 7,
+                                        'tabindex': 3,
                                         'autocomplete': true,
                                         'placeholder': 'ex: username',
                                         'required': true,
@@ -1577,8 +1462,8 @@ var App = new Class({
                                         'class': 'span12 padded',
                                         'type': 'password',
                                         'name': 'digest-password',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 3,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: password',
                                         'disabled': true
                                     }
@@ -1611,7 +1496,7 @@ var App = new Class({
                                                         'type': 'number',
                                                         'data-storage': 'authorization',
                                                         'name': 'version',
-                                                        'tabindex': 7,
+                                                        'tabindex': 3,
                                                         'autocomplete': true,
                                                         'placeholder': 'ex: 1.0',
                                                         'required': true,
@@ -1631,7 +1516,7 @@ var App = new Class({
                                                 fieldset({'class': 'control-group'},
                                                     label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
                                                     div({'class': 'controls'},
-                                                        select({'class': 'span2', 'name': 'signature', 'tabindex': 4, 'disabled': true},
+                                                        select({'class': 'span2', 'name': 'signature', 'tabindex': 3, 'disabled': true},
                                                             option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
                                                             option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
                                                         ),
@@ -1644,7 +1529,7 @@ var App = new Class({
                                                 fieldset({'class': 'control-group'},
                                                     label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
                                                     div({'class': 'controls'},
-                                                        select({'class': 'span2', 'name': 'method', 'tabindex': 4, 'disabled': true},
+                                                        select({'class': 'span2', 'name': 'method', 'tabindex': 3, 'disabled': true},
                                                             option({'value': 'header', 'selected': true}, 'Header'),
                                                             option({'value': 'query'},'Query String')
                                                         ),
@@ -1665,7 +1550,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'consumer_key',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                                     'required': true,
@@ -1681,7 +1566,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'consumer_secret',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                                     'required': true,
@@ -1697,7 +1582,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'token_key',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                                     'disabled': true
@@ -1712,7 +1597,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'token_secret',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                                     'disabled': true
@@ -1727,7 +1612,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'scope',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: ',
                                                     'disabled': true
@@ -1742,7 +1627,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'realm',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: ',
                                                     'disabled': true
@@ -1761,7 +1646,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'request_url',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: https://api.provider.com/oauth/request_token',
                                                     'disabled': true
@@ -1776,7 +1661,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'access_url',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: https://api.provider.com/oauth/access_token',
                                                     'disabled': true
@@ -1791,7 +1676,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'authorize_url',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: https://api.provider.com/oauth/authorize',
                                                     'disabled': true
@@ -1806,7 +1691,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'oauth_callback',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: https://www.domain.com',
                                                     'disabled': true
@@ -1821,7 +1706,7 @@ var App = new Class({
                                                     'type': 'text',
                                                     'data-storage': 'authorization',
                                                     'name': 'oauth_verifier',
-                                                    'tabindex': 7,
+                                                    'tabindex': 3,
                                                     'autocomplete': true,
                                                     'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                                     'disabled': true
@@ -1860,8 +1745,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
+                                        'tabindex': 4,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: text/plain',
                                         'list': 'mimetypes',
                                         'disabled': true
@@ -1877,8 +1762,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept-Charset',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
+                                        'tabindex': 4,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: utf-8',
                                         'list': 'charset',
                                         'disabled': true
@@ -1893,8 +1778,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept-Encoding',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
+                                        'tabindex': 4,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: identity',
                                         'list': 'encoding',
                                         'disabled': true
@@ -1911,8 +1796,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Accept-Language',
-                                        'tabindex': 3,
-                                        'autocomplete': true,
+                                        'tabindex': 4,
+                                        'autocomplete': false,
                                         'placeholder': 'ex: en-US',
                                         'list': 'languages',
                                         'disabled': true
@@ -1928,8 +1813,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Connection',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: keep-alive',
                                         'disabled': true
                                     }
@@ -1959,8 +1844,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Date',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
                                         'disabled': true
                                     }
@@ -1975,8 +1860,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Expect',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 100-continue',
                                         'disabled': true
                                     }
@@ -1991,8 +1876,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'From',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: user@example.com',
                                         'disabled': true
                                     }
@@ -2007,8 +1892,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Max-Forwards',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 10',
                                         'disabled': true
                                     }
@@ -2023,8 +1908,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Pragma',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: no-cache',
                                         'disabled': true
                                     }
@@ -2039,8 +1924,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Range',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: bytes=500-999',
                                         'disabled': true
                                     }
@@ -2055,8 +1940,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Referer',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: http://www.restconsole.com/',
                                         'disabled': true
                                     }
@@ -2071,8 +1956,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'TE',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: trailers, deflate',
                                         'disabled': true
                                     }
@@ -2087,8 +1972,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Upgrade',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
                                         'disabled': true
                                     }
@@ -2103,8 +1988,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'User-Agent',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
                                         'disabled': true
                                     }
@@ -2119,8 +2004,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Via',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
                                         'disabled': true
                                     }
@@ -2135,8 +2020,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Warning',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 199 Miscellaneous warning',
                                         'disabled': true
                                     }
@@ -2155,8 +2040,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Cache-Control',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: no-cache',
                                         'disabled': true
                                     }
@@ -2171,8 +2056,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Match',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                         'disabled': true
                                     }
@@ -2187,8 +2072,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Modified-Since',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
                                         'disabled': true
                                     }
@@ -2203,8 +2088,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-None-Match',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                         'disabled': true
                                     }
@@ -2219,8 +2104,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Range',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
                                         'disabled': true
                                     }
@@ -2235,8 +2120,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'If-Unmodified-Since',
-                                        'tabindex': 6,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
                                         'disabled': true
                                     }
@@ -2255,8 +2140,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'Origin',
-                                        'tabindex': 5,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: chrome-extension',
                                         'disabled': true
                                     }
@@ -2270,8 +2155,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-HTTP-Method-Override',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: PUT',
                                         'disabled': true
                                     }
@@ -2285,8 +2170,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-Requested-With',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: XMLHttpRequest',
                                         'disabled': true
                                     }
@@ -2300,8 +2185,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-Forwarded-For',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: ',
                                         'disabled': true
                                     }
@@ -2315,8 +2200,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'X-Do-Not-Track',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 1',
                                         'disabled': true
                                     }
@@ -2330,8 +2215,8 @@ var App = new Class({
                                         'type': 'text',
                                         'data-storage': 'header',
                                         'name': 'DNT',
-                                        'tabindex': 7,
-                                        'autocomplete': false,
+                                        'tabindex': 4,
+                                        'autocomplete': true,
                                         'placeholder': 'ex: 1',
                                         'disabled': true
                                     }
@@ -2491,10 +2376,6 @@ var App = new Class({
         */
     },
 
-    'setProgress': function(progress) {
-        //document.body.getElement('.progress .bar').setStyle('width', progress + '%');
-    },
-
     'initialize': function() {
         var body = document.body.empty();
 
@@ -2522,6 +2403,17 @@ var App = new Class({
         if ('options' in document.createElement('datalist') == false) {
             new AutoComplete();
         }
+
+        // focus on method field
+        document.getElement('input[name="method"]').focus();
+
+        // don't want to tab to iframes
+        this.clearTabIndex.delay(2000);
+    },
+
+    'clearTabIndex': function() {
+        document.getElements('iframe').set('tabindex', '-1');
+        document.getElement('.IN-widget a').set('tabindex', '-1');
     },
 
     'applyValues': function(request) {
@@ -2626,14 +2518,16 @@ var App = new Class({
         });
     },
 
+    'setProgress': function(progress) {
+        document.getElement('.progress .bar').setStyle('width', progress + '%');
+    },
+
     'send': function() {
         var error = false;
 
-       // this.signOAuth();
+        //this.signOAuth();
 
         var data = new Storage('defaults').data;
-
-        console.log(data);
 
         var options = {
             'url': data.url,
@@ -2652,14 +2546,25 @@ var App = new Class({
 
             'onRequest': function() {
                 // replace buttons with animation
-                document.getElement('footer').addClass('progress');
+                document.getElement('footer').addClass('active');
 
                 // scroll to the response area
                 document.fireEvent('click', new FakeEvent(document.getElement('a[href="#response"]')));
+
+                // set progress
+                $App.setProgress(10);
             },
 
             'onProgress': function(event, xhr) {
-                //var loaded = event.loaded, total = event.total;
+                /*
+                if (event.lengthComputable) {
+                    var loaded = event.loaded, total = event.total;
+
+                    console.log(parseInt(loaded / total * 100, 10));
+                }
+                */
+
+                $App.setProgress(50);
             },
 
             'onTimeout': function() {
@@ -2667,7 +2572,7 @@ var App = new Class({
                 Error('Error', 'Connection Timed-out');
 
                 // remove loading animation
-                document.getElement('footer').removeClass('progress');
+                document.getElement('footer').removeClass('active');
             },
 
             'onCancel': function() {
@@ -2734,6 +2639,10 @@ var App = new Class({
     },
 
     'processResponse': function() {
+        $App.setProgress(75);
+
+        var xhr = Object.clone(this.xhr);
+
         var mimeType = this.xhr.getResponseHeader('Content-Type');
 
         if (mimeType != null) {
@@ -2744,13 +2653,13 @@ var App = new Class({
             }
         }
 
-        var style = 'auto';
-
         switch (mimeType) {
             case 'text/css':
-                style = 'css';
-
-                this.xhr.responseText = beautify.css(this.xhr.responseText);
+                //xhr.responseText = beautify.css(xhr.responseText);
+                xhr.responseText = css_beautify(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
                 break;
 
             case 'application/ecmascript':
@@ -2758,7 +2667,10 @@ var App = new Class({
             case 'application/json':
                 style = 'js';
 
-                this.xhr.responseText = beautify.js(this.xhr.responseText);
+                xhr.responseText = js_beautify(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
                 break;
 
             case 'application/atom+xml':
@@ -2775,18 +2687,20 @@ var App = new Class({
             case 'application/vnd.mozilla.xul+xml':
             case 'image/svg+xml':
             case 'text/xml':
-                style = 'xml';
-
-                var declaration = this.xhr.responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
-
-                this.xhr.responseText = declaration[2] + "\n" + beautify.xml(this.xhr.responseXML).firstChild.nodeValue;
+                xhr.responseText = style_html(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
                 break;
 
             case 'text/html':
             case 'application/xhtml+xml':
-                style = 'html';
-
-                //document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
+                xhr.responseText = style_html(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t',
+                    'max_char': 1000,
+                    //'unformatted': ['!--[if lt IE 7]', '!--[if IE 7]', '!--[if IE 8]', '!--[if gt IE 8]', '![endif]--', '!--']
+                });
 
                 // create and inject the iframe object
                 var iframe = new IFrame();
@@ -2795,12 +2709,12 @@ var App = new Class({
                 // start writing
                 var doc = iframe.contentWindow.document;
                 doc.open();
-                doc.write(this.xhr.responseText);
+                //doc.write(xhr.responseText);
                 doc.close();
                 break;
 /*
 * requires xhr.responseType to be set BEFORE the request is sent
-* this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
+* xhr.responseType = 'blob' or xhr.responseType = 'arraybuffer'
 
             case 'image/jpeg':
                 // create and inject the iframe object
@@ -2809,7 +2723,7 @@ var App = new Class({
 
                 // render the image blob
                 var bb = new window.WebKitBlobBuilder();
-                bb.append(this.xhr.response);
+                bb.append(xhr.response);
 
                 // if using arraybuffer do this
                 // other wise just use blob method
@@ -2865,17 +2779,24 @@ var App = new Class({
 
         request.queryString = Object.toQueryString(queryString);
 
-        document.getElement('pre.har').set('text', beautify.js(JSON.encode(har.toObject())));
+        var harText = js_beautify(JSON.stringify(har.toObject()), {
+            'indent_size': 1,
+            'indent_char': '\t'
+        });
+
+        document.getElement('pre.har').set('text', harText);
         document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
-        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(this.xhr.responseText);
+        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
+
+        $App.setProgress(100);
 
         // init google prettify
         prettyPrint();
 
-        document.getElement('footer').removeClass('progress');
+        document.getElement('footer').removeClass('active');
 return;
 
-        if (this.xhr.status == 0) {
+        if (xhr.status == 0) {
             Error('Connection Failed!', 'Check your connectivity and try again');
 
             //document.getElement('form[name="request"]').fireEvent('stop');
@@ -2884,4 +2805,8 @@ return;
             document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
         }
     }
+});
+
+window.addEvent('domready', function(event) {
+    $App = new App;
 });
