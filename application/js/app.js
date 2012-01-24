@@ -2408,7 +2408,7 @@ var App = new Class({
         document.getElement('input[name="method"]').focus();
 
         // don't want to tab to iframes
-        this.clearTabIndex.delay(1000);
+        this.clearTabIndex.delay(2000);
     },
 
     'clearTabIndex': function() {
@@ -2647,7 +2647,11 @@ var App = new Class({
 
         switch (mimeType) {
             case 'text/css':
-                xhr.responseText = beautify.css(xhr.responseText);
+                //xhr.responseText = beautify.css(xhr.responseText);
+                xhr.responseText = css_beautify(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
                 break;
 
             case 'application/ecmascript':
@@ -2655,7 +2659,7 @@ var App = new Class({
             case 'application/json':
                 style = 'js';
 
-                xhr.responseText = beautify.js(xhr.responseText, {
+                xhr.responseText = js_beautify(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t'
                 });
@@ -2675,18 +2679,20 @@ var App = new Class({
             case 'application/vnd.mozilla.xul+xml':
             case 'image/svg+xml':
             case 'text/xml':
-                style = 'xml';
-
-                var declaration = xhr.responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
-
-                xhr.responseText = declaration[2] + "\n" + beautify.xml(xhr.responseXML).firstChild.nodeValue;
+                xhr.responseText = style_html(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
                 break;
 
             case 'text/html':
             case 'application/xhtml+xml':
-                style = 'html';
-
-                //document.getElement('input[name="highlight"][value="html"]').fireEvent('click');
+                xhr.responseText = style_html(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t',
+                    'max_char': 1000,
+                    //'unformatted': ['!--[if lt IE 7]', '!--[if IE 7]', '!--[if IE 8]', '!--[if gt IE 8]', '![endif]--', '!--']
+                });
 
                 // create and inject the iframe object
                 var iframe = new IFrame();
@@ -2765,7 +2771,7 @@ var App = new Class({
 
         request.queryString = Object.toQueryString(queryString);
 
-        var harText = beautify.js(JSON.stringify(har.toObject()), {
+        var harText = js_beautify(JSON.stringify(har.toObject()), {
             'indent_size': 1,
             'indent_char': '\t'
         });
