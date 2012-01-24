@@ -1003,7 +1003,7 @@ var App = new Class({
 
         'httpRequest': new Template(function(data) {
             span({'class': 'nocode'},
-                span({'class': 'kwd'}, data.method, ' ', data.path, data.queryString, ' ', 'HTTP/1.1 '), '\n',
+                span({'class': 'kwd'}, data.method, ' ', data.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 '), '\n',
                 span({'class': 'typ'}, 'HOST'),
                 span({'class': 'pun'}, ': '),
                 span({'class': 'pln'}, data.host),
@@ -2633,6 +2633,8 @@ var App = new Class({
     'processResponse': function() {
         $App.setProgress(75);
 
+        var xhr = Object.clone(this.xhr);
+
         var mimeType = this.xhr.getResponseHeader('Content-Type');
 
         if (mimeType != null) {
@@ -2643,13 +2645,9 @@ var App = new Class({
             }
         }
 
-        var style = 'auto';
-
         switch (mimeType) {
             case 'text/css':
-                style = 'css';
-
-                this.xhr.responseText = beautify.css(this.xhr.responseText);
+                xhr.responseText = beautify.css(xhr.responseText);
                 break;
 
             case 'application/ecmascript':
@@ -2657,7 +2655,10 @@ var App = new Class({
             case 'application/json':
                 style = 'js';
 
-                this.xhr.responseText = beautify.js(this.xhr.responseText);
+                xhr.responseText = beautify.js(xhr.responseText, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
                 break;
 
             case 'application/atom+xml':
@@ -2676,9 +2677,9 @@ var App = new Class({
             case 'text/xml':
                 style = 'xml';
 
-                var declaration = this.xhr.responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
+                var declaration = xhr.responseText.match(/^(\s*)(<\?xml.+?\?>)/i);
 
-                this.xhr.responseText = declaration[2] + "\n" + beautify.xml(this.xhr.responseXML).firstChild.nodeValue;
+                xhr.responseText = declaration[2] + "\n" + beautify.xml(xhr.responseXML).firstChild.nodeValue;
                 break;
 
             case 'text/html':
@@ -2694,12 +2695,12 @@ var App = new Class({
                 // start writing
                 var doc = iframe.contentWindow.document;
                 doc.open();
-                //doc.write(this.xhr.responseText);
+                //doc.write(xhr.responseText);
                 doc.close();
                 break;
 /*
 * requires xhr.responseType to be set BEFORE the request is sent
-* this.xhr.responseType = 'blob' or this.xhr.responseType = 'arraybuffer'
+* xhr.responseType = 'blob' or xhr.responseType = 'arraybuffer'
 
             case 'image/jpeg':
                 // create and inject the iframe object
@@ -2708,7 +2709,7 @@ var App = new Class({
 
                 // render the image blob
                 var bb = new window.WebKitBlobBuilder();
-                bb.append(this.xhr.response);
+                bb.append(xhr.response);
 
                 // if using arraybuffer do this
                 // other wise just use blob method
@@ -2771,7 +2772,7 @@ var App = new Class({
 
         document.getElement('pre.har').set('text', harText);
         document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
-        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(this.xhr.responseText);
+        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
 
         $App.setProgress(100);
 
@@ -2781,7 +2782,7 @@ var App = new Class({
         document.getElement('footer').removeClass('active');
 return;
 
-        if (this.xhr.status == 0) {
+        if (xhr.status == 0) {
             Error('Connection Failed!', 'Check your connectivity and try again');
 
             //document.getElement('form[name="request"]').fireEvent('stop');
