@@ -1,3 +1,33 @@
+var Alert = new Class({
+    'Implements': [Events, Templates],
+
+    'templates': {
+        'main': new Template(function(data) {
+            div({
+                'class': 'alert alert-' + data.type,
+                'events': {
+                    'click:relay(a)': function(event) {
+                        this.getParent().destroy();
+                    }
+                }},
+
+                a({'class': 'close'}, '×'),
+                strong(data.title + ' '),
+                data.message
+            )
+        })
+    },
+
+    'initialize': function(type, title, message) {
+        var alert = this.renderTemplate('main', {'type': type, 'title': title, 'message': message});
+
+        document.body.adopt(alert);
+
+        // trigger auto close after a dealy
+        alert.destroy.delay(5000, alert);
+    }
+});
+
 window.addEvent('domready', function(event) {
     document.addEvents({
         'click:relay(a[data-scroll="smooth"])': function(event) {

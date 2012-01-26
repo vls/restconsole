@@ -82,6 +82,15 @@ html {
             display: inline-block;
         }
 
+        .alert {
+            position: fixed;
+            left: 50%;
+            margin: 0px 0px 0px -250px;
+            width: 500px;
+            z-index: 2000;
+            bottom: 65px;
+        }
+
         .icon {
             margin-top: 2px;
             margin-right: 4px;
@@ -276,7 +285,8 @@ html {
             input,
             select,
             textarea {
-                font-family: 'Droid Sans Mono', monospace;
+                font-size: 14px;
+                font-family: 'Ubuntu Mono', Menlo, Monaco, "Courier New", monospace;
                 margin-bottom: 5px;
 
                 &[disabled] {
@@ -661,7 +671,8 @@ html {
                 min-height: 500px;
 
                 pre {
-                    font-family: 'Ubuntu', sans-serif;
+                    font-family: "Ubuntu Mono", Menlo, Monaco, "Courier New", monospace;
+                    font-size: 13px;
 
                     .user-select(text);
                     min-height: 300px;

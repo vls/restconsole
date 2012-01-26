@@ -363,6 +363,8 @@ var App = new Class({
 
     'events': {
         'change:relay(select, input[type="text"], input[type="number"], textarea)': function(event) {
+            console.log('REST Console: Saving ...');
+
             var form = this.getParent('form[name="main"]');
 
             // init data object
@@ -650,6 +652,10 @@ var App = new Class({
                                             input.set('disabled', true).fireEvent('highlight');
                                             this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
                                         }
+                                    },
+
+                                    'click': function(event) {
+                                        var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
 
                                         input.fireEvent('change');
                                         document.fireEvent('change', new FakeEvent(input));
@@ -695,8 +701,8 @@ var App = new Class({
                                     }
                                 }},
 
-                                li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'icon home'}), span('M'), 'ain')),
-                                li(a({'data-target': 'settings'}, i({'class': 'icon settings'}), span('S'), 'ettings')),
+                                li({'class': 'active'}, a({'accesskey': 'm', 'data-target': 'main'}, i({'class': 'icon home'}), span('M'), 'ain')),
+                                li(a({'accesskey': 's', 'data-target': 'settings'}, i({'class': 'icon settings'}), span('S'), 'ettings')),
                                 li(a({'data-target': 'help'}, i({'class': 'icon question'}), 'Help')),
                                 li(a({'data-target': 'about'}, i({'class': 'icon info'}), 'About'))
                             ),
@@ -731,11 +737,11 @@ var App = new Class({
                         h3('Navigation'),
 
                         ul({'class': 'nav list navigation', 'data-screen': 'main'},
-                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('T'), 'arget')),
-                            li(a({'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('P'), 'ayload')),
-                            li(a({'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('A'), 'uthorization')),
-                            li(a({'tabindex': -1, 'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}),  span('H'), 'eaders')),
-                            li(a({'tabindex': -1, 'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}),  span('R'), 'esponse'))
+                            li({'class': 'active'}, a({'accesskey': 't', 'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('T'), 'arget')),
+                            li(a({'accesskey': 'p', 'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('P'), 'ayload')),
+                            li(a({'accesskey': 'a', 'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('A'), 'uthorization')),
+                            li(a({'accesskey': 'h', 'tabindex': -1, 'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}),  span('H'), 'eaders')),
+                            li(a({'accesskey': 'r', 'tabindex': -1, 'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}),  span('R'), 'esponse'))
                         ),
 
                         ul({'class': 'nav list navigation', 'data-screen': 'settings'},
@@ -798,7 +804,20 @@ var App = new Class({
 
                 div({'class': 'fluid-content'},
                     div({'data-screen': 'main'},
-                        form({'name': 'main', 'novalidate': true},
+                        form({
+                            'name': 'main',
+                            'novalidate': true,
+                            'events': {
+                                'keydown:relay(input)': function(event) {
+                                    if (event.key == 'enter') {
+                                        // save first
+                                        document.fireEvent('change', new FakeEvent(this));
+
+                                        event.stop();
+                                        $RESTConsole.send();
+                                    }
+                                }
+                            }},
                             this.renderSection('target'),
                             this.renderSection('payload'),
                             this.renderSection('authorization'),
@@ -1004,7 +1023,7 @@ var App = new Class({
         }),
 
         'fonts': new Template(function(data) {
-            link({'rel': 'stylesheet', 'type': 'text/css', 'href': 'http://fonts.googleapis.com/css?family=Ubuntu:400,700|Orbitron:400,700|Droid+Sans+Mono'})
+            link({'rel': 'stylesheet', 'type': 'text/css', 'href': 'http://fonts.googleapis.com/css?family=Ubuntu:400,700|Orbitron:400,700|Ubuntu+Mono:400,700'})
         }),
 
         'scripts': new Template(function(data) {
@@ -1065,27 +1084,27 @@ var App = new Class({
         }),
 
         'httpRequest': new Template(function(data) {
-            span({'class': 'nocode'},
-                span({'class': 'kwd'}, data.method, ' ', data.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 '), '\n',
-                span({'class': 'typ'}, 'HOST'),
-                span({'class': 'pun'}, ': '),
-                span({'class': 'pln'}, data.host),
-                span('\n'),
-                this.renderTemplate('httpHeaders', data.headers), '\n'
-            )
+            span({'class': 'nocode'}, span({'class': 'kwd'}, data.method, ' ', data.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 ')),
+            span('\n'),
+            span({'class': 'nocode'}, span({'class': 'typ'}, 'HOST'), span({'class': 'pun'}, ': '), span({'class': 'pln'}, data.host)),
+            span('\n'),
+            span(this.renderTemplate('httpHeaders', data.headers)),
+            span('\n')
         }),
 
         'httpResponse': new Template(function(data) {
-            span({'class': 'nocode'},
-                span({'class': 'kwd'}, 'HTTP/1.1 ', data.status, ' ', data.statusText), '\n',
-                this.renderTemplate('httpHeaders', data.headers), '\n'
-            )
+            span({'class': 'nocode'}, span({'class': 'kwd'}, 'HTTP/1.1 ', data.status, ' ', data.statusText)),
+            span('\n'),
+            span(this.renderTemplate('httpHeaders', data.headers)),
+            span('\n')
         }),
 
         'httpHeaders': new Template(function(header) {
-            span({'class': 'typ'}, header.name),
-            span({'class': 'pun'}, ': '),
-            span({'class': 'pln', 'text': header.value}),
+            span({'class': 'nocode'},
+                span({'class': 'typ'}, header.name),
+                span({'class': 'pun'}, ': '),
+                span({'class': 'pln', 'text': header.value})
+            ),
             span('\n')
         })
     },
@@ -1169,14 +1188,14 @@ var App = new Class({
                             'name': 'query',
                             'label': 'Query String',
                             'data-storage': 'queryString',
-                            'tabindex': -1
+                            'tabindex': 0
                         },
 
                         {
                             'name': 'headers',
                             'label': 'Headers',
                             'data-storage': 'headerCollection',
-                            'tabindex': -1
+                            'tabindex': 0
                         }
                     ])
                 )
@@ -2295,10 +2314,10 @@ var App = new Class({
 
                 div({'class': 'tabbable', 'data-name': 'response'},
                     ul({'class': 'nav tabs'},
-                        li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Request')),
-                        li(a({'data-toggle': 'tab'}, 'Response')),
-                        li(a({'data-toggle': 'tab'}, 'Preview')),
-                        li(a({'data-toggle': 'tab'}, 'HTTP Archive (HAR)'))
+                        li({'class': 'active'}, a({'accesskey': 'q', 'data-toggle': 'tab'}, 'Re', span('q'), 'uest')),
+                        li(a({'accesskey': 'n', 'data-toggle': 'tab'}, 'Respo', span('n'), 'se')),
+                        li(a({'accesskey': 'v', 'data-toggle': 'tab'}, 'Pre', span('v'), 'iew')),
+                        li(a({'accesskey': 'c', 'data-toggle': 'tab'}, 'HTTP Ar', span('c'), 'hive (HAR)'))
                     ),
 
                     div({'class': 'tab-content'},
@@ -2385,7 +2404,8 @@ var App = new Class({
         });
 
         // payload body
-        if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded' && data.postData.text.length) {
+        var contentType = document.getElement('input[name="Content-Type"]')
+        if (!contentType.get('disabled') && contentType.get('value') == 'application/x-www-form-urlencoded' && data.postData.text.length) {
             Object.each(data.postData.text.parseQueryString(), function(value, key) {
                 message.parameters.push([key, value]);
             });
@@ -2394,13 +2414,15 @@ var App = new Class({
         // sign
         OAuth.completeRequest(message, accessor);
 
+        // debug
+        console.log(message);
+        console.log(OAuth.SignatureMethod.getBaseString(message));
+
         return {
             'header': OAuth.getAuthorizationHeader(data.realm, message.parameters),
             'query': OAuth.formEncode(OAuth.getParameterList(message.parameters))
         }
 
-        // debug
-        //console.log(OAuth.SignatureMethod.getBaseString(message));
     },
 
     'initialize': function() {
@@ -2461,33 +2483,9 @@ var App = new Class({
         document.getElements('.IN-widget a').set('tabindex', '-1');
     },
 
-    'applyValues': function(request) {
-        document.getElement('[name="method"]').set('value', request.method);
-        document.getElement('[name="url"]').set('value', request.url);
-
-        request.headers.each(function(value, key) {
-            var input = document.getElement('[name="' + key + '"]');
-
-            if (input) {
-                input.set('value', value);
-            }
-        });
-
-        request.queryString.each(function(value, key) {
-        });
-    },
-
-    'saveValues': function() {
-        var form = document.getElement('form[name="main"]');
-        var data = form.toObjectNoPairs();
-        var query = form.getPairs('query');
-
-        console.log(form);
-        console.log(data);
-        console.log(query);
-    },
-
     'loadDefaults': function() {
+        console.log('REST Console: Loading Defaults ...');
+
         var tabs        = new Storage('tabs');
         var defaults    = new Storage('defaults');
         var sections    = new Storage('sections');
@@ -2562,140 +2560,143 @@ var App = new Class({
     'send': function() {
         var error = false;
 
-        var data = new Storage('defaults').data;
-
-        // check for authorization data
-        switch (true) {
-            case (data.extra.consumer_key  != undefined && data.extra.consumer_secret  != undefined):
-                var oauth = this.signOAuth();
-
-                if (data.extra.method == 'header') {
-                    data.headers.push({
-                        'name': 'Authorization',
-                        'value': oauth.header
-                    });
-                } else {
-                    Object.each(oauth.query.parseQueryString(), function(value, name) {
-                        data.queryString.push({
-                            'name': name,
-                            'value': value
-                        })
-                    });
-                }
-                break;
-
-            case (data.extrausername != undefined):
-                break;
-        }
-
-        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
-
-        // store into history
-        new History().add(data);
-
-        var options = {
-            'url': data.url,
-            'query': {},
-            'payload': {},
-            'files': {},
-            'headers': {},
-            'async': true,
-            'method': data.method,
-            'link': 'ignore',
-            'isSuccess': null,
-            'emulation': false,
-            'evalScripts': false,
-            'evalResponse': false,
-            'timeout': data.extra.timeout * 1000,
-
-            'onRequest': function() {
-                // replace buttons with animation
-                document.getElement('footer').addClass('active');
-
-                // scroll to the response area
-                document.fireEvent('click', new FakeEvent(document.getElement('a[href="#response"]')));
-
-                // set progress
-                $App.setProgress(10);
-            },
-
-            'onProgress': function(event, xhr) {
-                /*
-                if (event.lengthComputable) {
-                    var loaded = event.loaded, total = event.total;
-
-                    console.log(parseInt(loaded / total * 100, 10));
-                }
-                */
-
-                $App.setProgress(50);
-            },
-
-            'onTimeout': function() {
-                // TODO replace with notice
-                Error('Error', 'Connection Timed-out');
-
-                // remove loading animation
-                document.getElement('footer').removeClass('active');
-            },
-
-            'onCancel': function() {
-                //this.fireEvent('stop');
-            }.bind(this),
-
-            'onComplete': this.processResponse
-        };
-
-        // queryString
-        data.queryString.each(function(param) {
-            options.query[param.name] = param.value;
-        });
-
-        // headers
-        data.headers.each(function(header) {
-            options.headers[header.name] = header.value;
-        });
-
-        // modify Content-Type header based on encoding charset
-        // TODO: shouldn't this be done as a rule in the REQUEST object?
-        if (data.extra['content-encoding']) {
-            options.encoding = data.extra['content-encoding'],
-            options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.encoding;
-        }
-
-        // set payload
-        if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
-            options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
-        } else {
-            options.payload = data.postData.text;
-        };
-/*
         // check for required fields
         document.getElements('*[required]').each(function(element) {
-            if (element.get('value').length == 0) {
-                Error('Missing Data', 'Please Fill out all the required fields', element);
+            if (!error && !element.get('disabled') && element.get('value').length == 0) {
+                element.focus();
+                console.log('REST Console Error: Missing ' + element.get('name'));
+                new Alert('danger', 'Missing Data', 'Please Fill out all the required fields');
                 error = true;
             }
         });
-*/
 
-        // clear response area
-        document.getElement('#preview').empty();
+        if (!error) {
+            var data = new Storage('defaults').data;
 
-        document.getElement('pre.har').empty();
-        document.getElement('pre.request').empty();
-        document.getElement('pre.response').empty();
+            // check for authorization data
+            switch (true) {
+                case (data.extra.consumer_key  != undefined && data.extra.consumer_secret  != undefined):
+                    var oauth = this.signOAuth();
 
-        if (error) {
-            // stop on error
-            return false;
-        } else {
-            window.XHR = new Request(options).send();
+                    if (data.extra.method == 'header') {
+                        data.headers.push({
+                            'name': 'Authorization',
+                            'value': oauth.header
+                        });
+                    } else {
+                        Object.each(oauth.query.parseQueryString(), function(value, name) {
+                            data.queryString.push({
+                                'name': name,
+                                'value': value
+                            })
+                        });
+                    }
+                    break;
+
+                case (data.extrausername != undefined):
+                    break;
+            }
+
+            document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
+
+            // store into history
+            new History().add(data);
+
+            var options = {
+                'url': data.url,
+                'query': {},
+                'payload': {},
+                'files': {},
+                'headers': {},
+                'async': true,
+                'method': data.method,
+                'link': 'ignore',
+                'isSuccess': null,
+                'emulation': false,
+                'evalScripts': false,
+                'evalResponse': false,
+                'timeout': data.extra.timeout * 1000,
+
+                'onRequest': function() {
+                    // replace buttons with animation
+                    document.getElement('footer').addClass('active');
+
+                    // scroll to the response area
+                    document.fireEvent('click', new FakeEvent(document.getElement('a[href="#response"]')));
+
+                    // set progress
+                    $RESTConsole.setProgress(10);
+                },
+
+                'onProgress': function(event, xhr) {
+                    /*
+                    if (event.lengthComputable) {
+                        var loaded = event.loaded, total = event.total;
+
+                        console.log(parseInt(loaded / total * 100, 10));
+                    }
+                    */
+
+                    $RESTConsole.setProgress(50);
+                },
+
+                'onTimeout': function() {
+                    // TODO replace with notice
+                    Error('Error', 'Connection Timed-out');
+
+                    // remove loading animation
+                    document.getElement('footer').removeClass('active');
+                },
+
+                'onCancel': function() {
+                    //this.fireEvent('stop');
+                }.bind(this),
+
+                'onComplete': this.processResponse
+            };
+
+            // queryString
+            data.queryString.each(function(param) {
+                options.query[param.name] = param.value;
+            });
+
+            // headers
+            data.headers.each(function(header) {
+                options.headers[header.name] = header.value;
+            });
+
+            // modify Content-Type header based on encoding charset
+            // TODO: shouldn't this be done as a rule in the REQUEST object?
+            if (data.extra['content-encoding']) {
+                options.encoding = data.extra['content-encoding'],
+                options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.encoding;
+            }
+
+            // set payload
+            if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
+                options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
+            } else {
+                options.payload = data.postData.text;
+            };
+
+            // clear response area
+            document.getElement('#preview').empty();
+
+            document.getElement('pre.har').empty();
+            document.getElement('pre.request').empty();
+            document.getElement('pre.response').empty();
+
+            if (error) {
+                // stop on error
+                return false;
+            } else {
+                window.XHR = new Request(options).send();
+            }
         }
     },
 
     'processResponse': function() {
-        $App.setProgress(75);
+        $RESTConsole.setProgress(75);
 
         var xhr = Object.clone(this.xhr);
 
@@ -2848,10 +2849,10 @@ var App = new Class({
         });
 
         document.getElement('pre.har').set('text', harText);
-        document.getElement('pre.request').adopt($App.renderTemplate('httpRequest', request)).appendText(request.postData.text);
-        document.getElement('pre.response').adopt($App.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
+        document.getElement('pre.request').adopt($RESTConsole.renderTemplate('httpRequest', request)).appendText(request.postData.text);
+        document.getElement('pre.response').adopt($RESTConsole.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
 
-        $App.setProgress(100);
+        $RESTConsole.setProgress(100);
 
         // init google prettify
         prettyPrint();
@@ -2871,5 +2872,5 @@ return;
 });
 
 window.addEvent('domready', function(event) {
-    $App = new App;
+    $RESTConsole = new App;
 });
