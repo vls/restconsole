@@ -1025,18 +1025,13 @@ var App = new Class({
                     }
                 }},
 
-                a(data.method, ' ', data.url),
+                a(strong(data.method), ' ', data.url),
 
                 div({'class': 'popover right'},
                     div({'class': 'arrow'}),
                     div({'class': 'inner'},
-                        h3({'class': 'title'}, data.method, ' ', data.url),
-                        div({'class': 'content'},
-                            p(data.headers),
-                            p(data.queryString),
-                            p(data.postData.text),
-                            button(i({'class': 'icon repeat'}), 'Repeat'),
-                            ' ',
+                        h3({'class': 'title'},
+                            button(i({'class': 'icon repeat'}), 'Repeat'), ' ',
                             button({
                                     'events': {
                                         'click': function(event) {
@@ -1050,6 +1045,18 @@ var App = new Class({
                                     }
                                 },
                                 i({'class': 'icon trash'}), 'Delete'
+                            )
+                        ),
+
+                        div({'class': 'content'},
+                            table({'class': 'table table-striped table-bordered'},
+                                tbody(
+                                    tr(th('Method'),td(data.method)),
+                                    tr(th('URL'),td(data.url)),
+                                    tr(th('QueryString'),td(data.queryString)),
+                                    tr(th('Headers'), td(data.headers)),
+                                    tr(th('Payload'), td(data.postData.text))
+                                )
                             )
                         )
                     )
