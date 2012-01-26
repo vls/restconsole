@@ -21,8 +21,8 @@ window.addEvent('domready', function(event) {
 
         'click:relay(a[data-toggle="tab"])': function(event) {
             var tabbable = this.getParent('.tabbable');
-            var tabs = tabbable.getElements('ul.tabs li a');
-            var panes = tabbable.getElements('.tab-content .tab-pane');
+            var tabs = tabbable.getElements('> ul.tabs li a');
+            var panes = tabbable.getElements('> .tab-content > .tab-pane');
             var index = tabs.indexOf(this);
 
             panes.removeClass('active')[index].addClass('active');

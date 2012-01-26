@@ -362,7 +362,7 @@ var App = new Class({
     }],
 
     'events': {
-        'change:relay(input[type="text"], input[type="number"], textarea)': function(event) {
+        'change:relay(select, input[type="text"], input[type="number"], textarea)': function(event) {
             var form = this.getParent('form[name="main"]');
 
             // init data object
@@ -373,7 +373,7 @@ var App = new Class({
             };
 
             // construct extras array
-            form.getElements('[data-storage="extra"]').each(function(field) {
+            form.getElements('[data-storage="extra"], [data-storage="authorization"]').each(function(field) {
                 if (!field.get('disabled')) {
                     data.extra[field.get('name')] = field.get('value');
                 }
@@ -447,7 +447,7 @@ var App = new Class({
         }),
 
         'presets': new Template(function(data) {
-            li(i({'class': data.name.toLowerCase()}),
+            li(i({'class': 'icon' + data.name.toLowerCase()}),
                 details(summary(data.name), this.renderTemplate('resource', data.resources))
             )
         }),
@@ -487,7 +487,11 @@ var App = new Class({
             if (data) {
                 section = data.split('.')[0];
 
-                a({'tabindex': -1, 'data-type': 'panel', 'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])})
+                a({
+                    'tabindex': -1,
+                    'data-type': 'panel',
+                    'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])
+                })
             }
         }),
 
@@ -633,9 +637,9 @@ var App = new Class({
                                 'events': {
                                     'change': function(event) {
                                         var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
-                                        var disabled = input.get('disabled');
+                                        var checked = this.get('checked');
 
-                                        if (disabled) {
+                                        if (checked) {
                                             input.set('disabled', false).fireEvent('highlight').fireEvent('focus').focus();
 
                                             // prevent autoComplete
@@ -691,10 +695,10 @@ var App = new Class({
                                     }
                                 }},
 
-                                li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'home'}), span('M'), 'ain')),
-                                li(a({'data-target': 'settings'}, i({'class': 'settings'}), span('S'), 'ettings')),
-                                li(a({'data-target': 'help'}, i({'class': 'question'}), 'Help')),
-                                li(a({'data-target': 'about'}, i({'class': 'info'}), 'About'))
+                                li({'class': 'active'}, a({'data-target': 'main'}, i({'class': 'icon home'}), span('M'), 'ain')),
+                                li(a({'data-target': 'settings'}, i({'class': 'icon settings'}), span('S'), 'ettings')),
+                                li(a({'data-target': 'help'}, i({'class': 'icon question'}), 'Help')),
+                                li(a({'data-target': 'about'}, i({'class': 'icon info'}), 'About'))
                             ),
 
                             ul({'class': 'social pull-right'})
@@ -710,8 +714,6 @@ var App = new Class({
                 'data-screen': 'main',
                 'events': {
                     'scroll': function(event) {
-                        var position = this.getScroll().y;
-
                         document.getElements('a[data-spy="scroll"]').each(function(link) {
                             var target = link.get('href');
                             var targetPosition = document.getElement(target).getCoordinates(this).top;
@@ -729,23 +731,23 @@ var App = new Class({
                         h3('Navigation'),
 
                         ul({'class': 'nav list navigation', 'data-screen': 'main'},
-                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('T'), 'arget')),
-                            li(a({'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('P'), 'ayload')),
-                            li(a({'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), span('A'), 'uthorization')),
-                            li(a({'tabindex': -1, 'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('H'), 'eaders')),
-                            li(a({'tabindex': -1, 'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}),  span('R'), 'esponse'))
+                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('T'), 'arget')),
+                            li(a({'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('P'), 'ayload')),
+                            li(a({'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('A'), 'uthorization')),
+                            li(a({'tabindex': -1, 'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}),  span('H'), 'eaders')),
+                            li(a({'tabindex': -1, 'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}),  span('R'), 'esponse'))
                         ),
 
                         ul({'class': 'nav list navigation', 'data-screen': 'settings'},
-                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'General')),
-                            li(a({'tabindex': -1, 'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'chevron-right'}), 'Display'))
+                            li({'class': 'active'}, a({'tabindex': -1, 'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), 'General')),
+                            li(a({'tabindex': -1, 'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), 'Display'))
                         )
                     ),
 
                     div({'class': 'tabbable', 'data-screen': 'main'},
                         ul({'class': 'nav tabs'},
-                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'star'}), 'Presets')),
-                            li(a({'data-toggle': 'tab'}, i({'class': 'history'}), 'History'))
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'icon star'}), 'Presets')),
+                            li(a({'data-toggle': 'tab'}, i({'class': 'icon history'}), 'History'))
                         ),
 
                         div({'class': 'tab-content'},
@@ -760,7 +762,7 @@ var App = new Class({
                                                 alert('Coming Soon!');
                                             }
                                         }
-                                    }, i({'class': 'plus'}), 'Import WADL')),
+                                    }, i({'class': 'icon plus'}), 'Import WADL')),
 
                                     li(a({
                                         'events': {
@@ -770,7 +772,7 @@ var App = new Class({
                                                 alert('Coming Soon!');
                                             }
                                         }
-                                    }, i({'class': 'plus'}), 'Import HAR')),
+                                    }, i({'class': 'icon plus'}), 'Import HAR')),
 
                                     li({'class': 'nav-header'}, 'Defaults'),
 
@@ -779,9 +781,7 @@ var App = new Class({
                             ),
 
                             div({'class': 'tab-pane'},
-                                ul({'class': 'nav list history'},
-                                    li(a(i({'class': 'time'}), 'GET www.domain.com/api/sasgasg/asgas'))
-                                )
+                                ul({'class': 'nav list history'})
                             )
                         )
                     ),
@@ -789,9 +789,9 @@ var App = new Class({
                     div({'class': 'well'},
                         ul({'class': 'nav list'},
                             li({'class': 'nav-header'}, 'Donate'),
-                            li(a({'tabindex': -1, 'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'star-empty'}), 'Paypal')),
-                            li(a({'tabindex': -1, 'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'star-empty'}), 'Flattr')),
-                            li(a({'tabindex': -1, 'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'star-empty'}), 'TipIt'))
+                            li(a({'tabindex': -1, 'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'icon star-empty'}), 'Paypal')),
+                            li(a({'tabindex': -1, 'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'icon star-empty'}), 'Flattr')),
+                            li(a({'tabindex': -1, 'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'icon star-empty'}), 'TipIt'))
                         )
                     )
                 ),
@@ -1011,6 +1011,50 @@ var App = new Class({
             script({'type': 'text/javascript', 'src': 'http://platform.twitter.com/widgets.js', 'async': true}),
             script({'type': 'text/javascript', 'src': 'http://platform.linkedin.com/in.js', 'async': true}),
             script({'type': 'text/javascript', 'src': 'https://ssl.google-analytics.com/ga.js', 'async': true})
+        }),
+
+        'historyItem': new Template(function(data) {
+            li({
+                'events': {
+                    'mouseover': function(event) {
+                        this.getElement('.popover').position({
+                            relativeTo: this,
+                            position: 'centerRight',
+                            edge: 'centerLeft'
+                        });
+                    }
+                }},
+
+                a(data.method, ' ', data.url),
+
+                div({'class': 'popover right'},
+                    div({'class': 'arrow'}),
+                    div({'class': 'inner'},
+                        h3({'class': 'title'}, data.method, ' ', data.url),
+                        div({'class': 'content'},
+                            p(data.headers),
+                            p(data.queryString),
+                            p(data.postData.text),
+                            button(i({'class': 'icon repeat'}), 'Repeat'),
+                            ' ',
+                            button({
+                                    'events': {
+                                        'click': function(event) {
+                                            var item = this.getParent('li');
+                                            var index = this.getParent('ul').getElements('li').indexOf(item);
+
+                                            new History().remove(index);
+
+                                            item.destroy();
+                                        }
+                                    }
+                                },
+                                i({'class': 'icon trash'}), 'Delete'
+                            )
+                        )
+                    )
+                )
+            )
         }),
 
         'httpRequest': new Template(function(data) {
@@ -1327,29 +1371,21 @@ var App = new Class({
                         'events': {
                             'click:relay(li a)': function(event) {
                                 var tabbable = this.getParent('.tabbable');
-                                var tabs = tabbable.getElement('.tabs');
-                                var content = tabbable.getElements('.tab-content .tab-pane');
-                                var index = tabs.getChildren().indexOf(this.getParent('li'));
+                                var tabs = tabbable.getElements('ul.tabs li a');
+                                var index = tabs.indexOf(this) + 1;
 
-                                content.getElements('input[name="Authorization"], input[type="text"]:not([disabled]), input[type="password"]:not([disabled]), input[type="hidden"], select').each(function(elements) {
-                                    elements.set('disabled', true);
+                                var pane = tabbable.getElement('> .tab-content > .tab-pane:nth-of-type(' + index + ')');
+                                var panes = tabbable.getElements('> .tab-content > .tab-pane:not(:nth-of-type(' + index + '))');
+
+                                panes.getElements('input[type="checkbox"]').each(function(checkbox) {
+                                    checkbox.set('checked', false).fireEvent('change');
                                 });
 
-                                content[index].getElements('input[name="Authorization"], input[type="hidden"], select').set('disabled', false);
-
-                                content[index].getElements('input[type="checkbox"]').each(function(checkbox) {
-                                    if (checkbox.get('checked')) {
-                                        var input = checkbox.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
-
-                                        input.set('disabled', false);
-
-                                        document.fireEvent('keyup', new FakeEvent(input));
-                                    }
+                                panes.getElements('select').each(function(select) {
+                                    select.set('disabled', true);
                                 });
 
-                                // trigger the Authorization value
-                                var firstInput = content[index].getElement('input[type="text"]')
-                                content[index].fireEvent('keyup', new FakeEvent(firstInput));
+                                pane.getElements('select').set('disabled', false);
                             }
                         }},
 
@@ -1483,249 +1519,255 @@ var App = new Class({
                             ])
                         ),
 */
-                        div({
-                            'class': 'tab-pane oauth',
-                            'events': {
-                                'keyup:relay(input[type="text"], input[type="number"])': this.signOAuth
-                            }},
+                        div({'class': 'tab-pane oauth'},
+                            div({'class': 'row'},
+                                div({'class': 'span6'},
+                                    div({'class': 'row'},
+                                        div({'class': 'span2'},
+                                            this.renderTemplate('optional-input', {
+                                                'label': 'Version',
+                                                'help': '',
+                                                'attributes': {
+                                                    'class': 'span2',
+                                                    'type': 'number',
+                                                    'data-storage': 'authorization',
+                                                    'name': 'version',
+                                                    'tabindex': 3,
+                                                    'autocomplete': true,
+                                                    'placeholder': 'ex: 1.0',
+                                                    'required': true,
+                                                    'disabled': true,
+                                                    'events': {
+                                                        'change': function(event) {
+                                                            this.set('value', parseInt(this.get('value')).toFixed(1));
 
-                            div({'class': 'tabbable tabs-left', 'data-name': 'oauth'},
-                                ul({'class': 'nav tabs'},
-                                    li(a({'class': 'active', 'data-toggle': 'tab'}, 'Options')),
-                                    li(a({'data-toggle': 'tab'}, 'Tokens')),
-                                    li(a({'data-toggle': 'tab'}, 'Authorize'))
-                                ),
-
-                                div({'class': 'tab-content'},
-                                    div({'class': 'tab-pane active'},
-                                        div({'class': 'row'},
-                                            div({'class': 'span2'},
-                                                this.renderTemplate('optional-input', {
-                                                    'label': 'Version',
-                                                    'help': '',
-                                                    'attributes': {
-                                                        'class': 'span2',
-                                                        'type': 'number',
-                                                        'data-storage': 'authorization',
-                                                        'name': 'version',
-                                                        'tabindex': 3,
-                                                        'autocomplete': true,
-                                                        'placeholder': 'ex: 1.0',
-                                                        'required': true,
-                                                        'disabled': true,
-                                                        'events': {
-                                                            'change': function(event) {
-                                                                this.set('value', parseInt(this.get('value')).toFixed(1));
-
-                                                                this.fireEvent('highlight');
-                                                            }
+                                                            this.fireEvent('highlight');
                                                         }
                                                     }
-                                                })
-                                            ),
+                                                }
+                                            })
+                                        ),
 
-                                            div({'class': 'span2'},
-                                                fieldset({'class': 'control-group'},
-                                                    label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
-                                                    div({'class': 'controls'},
-                                                        select({'class': 'span2', 'name': 'signature', 'tabindex': 3, 'disabled': true},
-                                                            option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
-                                                            option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
-                                                        ),
-                                                        p({'class': 'help-text'}, '')
-                                                    )
+                                        div({'class': 'span2'},
+                                            fieldset({'class': 'control-group'},
+                                                label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
+                                                div({'class': 'controls'},
+                                                    select({'class': 'span2', 'name': 'signature', 'data-storage': 'authorization', 'tabindex': 3, 'disabled': true},
+                                                        option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
+                                                        option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
+                                                    ),
+                                                    p({'class': 'help-text'}, '')
                                                 )
-                                            ),
+                                            )
+                                        ),
 
-                                            div({'class': 'span2'},
-                                                fieldset({'class': 'control-group'},
-                                                    label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
-                                                    div({'class': 'controls'},
-                                                        select({'class': 'span2', 'name': 'method', 'tabindex': 3, 'disabled': true},
-                                                            option({'value': 'header', 'selected': true}, 'Header'),
-                                                            option({'value': 'query'},'Query String')
-                                                        ),
-                                                        p({'class': 'help-text'}, '')
-                                                    )
+                                        div({'class': 'span2'},
+                                            fieldset({'class': 'control-group'},
+                                                label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
+                                                div({'class': 'controls'},
+                                                    select({'class': 'span2', 'name': 'method', 'data-storage': 'authorization', 'tabindex': 3, 'disabled': true},
+                                                        option({'value': 'header', 'selected': true}, 'Header'),
+                                                        option({'value': 'query'},'Query String')
+                                                    ),
+                                                    p({'class': 'help-text'}, '')
                                                 )
                                             )
                                         )
                                     ),
 
-                                    div({'class': 'tab-pane'},
-                                        this.renderTemplate('optional-input', [
-                                            {
-                                                'label': 'Consumer Key',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'consumer_key',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'required': true,
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Consumer Secret',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'consumer_secret',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'required': true,
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Token Key',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'token_key',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Token Secret',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'token_secret',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Scope',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'scope',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: ',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Realm',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'realm',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: ',
-                                                    'disabled': true
-                                                }
+                                    this.renderTemplate('optional-input', [
+                                        {
+                                            'label': 'Consumer Key',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'consumer_key',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'required': true,
+                                                'disabled': true
                                             }
-                                        ])
-                                    ),
+                                        },
 
-                                    div({'class': 'tab-pane'},
-                                        this.renderTemplate('optional-input', [
-                                            {
-                                                'label': 'Request token URL',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'request_url',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://api.provider.com/oauth/request_token',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Access token URL',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'access_url',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://api.provider.com/oauth/access_token',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Authorize URL',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'authorize_url',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://api.provider.com/oauth/authorize',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Oauth Callback',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'oauth_callback',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: https://www.domain.com',
-                                                    'disabled': true
-                                                }
-                                            },
-
-                                            {
-                                                'label': 'Oauth Verifier',
-                                                'help': '',
-                                                'attributes': {
-                                                    'class': 'span9',
-                                                    'type': 'text',
-                                                    'data-storage': 'authorization',
-                                                    'name': 'oauth_verifier',
-                                                    'tabindex': 3,
-                                                    'autocomplete': true,
-                                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
-                                                    'disabled': true
-                                                }
+                                        {
+                                            'label': 'Consumer Secret',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'consumer_secret',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'required': true,
+                                                'disabled': true
                                             }
-                                        ])
-                                    )
+                                        },
+
+                                        {
+                                            'label': 'Token Key',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'token_key',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Token Secret',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'token_secret',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Scope',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'scope',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: ',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Realm',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span6',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'realm',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: ',
+                                                'disabled': true
+                                            }
+                                        }
+                                    ])
+                                ),
+
+                                div({
+                                    'class': 'span5',
+                                    'events': {
+                                        'keyup:relay(input[type="text"])': function(event) {
+                                            var container = this.getParent('.span5');
+                                            var button = container.getElement('button');
+                                            var urls = container.getElements('input[type="text"][name$="_url"]').get('value');
+
+                                            button.set('disabled', urls.contains(''));
+                                        }
+                                    }},
+
+                                    this.renderTemplate('optional-input', [
+                                        {
+                                            'label': 'Request token URL',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span5',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'request_url',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://api.provider.com/oauth/request_token',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Access token URL',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span5',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'access_url',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://api.provider.com/oauth/access_token',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Authorize URL',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span5',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'authorize_url',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://api.provider.com/oauth/authorize',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Oauth Callback',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span5',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'oauth_callback',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: https://www.domain.com',
+                                                'disabled': true
+                                            }
+                                        },
+
+                                        {
+                                            'label': 'Oauth Verifier',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span5',
+                                                'type': 'text',
+                                                'data-storage': 'authorization',
+                                                'name': 'oauth_verifier',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                                'disabled': true
+                                            }
+                                        }
+                                    ]),
+
+                                    button({
+                                        'class': 'btn info',
+                                        'disabled': true,
+                                        'events': {
+                                            'click': function(event) {
+                                                alert('awesome');
+                                            }
+                                        }
+                                    }, 'Authorize')
                                 )
                             )
                         )
@@ -2295,56 +2337,49 @@ var App = new Class({
     },
 
     'signOAuth': function() {
-        return;
-        var tab = document.getElement('.tab-pane.oauth');
-        var data = tab.toObject();
-
-        var request = {
-            'query': document.getElement('form[name="target"]').getPairs('query'),
-            'target': document.getElement('form[name="target"]').toObjectNoPairs(),
-            'payload': document.getElement('form[name="payload"]').toObjectNoPairs()
-        };
+        var oauth = document.getElement('.tab-pane.oauth').toObject();
+        var data = new Storage('defaults').data;
 
         // start oauth
         var accessor = {
-            'consumerKey': data.consumer_key,
-            'consumerSecret': data.consumer_secret
+            'consumerKey': oauth.consumer_key,
+            'consumerSecret': oauth.consumer_secret
         };
 
         var message = {
-            'action': request.target.url,
-            'method': request.target.method,
+            'action': data.url,
+            'method': data.method,
             'parameters': [
-                ['oauth_version', data.version],
-                ['oauth_signature_method', data.signature]
+                ['oauth_version', oauth.version],
+                ['oauth_signature_method', oauth.signature]
             ]
         };
 
         // optional params
-        if (data.token_key) {
-            accessor.token = data.token_key;
+        if (oauth.token_key) {
+            accessor.token = oauth.token_key;
         }
 
-        if (data.token_secret) {
-            accessor.tokenSecret = data.token_secret;
+        if (oauth.token_secret) {
+            accessor.tokenSecret = oauth.token_secret;
         }
 
-        if (data.scope) {
-            oauth.parameters.push(['scope', data.scope]);
+        if (oauth.scope) {
+            message.parameters.push(['scope', oauth.scope]);
         }
 
-        if (data.oauth_verifier) {
-            oauth.parameters.push(['oauth_verifier', data.oauth_verifier]);
+        if (oauth.oauth_verifier) {
+            message.parameters.push(['oauth_verifier', oauth.oauth_verifier]);
         }
 
-        // query string params
-        Object.each(request.query, function(value, key) {
-            message.parameters.push([key, value]);
+        // queryString
+        data.queryString.each(function(param) {
+            message.parameters.push([param.name, param.value]);
         });
 
-        if (request.payload['Content-Type'] == 'application/x-www-form-urlencoded' && request.payload.payload.length) {
-            // payload body
-            Object.each(request.payload.payload.parseQueryString(), function(value, key) {
+        // payload body
+        if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded' && data.postData.text.length) {
+            Object.each(data.postData.text.parseQueryString(), function(value, key) {
                 message.parameters.push([key, value]);
             });
         };
@@ -2352,40 +2387,13 @@ var App = new Class({
         // sign
         OAuth.completeRequest(message, accessor);
 
+        return {
+            'header': OAuth.getAuthorizationHeader(data.realm, message.parameters),
+            'query': OAuth.formEncode(OAuth.getParameterList(message.parameters))
+        }
+
         // debug
         //console.log(OAuth.SignatureMethod.getBaseString(message));
-
-        if (data.method == 'header') {
-            var header = OAuth.getAuthorizationHeader(data.realm, message.parameters);
-
-            var input = tab.getElement('input[name="Authorization"]').set('value', header);
-        } else {
-            OAuth.formEncode(OAuth.getParameterList(message.parameters));
-            /*
-            var input = this.getParent('.tab-pane').getElement('input[name="Authorization"]').set('value', '');
-
-            var oauth_params = oauth.signed_url.replace(request.uri + '?', '').parseQueryString();
-
-            Object.each(oauth_params, function(value, key) {
-                row = container.getElement('li:last-of-type').clone();
-                row.dataset.oauth = true;
-                row.getElement('input[name="key"]').set('value', key);
-                row.getElement('input[name="value"]').set('value', value);
-                row.getElements('input').set('disabled', false);
-                row.inject(container, 'top');
-            });
-            */
-        }
-/*
-        if (data.oauth_callback && data.oauth_callback.length > 0) {
-            row = container.getElement('li:last-of-type').clone();
-            row.dataset.oauth = true;
-            row.getElement('input[name="key"]').set('value', 'oauth_callback');
-            row.getElement('input[name="value"]').set('value', data.oauth_callback);
-            row.getElements('input').set('disabled', false);
-            row.inject(container, 'top');
-        }
-        */
     },
 
     'initialize': function() {
@@ -2421,6 +2429,9 @@ var App = new Class({
 
         // focus on method field
         document.getElement('input[name="method"]').focus();
+
+        // load history
+        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', new History().getAll()));
 
         this.checkOnlineStatus(this);
     },
@@ -2525,7 +2536,7 @@ var App = new Class({
 
         // extra fields
         Object.each(defaults.get('extra'), function(value, name) {
-            var input = document.getElement('[data-storage="extra"][name="' + name + '"]');
+            var input = document.getElement('[data-storage="extra"][name="' + name + '"], [data-storage="authorization"][name="' + name + '"]');
 
             if (input) {
                 var container = input.set('value', value).getParent('.input-prepend');
@@ -2544,9 +2555,36 @@ var App = new Class({
     'send': function() {
         var error = false;
 
-        //this.signOAuth();
-
         var data = new Storage('defaults').data;
+
+        // check for authorization data
+        switch (true) {
+            case (data.extra.consumer_key  != undefined && data.extra.consumer_secret  != undefined):
+                var oauth = this.signOAuth();
+
+                if (data.extra.method == 'header') {
+                    data.headers.push({
+                        'name': 'Authorization',
+                        'value': oauth.header
+                    });
+                } else {
+                    Object.each(oauth.query.parseQueryString(), function(value, name) {
+                        data.queryString.push({
+                            'name': name,
+                            'value': value
+                        })
+                    });
+                }
+                break;
+
+            case (data.extrausername != undefined):
+                break;
+        }
+
+        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
+
+        // store into history
+        new History().add(data);
 
         var options = {
             'url': data.url,
@@ -2617,15 +2655,7 @@ var App = new Class({
             options.encoding = data.extra['content-encoding'],
             options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.encoding;
         }
-/*
-        if (data.authorization.Authorization && data.authorization.Authorization != '') {
-            if (data.authorization.Authorization.substring(0, 5) == 'OAuth') {
-                //this.signOAuth();
-            }
 
-            options.headers.Authorization = data.authorization.Authorization;
-        }
-*/
         // set payload
         if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
             options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
@@ -2764,15 +2794,22 @@ var App = new Class({
 */
         }
 
-        // construct HAR objects
-        var request = new Storage('defaults').data;
+        // get history
+        var history = new History();
+        var request = history.getLast();
 
+        // construct HAR objects
         var response = new HAR.Response();
         response.fromXHR(this.xhr);
 
         var har = new HAR.Log();
         var harResponse = response.toObject();
-        harResponse.content.text = btoa(harResponse.content.text);
+
+        try {
+            harResponse.content.text = btoa(harResponse.content.text);
+        } catch (e) {
+            harResponse.content.text = harResponse.content.text;
+        }
 
         har.addEntry(new HAR.Entry({
             'request': request,

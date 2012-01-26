@@ -78,9 +78,9 @@ Element.implement({
 var Storage = new Class({
     'name': false,
 
-    'initialize': function(item) {
-        this.item = item;
-        this.data = JSON.parse(localStorage.getItem(this.item));
+    'initialize': function(name) {
+        this.name = name;
+        this.data = JSON.parse(localStorage.getItem(this.name));
 
         if (this.data == null) {
             this.data = {};
@@ -88,7 +88,7 @@ var Storage = new Class({
     },
 
     'save': function() {
-        localStorage.setItem(this.item, JSON.stringify(this.data));
+        localStorage.setItem(this.name, JSON.stringify(this.data));
     },
 
     'get': function(key) {
@@ -102,6 +102,47 @@ var Storage = new Class({
 
     'remove': function(key) {
         delete this.data[key];
+        this.save();
+    }
+});
+
+var History = new Class({
+    'initialize': function() {
+        this.data = JSON.parse(localStorage.getItem('history'));
+
+        if (this.data == null) {
+            this.data = [];
+        }
+    },
+
+    'save': function() {
+        localStorage.setItem('history', JSON.stringify(this.data));
+    },
+
+    'getAll': function() {
+        return this.data;
+    },
+
+    'get': function(index) {
+        return this.data[index];
+    },
+
+    'getLast': function() {
+        return this.get(this.data.length - 1);
+    },
+
+    'add': function(record) {
+        this.data.push(record);
+        this.save();
+    },
+
+    'remove': function(index) {
+        this.data.splice(index, 1);
+        this.save();
+    },
+
+    'removeLast': function(index) {
+        this.remove(this.data.length - 1);
         this.save();
     }
 });
