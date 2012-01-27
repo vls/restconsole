@@ -2766,7 +2766,7 @@ var App = new Class({
                 // start writing
                 var doc = iframe.contentWindow.document;
                 doc.open();
-                //doc.write(xhr.responseText);
+                doc.write(xhr.responseText);
                 doc.close();
                 break;
 /*
