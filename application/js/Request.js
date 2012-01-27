@@ -195,6 +195,7 @@ var Request = this.Request = new Class({
         }
 
         xhr.open(method.toUpperCase(), url, this.options.async, this.options.user, this.options.password);
+        xhr.overrideMimeType('text/plain; charset=x-user-defined')
         if (this.options.user && 'withCredentials' in xhr) xhr.withCredentials = true;
 
         xhr.onreadystatechange = this.onStateChange.bind(this);

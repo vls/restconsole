@@ -1,3 +1,6 @@
+window.URL = window.webkitURL || window.URL;
+window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
+
 /**
  * Main App logic
  */
@@ -1070,11 +1073,11 @@ var App = new Class({
                         div({'class': 'content'},
                             table({'class': 'table table-striped table-bordered'},
                                 tbody(
-                                    tr(th('Method'),td(data.method)),
-                                    tr(th('URL'),td(data.url)),
-                                    tr(th('QueryString'),td(data.queryString)),
-                                    tr(th('Headers'), td(data.headers)),
-                                    tr(th('Payload'), td(data.postData.text))
+                                    tr(th('Method'),td({'class': 'selectable'}, data.method)),
+                                    tr(th('URL'),td({'class': 'selectable'}, data.url)),
+                                    tr(th('QueryString'),td({'class': 'selectable'}, data.queryString)),
+                                    tr(th('Headers'), td({'class': 'selectable'}, data.headers)),
+                                    tr(th('Payload'), td({'class': 'selectable'}, data.postData.text))
                                 )
                             )
                         )
@@ -2346,7 +2349,8 @@ var App = new Class({
                         ),
 
                         div({'class': 'tab-pane'},
-                            pre({'class': 'prettyprint linenums har lang-json'})
+                            pre({'class': 'prettyprint linenums har lang-json'}),
+                            a({'class': 'har', 'download': 'har.log'}, 'download')
                         )
                     )
                 )
@@ -2718,9 +2722,66 @@ var App = new Class({
             }
         }
 
+        if (['image/gif', 'image/png', 'image/jpeg'].contains(mimeType)) {
+            var binary = true;
+            var binaryText = '';
+            var responseText = xhr.responseText;
+
+            for (var i = 0; i < responseText.length; i+=4) {
+                binaryText += String.fromCharCode(responseText.charCodeAt(i+0) & 0xff, responseText.charCodeAt(i+1) & 0xff, responseText.charCodeAt(i+2) & 0xff, responseText.charCodeAt(i+3) & 0xff)
+            }
+
+            for (i-=4; i < responseText.length; i+=1) {
+                binaryText += String.fromCharCode(responseText.charCodeAt(i) & 0xff)
+            }
+
+            xhr.responseText = binaryText;
+        }
+
+        // get history
+        var history = new History();
+        var request = history.getLast();
+
+        // construct HAR objects
+        var response = new HAR.Response();
+        response.fromXHR(this.xhr).setContentText(xhr.responseText);
+
+        if (binary) {
+            console.log('encoding response text');
+            response.encode('base64');
+        }
+
+        var har = new HAR.Log();
+        var harResponse = response.toObject();
+
+        har.addEntry(new HAR.Entry({
+            'request': request,
+            'response': harResponse
+        }).toObject());
+
+        // modify request object for templates
+        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
+        var parts = exp.exec(request.url);
+
+        if (parts[3] == undefined) {
+            parts[3] = '/';
+        }
+
+        request.host = parts[2];
+        request.path = parts[3];
+
+        var queryString = {};
+
+        request.queryString.each(function(param) {
+            queryString[param.name] = param.value;
+        });
+
+        request.queryString = Object.toQueryString(queryString);
+
+        // beautify
+
         switch (mimeType) {
             case 'text/css':
-                //xhr.responseText = beautify.css(xhr.responseText);
                 xhr.responseText = css_beautify(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t'
@@ -2730,8 +2791,6 @@ var App = new Class({
             case 'application/ecmascript':
             case 'application/javascript':
             case 'application/json':
-                style = 'js';
-
                 xhr.responseText = js_beautify(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t'
@@ -2777,80 +2836,17 @@ var App = new Class({
                 doc.write(xhr.responseText);
                 doc.close();
                 break;
-/*
-* requires xhr.responseType to be set BEFORE the request is sent
-* xhr.responseType = 'blob' or xhr.responseType = 'arraybuffer'
 
+            case 'image/gif':
+            case 'image/png':
             case 'image/jpeg':
-                // create and inject the iframe object
-                var iframe = new IFrame();
-                document.id('responsePreview').adopt(iframe);
-
-                // render the image blob
-                var bb = new window.WebKitBlobBuilder();
-                bb.append(xhr.response);
-
-                // if using arraybuffer do this
-                // other wise just use blob method
-                // but its not currently implemented in chrome
-                var blob = bb.getBlob('image/png');
-
-                //~ var img = document.createElement('img');
-                //~ img.onload = function(e) {
-                  //~ window.webkitURL.revokeObjectURL(img.src); // Clean up after yourself.
-                //~ };
-                var src = window.webkitURL.createObjectURL(blob);
-
-                // start writing
-                var doc = iframe.contentWindow.document;
-                doc.open();
-                doc.write('<img src="' + src + '"/>');
-                doc.close();
+                var img = document.createElement('img');
+                img.set('src', 'data:' + mimeType + ';base64,' + btoa(xhr.responseText));
+                document.id('preview').adopt(img);
                 break;
-*/
         }
 
-        // get history
-        var history = new History();
-        var request = history.getLast();
-
-        // construct HAR objects
-        var response = new HAR.Response();
-        response.fromXHR(this.xhr);
-
-        var har = new HAR.Log();
-        var harResponse = response.toObject();
-
-        try {
-            harResponse.content.text = btoa(harResponse.content.text);
-        } catch (e) {
-            harResponse.content.text = harResponse.content.text;
-        }
-
-        har.addEntry(new HAR.Entry({
-            'request': request,
-            'response': harResponse
-        }).toObject());
-
-        // modify request object for templates
-        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
-        var parts = exp.exec(request.url);
-
-        if (parts[3] == undefined) {
-            parts[3] = '/';
-        }
-
-        request.host = parts[2];
-        request.path = parts[3];
-
-        var queryString = {};
-
-        request.queryString.each(function(param) {
-            queryString[param.name] = param.value;
-        });
-
-        request.queryString = Object.toQueryString(queryString);
-
+        // beautify HAR response
         var harText = js_beautify(JSON.stringify(har.toObject()), {
             'indent_size': 1,
             'indent_char': '\t'
@@ -2859,6 +2855,14 @@ var App = new Class({
         document.getElement('pre.har').set('text', harText);
         document.getElement('pre.request').adopt($RESTConsole.renderTemplate('httpRequest', request)).appendText(request.postData.text);
         document.getElement('pre.response').adopt($RESTConsole.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
+
+        // generate download links
+        var link = document.getElement('a[download].har');
+        window.URL.revokeObjectURL(link);
+
+        var blob = new BlobBuilder();
+        blob.append(harText);
+        link.set('download', 'har.log').set('href', window.URL.createObjectURL(blob.getBlob('text/plain')));
 
         $RESTConsole.setProgress(100);
 

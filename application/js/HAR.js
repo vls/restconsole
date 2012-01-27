@@ -35,7 +35,7 @@ var HAR = {
         },
 
         'toObject': function() {
-            return this.options;
+            return Object.clone(this.options);
         },
 
         'fromXHR': function(xhr) {
@@ -62,7 +62,7 @@ var HAR = {
         },
 
         'toObject': function() {
-            return this.options;
+            return Object.clone(this.options);
         }
     }),
 
@@ -131,7 +131,7 @@ var HAR = {
         },
 
         'toObject': function() {
-            return this.options;
+            return Object.clone(this.options);
         }
     }),
 
@@ -148,8 +148,7 @@ var HAR = {
                 'size': 0,
                 'compression': 0,
                 'mimeType': null,
-                'text': null,
-                'encoding': 'base64'
+                'text': null
             },
             'redirectURL': null,
             'headersSize': -1,
@@ -170,7 +169,24 @@ var HAR = {
         },
 
         'toObject': function() {
-            return this.options;
+            return Object.clone(this.options);
+        },
+
+        'encode': function(encoding) {
+            try {
+                this.options.content.text = btoa(this.options.content.text);
+                this.options.content.encoding = encoding;
+            } catch (e) {
+                console.log('failed encoding');
+            }
+
+            return this;
+        },
+
+        'setContentText': function(text) {
+            this.options.content.text = text;
+
+            return this;
         },
 
         'fromXHR': function(xhr) {
@@ -196,6 +212,8 @@ var HAR = {
                     this.addHeader(header[0], header[1]);
                 }
             }.bind(this));
+
+            return this;
         }
     })
 }
