@@ -2490,6 +2490,14 @@ var App = new Class({
         var defaults    = new Storage('defaults');
         var sections    = new Storage('sections');
 
+        if (Object.getLength(defaults.data) == 0) {
+            // create empty defaults object
+            localStorage.setItem('defaults', JSON.encode(new HAR.Request().toObject()));
+
+            // reload
+            defaults = new Storage('defaults');
+        }
+
         // sections
         document.getElements('section').each(function(section) {
             var data = sections.get(section.get('id'));
