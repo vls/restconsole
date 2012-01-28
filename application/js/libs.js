@@ -4,9 +4,9 @@
 Template = new Class({
     'Extends': Mooml.Template,
 
-    'initialize': function(code) {
+    'initialize': function(HTMLCode) {
         this.name = null;
-        this.code = code;
+        this.HTMLCode = HTMLCode;
         this.prepared = false;
     }
 });

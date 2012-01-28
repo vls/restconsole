@@ -59,9 +59,9 @@ var Mooml = {
         "ul",
         "var", "video",
         // Deprecated in HTML 5
-        "acronym", "applet", "basefont", "big", "center", "dir", "font", "frame", "frameset", "noframes", "s", "strike", "tt", "u", "xmp"
+        "acronym", "applet", "basefont", "big", "center", "dir", "font", "frame", "frameset", "noframes", "s", "strike", "tt", "u", "xmp",
         // Not supported tags
-        // "code"
+        "code"
     ],
 
     /**
@@ -75,15 +75,15 @@ var Mooml = {
         this.engine.callstack.push(template);
 
         if (template.prepared == false) {
-            template.code = this.prepare(template.code);
+            template.HTMLCode = this.prepare(template.HTMLCode);
             template.prepared = true;
         }
 
         Array.from([data, {}].pick()).each(function(params, index) {
             if (bind) {
-            template.code.apply(bind, [params, index]);
+            template.HTMLCode.apply(bind, [params, index]);
             } else {
-                template.code(params, index);
+                template.HTMLCode(params, index);
             }
             elements.append(template.nodes.filter(function(node) {
                 return node.getParent() === null;
@@ -167,10 +167,10 @@ var Mooml = {
 
     /**
      * Prepares a template function so it can be called directly without using eval
-     * @param {Function} code The template function to prepare
+     * @param {Function} HTMLCode The template function to prepare
      */
-    prepare: function(code) {
-        var codeStr = code.toString();
+    prepare: function(HTMLCode) {
+        var codeStr = HTMLCode.toString();
         var args = codeStr.match(/\(([a-zA-Z0-9,\s]*)\)/)[1].replace(/\s/g, '').split(',');
         var body = codeStr.match(/\{([\s\S]*)\}/m)[1];
         for (var i=this.htmlTags.length; --i >= 0; ) {
@@ -187,12 +187,12 @@ var Mooml = {
 Mooml.Template = new Class({
     nodes: [],
 
-    initialize: function(name, code, options) {
+    initialize: function(name, HTMLCode, options) {
         if (options && options.elementRefs && typeof(options.elementRefs) === "object") {
             this.elementRefs = options.elementRefs;
         }
         this.name = name;
-        this.code = code;
+        this.HTMLCode = HTMLCode;
         this.prepared = false;
     },
 
@@ -211,11 +211,11 @@ Mooml.Templates = new Class({
     /**
      * Registers a new template for later use or returns an existing template with that name
      * @param {String} name The name of the template
-     * @param {Function} code The code function of the template
+     * @param {Function} HTMLCode The code function of the template
      */
-    registerTemplate: function(name, code, options) {
+    registerTemplate: function(name, HTMLCode, options) {
         var template = this.templates[name];
-        return (template)? template : this.templates[name] = new Mooml.Template(name, code, options);
+        return (template)? template : this.templates[name] = new Mooml.Template(name, HTMLCode, options);
     },
 
     /**
