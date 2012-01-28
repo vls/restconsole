@@ -2325,7 +2325,7 @@ var App = new Class({
 
                     div({'class': 'tab-content'},
                         div({'class': 'tab-pane'},
-                            pre({'class': 'prettyprint linenums request'})
+                            pre({'class': 'prettyprint linenums request'}, code())
                         ),
 
                         div({'class': 'tab-pane active'},
@@ -2341,7 +2341,7 @@ var App = new Class({
                                         //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
                                     }
                                 }
-                            })
+                            }, code())
                         ),
 
                         div({'class': 'tab-pane'},
@@ -2349,7 +2349,7 @@ var App = new Class({
                         ),
 
                         div({'class': 'tab-pane'},
-                            pre({'class': 'prettyprint linenums har lang-json'}),
+                            pre({'class': 'prettyprint linenums har'}, code({'class': 'language-js'})),
                             a({'class': 'har', 'download': 'har.log'}, 'download')
                         )
                     )
@@ -2609,6 +2609,23 @@ var App = new Class({
                     break;
             }
 
+            // set mimeType
+            var contentType = document.getElement('input[name="Content-Type"]');
+
+            if (!contentType.get('disabled')) {
+                var mimeType = contentType.get('value');
+
+                if (mimeType != null) {
+                    var index = mimeType.indexOf(';');
+
+                    if (index > 1) {
+                        mimeType = mimeType.slice(0, index);
+                    }
+
+                    data.postData.mimeType = mimeType;
+                }
+            }
+
             document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
 
             // store into history
@@ -2692,11 +2709,9 @@ var App = new Class({
             };
 
             // clear response area
-            document.getElement('#preview').empty();
-
-            document.getElement('pre.har').empty();
-            document.getElement('pre.request').empty();
-            document.getElement('pre.response').empty();
+            document.getElements('#preview, pre.har code, pre.request code, pre.response code').each(function(code) {
+                code.empty();
+            });
 
             if (error) {
                 // stop on error
@@ -2728,11 +2743,11 @@ var App = new Class({
             var responseText = xhr.responseText;
 
             for (var i = 0; i < responseText.length; i+=4) {
-                binaryText += String.fromCharCode(responseText.charCodeAt(i+0) & 0xff, responseText.charCodeAt(i+1) & 0xff, responseText.charCodeAt(i+2) & 0xff, responseText.charCodeAt(i+3) & 0xff)
+                binaryText += String.fromCharCode(responseText.charCodeAt(i+0) & 0xff, responseText.charCodeAt(i+1) & 0xff, responseText.charCodeAt(i+2) & 0xff, responseText.charCodeAt(i+3) & 0xff);
             }
 
             for (i-=4; i < responseText.length; i+=1) {
-                binaryText += String.fromCharCode(responseText.charCodeAt(i) & 0xff)
+                binaryText += String.fromCharCode(responseText.charCodeAt(i) & 0xff);
             }
 
             xhr.responseText = binaryText;
@@ -2744,7 +2759,8 @@ var App = new Class({
 
         // construct HAR objects
         var response = new HAR.Response();
-        response.fromXHR(this.xhr).setContentText(xhr.responseText);
+        response.fromXHR(this.xhr);
+        response.setContentText(xhr.responseText);
 
         if (binary) {
             console.log('encoding response text');
@@ -2779,38 +2795,106 @@ var App = new Class({
         request.queryString = Object.toQueryString(queryString);
 
         // beautify
+        var prettify = {
+            'request': false,
+            'response': false
+        };
 
+        // process request
+        switch (request.postData.mimeType) {
+            case 'text/css':
+                prettify.request = 'css';
+
+                request.postData.text = css_beautify(request.postData.text, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
+                break;
+
+            case 'application/json':
+            case 'application/ecmascript':
+            case 'application/javascript':
+                prettify.request = 'js';
+
+                request.postData.text = js_beautify(request.postData.text, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
+                break;
+
+            case 'text/xml':
+            case 'image/svg+xml':
+            case 'application/xml':
+            case 'application/rdf+xml':
+            case 'application/rss+xml':
+            case 'application/beep+xml':
+            case 'application/atom+xml':
+            case 'application/xspf+xml':
+            case 'application/atomcat+xml':
+            case 'application/atomserv+xml':
+            case 'application/davmount+xml':
+            case 'application/docbook+xml':
+            case 'application/vnd.google-earth.kml+xml':
+            case 'application/vnd.mozilla.xul+xml':
+                prettify.request = 'xml';
+
+                request.postData.text = style_html(request.postData.text, {
+                    'indent_size': 1,
+                    'indent_char': '\t'
+                });
+                break;
+
+            case 'text/html':
+            case 'application/xhtml+xml':
+                request.request = 'html';
+
+                request.postData.text = style_html(request.postData.text, {
+                    'indent_size': 1,
+                    'indent_char': '\t',
+                    'max_char': 1000,
+                    //'unformatted': ['!--[if lt IE 7]', '!--[if IE 7]', '!--[if IE 8]', '!--[if gt IE 8]', '![endif]--', '!--']
+                });
+                break;
+        }
+
+        // process response
         switch (mimeType) {
             case 'text/css':
+                prettify.response = 'css';
+
                 xhr.responseText = css_beautify(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t'
                 });
                 break;
 
+            case 'application/json':
             case 'application/ecmascript':
             case 'application/javascript':
-            case 'application/json':
+                prettify.response = 'js';
+
                 xhr.responseText = js_beautify(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t'
                 });
                 break;
 
-            case 'application/atom+xml':
-            case 'application/atomcat+xml':
-            case 'application/atomserv+xml':
-            case 'application/beep+xml':
-            case 'application/davmount+xml':
-            case 'application/docbook+xml':
+            case 'text/xml':
+            case 'image/svg+xml':
+            case 'application/xml':
             case 'application/rdf+xml':
             case 'application/rss+xml':
-            case 'application/xml':
+            case 'application/beep+xml':
+            case 'application/atom+xml':
             case 'application/xspf+xml':
+            case 'application/atomcat+xml':
+            case 'application/atomserv+xml':
+            case 'application/davmount+xml':
+            case 'application/docbook+xml':
             case 'application/vnd.google-earth.kml+xml':
             case 'application/vnd.mozilla.xul+xml':
-            case 'image/svg+xml':
-            case 'text/xml':
+                prettify.response = 'xml';
+
                 xhr.responseText = style_html(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t'
@@ -2819,6 +2903,8 @@ var App = new Class({
 
             case 'text/html':
             case 'application/xhtml+xml':
+                prettify.response = 'html';
+
                 xhr.responseText = style_html(xhr.responseText, {
                     'indent_size': 1,
                     'indent_char': '\t',
@@ -2833,7 +2919,7 @@ var App = new Class({
                 // start writing
                 var doc = iframe.contentWindow.document;
                 doc.open();
-                doc.write(xhr.responseText);
+                doc.write(this.xhr.responseText);
                 doc.close();
                 break;
 
@@ -2852,9 +2938,9 @@ var App = new Class({
             'indent_char': '\t'
         });
 
-        document.getElement('pre.har').set('text', harText);
-        document.getElement('pre.request').adopt($RESTConsole.renderTemplate('httpRequest', request)).appendText(request.postData.text);
-        document.getElement('pre.response').adopt($RESTConsole.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
+        document.getElement('pre.har code').set('text', harText);
+        document.getElement('pre.request code').adopt($RESTConsole.renderTemplate('httpRequest', request)).appendText(request.postData.text);
+        document.getElement('pre.response code').adopt($RESTConsole.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
 
         // generate download links
         var link = document.getElement('a[download].har');
@@ -2866,8 +2952,24 @@ var App = new Class({
 
         $RESTConsole.setProgress(100);
 
-        // init google prettify
-        prettyPrint();
+        // google prettify
+        if (prettify.request) {
+            document.getElement('pre.request code').set('class', 'language-' + prettify.request);
+        }
+
+        if (prettify.response) {
+            document.getElement('pre.response code').set('class', 'language-' + prettify.response);
+        }
+
+        document.getElements('pre.request code, pre.response code, pre.har code').each(function(code) {
+            var lang = code.get('class');
+
+            if (lang) {
+                prettyPrintOne(code, lang, true);
+            } else {
+                prettyPrintOne(code, false, true);
+            }
+        });
 
         document.getElement('footer').removeClass('active');
 return;
