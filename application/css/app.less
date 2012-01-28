@@ -169,12 +169,6 @@ html {
             }
         }
 
-        .btn {
-            .icon {
-                margin-top: 0px;
-            }
-        }
-
         .navbar {
             .navbar-inner {
                 height: @navbarHeight;
@@ -269,11 +263,49 @@ html {
                 li {
                     &:hover {
                         .popover {
+                            @width: 500px;
+
                             display: block;
                             opacity: 1;
 
                             .inner {
-                                width: auto
+                                width: @width;
+
+                                .title {
+                                    padding: 9px 10px;
+
+                                    .host {
+                                        padding: 5px 0px;
+                                        width: 300px;
+                                        overflow: hidden;
+                                        white-space: nowrap;
+                                        text-overflow: ellipsis;
+                                    }
+
+                                    button {
+                                        margin-left: 10px;
+                                    }
+                                }
+
+                                .content {
+                                    padding: 10px;
+
+                                    .table {
+                                        table-layout: fixed;
+                                        width: @width - 20px;
+
+                                        th {
+                                            width: 95px;
+                                            vertical-align: top;
+                                        }
+
+                                        td {
+                                            overflow: hidden;
+                                            white-space: nowrap;
+                                            text-overflow: ellipsis;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

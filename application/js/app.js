@@ -365,63 +365,8 @@ var App = new Class({
     }],
 
     'events': {
-        'change:relay(select, input[type="text"], input[type="number"], textarea)': function(event) {
-            console.log('REST Console: Saving ...');
-
-            var form = this.getParent('form[name="main"]');
-
-            // init data object
-            var data = {
-                'url': form.getElement('[name="url"]').get('value'),
-                'method': form.getElement('[name="method"]').get('value'),
-                'extra': {}
-            };
-
-            // construct extras array
-            form.getElements('[data-storage="extra"], [data-storage="authorization"]').each(function(field) {
-                if (!field.get('disabled')) {
-                    data.extra[field.get('name')] = field.get('value');
-                }
-            });
-
-            // init HAR.Request
-            var request = new HAR.Request(data);
-
-            // post text
-            request.addPostText(form.getElement('[data-storage="post-text"]').get('value'));
-
-            // headers
-            form.getElements('[data-storage="header"]').each(function(header) {
-                if (!header.get('disabled')) {
-                    request.addHeader(header.get('name'), header.get('value'));
-                }
-            });
-
-            // custom headers
-            var headers = {
-                'keys': form.getElements('[data-storage="headerCollection"][name="key"]').get('value'),
-                'values': form.getElements('[data-storage="headerCollection"][name="value"]').get('value')
-            };
-
-            headers.keys.each(function(key, index) {
-                if (key != '') {
-                    request.addHeader(key, headers.values[index]);
-                }
-            });
-
-            // query string data
-            var query = {
-                'keys': form.getElements('[data-storage="queryString"][name="key"]').get('value'),
-                'values': form.getElements('[data-storage="queryString"][name="value"]').get('value')
-            };
-
-            query.keys.each(function(key, index) {
-                if (key != '') {
-                    request.addQueryParam(key, query.values[index]);
-                }
-            });
-
-            localStorage.setItem('defaults', JSON.stringify(request.toObject()));
+        'change:relay(select, input[type="text"], input[type="password"], input[type="number"], textarea)': function(event) {
+            $RESTConsole.saveValues();
         },
 
         // loads panels
@@ -737,9 +682,8 @@ var App = new Class({
 
                 div({'class': 'fluid-sidebar'},
                     div({'class': 'well'},
-                        h3('Navigation'),
-
                         ul({'class': 'nav list navigation', 'data-screen': 'main'},
+                            li({'class': 'nav-header'}, 'Navigation'),
                             li({'class': 'active'}, a({'accesskey': 't', 'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('T'), 'arget')),
                             li(a({'accesskey': 'p', 'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('P'), 'ayload')),
                             li(a({'accesskey': 'a', 'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon chevron-right'}), span('A'), 'uthorization')),
@@ -755,11 +699,16 @@ var App = new Class({
 
                     div({'class': 'tabbable', 'data-screen': 'main'},
                         ul({'class': 'nav tabs'},
-                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'icon star'}), 'Presets')),
-                            li(a({'data-toggle': 'tab'}, i({'class': 'icon history'}), 'History'))
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'icon history'}), 'History'))
+                            // li(a({'data-toggle': 'tab'}, i({'class': 'icon star'}), 'Presets')),
                         ),
 
                         div({'class': 'tab-content'},
+                            div({'class': 'tab-pane active'},
+                                ul({'class': 'nav list history'})
+                            )
+
+                            /*
                             div({'class': 'tab-pane active'},
                                 ul({'class': 'nav list presets'},
                                     li({'class': 'nav-header'}, 'User'),
@@ -788,12 +737,19 @@ var App = new Class({
                                     this.renderTemplate('presets', this.presets)
                                 )
                             ),
-
-                            div({'class': 'tab-pane'},
-                                ul({'class': 'nav list history'})
-                            )
+                            */
                         )
                     ),
+
+
+                    button({
+                        'class': 'btn danger',
+                        'events': {
+                            'click': function(event) {
+                                document.getElement('.nav.list.history').empty();
+                                localStorage.removeItem('history');
+                            }
+                        }}, i({'class': 'icon white trash'}), 'Clear History'),
 
                     div({'class': 'well'},
                         ul({'class': 'nav list'},
@@ -1036,6 +992,8 @@ var App = new Class({
         }),
 
         'historyItem': new Template(function(data) {
+            var url = data.url.parseUrl();
+
             li({
                 'events': {
                     'mouseover': function(event) {
@@ -1047,35 +1005,53 @@ var App = new Class({
                     }
                 }},
 
-                a(strong(data.method), ' ', data.url),
+                a(strong(data.method), ' ', url.path),
 
                 div({'class': 'popover right'},
                     div({'class': 'arrow'}),
                     div({'class': 'inner'},
                         h3({'class': 'title'},
-                            a({'class': 'btn'}, i({'class': 'icon repeat'}), 'Repeat'), ' ',
-                            a({
-                                'class': 'btn danger',
-                                'events': {
-                                    'click': function(event) {
-                                        var item = this.getParent('li');
-                                        var index = this.getParent('ul').getElements('li').indexOf(item);
+                            div({'class': 'pull-right'},
+                                button({
+                                    'class': 'btn',
+                                    'events': {
+                                        'click': function(event) {
+                                            var item = this.getParent('li');
+                                            var index = this.getParent('ul').getElements('li').indexOf(item);
 
-                                        new History().remove(index);
+                                            var data = new History().get(index);
 
-                                        item.destroy();
-                                    }
-                                }}, i({'class': 'icon white trash'}), 'Delete'
-                            )
+                                            $RESTConsole.resetValues(data);
+                                            $RESTConsole.saveValues();
+                                        }
+                                    }}, i({'class': 'icon repeat'}), 'Repeat'
+                                ),
+
+                                button({
+                                    'class': 'btn danger',
+                                    'events': {
+                                        'click': function(event) {
+                                            var item = this.getParent('li');
+                                            var index = this.getParent('ul').getElements('li').indexOf(item);
+
+                                            new History().remove(index);
+
+                                            item.destroy();
+                                        }
+                                    }}, i({'class': 'icon white trash'}), 'Delete'
+                                )
+                            ),
+
+                            div({'class': 'host'}, url.host)
                         ),
 
                         div({'class': 'content'},
                             table({'class': 'table table-striped table-bordered'},
                                 tbody(
-                                    tr(th('Method'),td({'class': 'selectable'}, data.method)),
-                                    tr(th('URL'),td({'class': 'selectable'}, data.url)),
-                                    tr(th('QueryString'),td({'class': 'selectable'}, data.queryString)),
-                                    tr(th('Headers'), td({'class': 'selectable'}, data.headers)),
+                                    tr(th('Method'), td({'class': 'selectable'}, data.method)),
+                                    tr(th('Path'), td({'class': 'selectable'}, url.path)),
+                                    tr(th('QueryString'), td({'class': 'selectable'}, data.queryString.toQueryString())),
+                                    tr(th('Headers'), td({'class': 'selectable'}, this.renderTemplate('historyHeaders', data.headers))),
                                     tr(th('Payload'), td({'class': 'selectable'}, data.postData.text))
                                 )
                             )
@@ -1085,10 +1061,14 @@ var App = new Class({
             )
         }),
 
+        'historyHeaders': new Template(function(header) {
+            div(header.name, ': ', header.value)
+        }),
+
         'httpRequest': new Template(function(data) {
-            span({'class': 'nocode'}, span({'class': 'kwd'}, data.method, ' ', data.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 ')),
+            span({'class': 'nocode'}, span({'class': 'kwd'}, data.method, ' ', data.url.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 ')),
             span('\n'),
-            span({'class': 'nocode'}, span({'class': 'typ'}, 'HOST'), span({'class': 'pun'}, ': '), span({'class': 'pln'}, data.host)),
+            span({'class': 'nocode'}, span({'class': 'typ'}, 'HOST'), span({'class': 'pun'}, ': '), span({'class': 'pln'}, data.url.host)),
             span('\n'),
             span(this.renderTemplate('httpHeaders', data.headers)),
             span('\n')
@@ -1419,7 +1399,7 @@ var App = new Class({
 
                         li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Custom')),
                         li(a({'data-toggle': 'tab'}, 'Basic')),
-                        //li(a({'data-toggle': 'tab'}, 'Digest')),
+                        li(a({'data-toggle': 'tab'}, 'Digest')),
                         li(a({'data-toggle': 'tab'}, 'oAuth'))
                     ),
 
@@ -1459,23 +1439,7 @@ var App = new Class({
                             ])
                         ),
 
-                        div({
-                            'class': 'tab-pane',
-                            'events': {
-                                'keyup:relay(input[type="text"], input[type="password"])': function(event) {
-                                    var pane = this.getParent('.tab-pane');
-                                    var data = pane.toObject();
-
-                                    var str = data['basic-username'] + ':';
-
-                                    if (data['basic-password']) {
-                                        str += data['basic-password'];
-                                    }
-
-                                    pane.getElement('input[name="Authorization"]').set('value', 'Basic ' + btoa(str));
-                                }
-                            }},
-
+                        div({'class': 'tab-pane'},
                             input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
 
                             this.renderTemplate('optional-input', [
@@ -1511,7 +1475,7 @@ var App = new Class({
                                 }
                             ])
                         ),
-/*
+
                         div({'class': 'tab-pane'},
                             input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
 
@@ -1546,7 +1510,7 @@ var App = new Class({
                                 }
                             ])
                         ),
-*/
+
                         div({'class': 'tab-pane oauth'},
                             div({'class': 'row'},
                                 div({'class': 'span6'},
@@ -2422,8 +2386,7 @@ var App = new Class({
         OAuth.completeRequest(message, accessor);
 
         // debug
-        //console.log(message);
-        //console.log(OAuth.SignatureMethod.getBaseString(message));
+        new Console().log('OAuth Base String: ', OAuth.SignatureMethod.getBaseString(message));
 
         return {
             'header': OAuth.getAuthorizationHeader(data.realm, message.parameters),
@@ -2433,71 +2396,53 @@ var App = new Class({
     },
 
     'initialize': function() {
-        var body = document.body.empty();
+        var debug = new Console();
+
+        debug.groupStart('REST Console: Initializing');
 
         // set google analytics info
         window._gaq = [['_setAccount','UA-598217-26'],['_trackPageview'],['_trackPageLoadTime']];
 
         // render the body templates
+        debug.group('rendering body');
+        var body = document.body.empty();
         body.adopt(this.renderTemplate('header'));
         body.adopt(this.renderTemplate('container'));
         body.adopt(this.renderTemplate('footer'));
 
-        // assign global events
-        document.addEvents(this.events);
-
         // add the datalists
+        debug.group('loading datalists');
         Object.each(this.datalists, function(datalist, id) {
             datalist.sort();
             body.adopt(this.renderTemplate('datalist', {'id': id, 'values': datalist}));
         }.bind(this));
 
-        // load default values
-        this.loadDefaults();
+        // load history
+        debug.group('loading history');
+        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', new History().getAll()));
+
+        // assign global events
+        debug.group('attaching events');
+        document.addEvents(this.events);
 
         // fix sizing
         window.addEvent('resize', this.resizeEvent).fireEvent('resize');
 
         // setup autocomplete
         if ('options' in document.createElement('datalist') == false) {
+            debug.group('setting up autocomplete');
             new AutoComplete();
         }
 
-        // focus on method field
-        document.getElement('input[name="method"]').focus();
 
-        // load history
-        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', new History().getAll()));
+        this.initInterface(defaults);
 
-        this.checkOnlineStatus(this);
-    },
-
-    'checkOnlineStatus': function(app) {
-        if (window.navigator.onLine) {
-            document.head.adopt(app.renderTemplate('fonts'));
-            document.body.adopt(app.renderTemplate('scripts'));
-            document.getElement('.social').adopt(app.renderTemplate('social'));
-
-            // don't want to tab to iframes
-            app.clearTabIndex.delay(1500);
-        } else {
-            app.checkOnlineStatus.delay(5000, app, app);
-        }
-    },
-
-    'clearTabIndex': function() {
-        document.getElements('iframe').set('tabindex', '-1');
-        document.getElements('.IN-widget a').set('tabindex', '-1');
-    },
-
-    'loadDefaults': function() {
-        console.log('REST Console: Loading Defaults ...');
-
-        var tabs        = new Storage('tabs');
-        var defaults    = new Storage('defaults');
-        var sections    = new Storage('sections');
+        // load default values
+        var defaults = new Storage('defaults');
 
         if (Object.getLength(defaults.data) == 0) {
+            debug.group('first run, starting with empty object');
+
             // create empty defaults object
             localStorage.setItem('defaults', JSON.encode(new HAR.Request().toObject()));
 
@@ -2505,42 +2450,125 @@ var App = new Class({
             defaults = new Storage('defaults');
         }
 
-        // sections
-        document.getElements('section').each(function(section) {
-            var data = sections.get(section.get('id'));
+        debug.groupEnd();
 
-            if (data != null) {
-                section.removeClass('collapsed');
+        this.resetValues(defaults.data);
 
-                if (data == false) {
-                    section.addClass('collapsed');
-                }
+        this.checkOnlineStatus(this);
+    },
+
+    'checkOnlineStatus': function(app) {
+        var debug = new Console();
+
+        debug.groupStart('REST Console: Checking online Status');
+
+        if (window.navigator.onLine) {
+            debug.group('online :)');
+            document.head.adopt(app.renderTemplate('fonts'));
+            document.body.adopt(app.renderTemplate('scripts'));
+            document.getElement('.social').adopt(app.renderTemplate('social'));
+
+            // don't want to tab to iframes
+            app.clearTabIndex.delay(3000);
+        } else {
+            debug.group('offline :(');
+            app.checkOnlineStatus.delay(5000, app, app);
+        }
+
+        debug.groupEnd();
+    },
+
+    'clearTabIndex': function() {
+        document.getElements('iframe').set('tabindex', '-1');
+        document.getElements('.IN-widget a').set('tabindex', '-1');
+    },
+
+    'saveValues': function() {
+        new Console().log('Saving ...');
+
+        var form = document.getElement('form[name="main"]');
+
+        // init data object
+        var data = {
+            'url': form.getElement('[name="url"]').get('value'),
+            'method': form.getElement('[name="method"]').get('value'),
+            'authorization': {},
+            'extra': {},
+        };
+
+        // construct extras array
+        form.getElements('[data-storage="extra"]').each(function(field) {
+            if (!field.get('disabled')) {
+                data.extra[field.get('name')] = field.get('value');
             }
         });
 
-        // tabs
-        document.getElements('.tabbable .tabs').each(function(tab) {
-            var index = tabs.get(tab.getParent('.tabbable').dataset.name);
-
-            var link = tab.getElement('li:nth-of-type({0}) a'.substitute([index + 1]));
-
-            document.fireEvent('click', new FakeEvent(link));
-
-            tab.fireEvent('click', new FakeEvent(link));
+        form.getElements('[data-storage="authorization"]').each(function(field) {
+            if (!field.get('disabled')) {
+                data.authorization[field.get('name')] = field.get('value');
+            }
         });
 
+        // init HAR.Request
+        var request = new HAR.Request(data);
+
+        // post text
+        request.addPostText(form.getElement('[data-storage="post-text"]').get('value'));
+
+        // headers
+        form.getElements('[data-storage="header"]').each(function(header) {
+            if (!header.get('disabled')) {
+                request.addHeader(header.get('name'), header.get('value'));
+            }
+        });
+
+        // custom headers
+        var headers = {
+            'keys': form.getElements('[data-storage="headerCollection"][name="key"]').get('value'),
+            'values': form.getElements('[data-storage="headerCollection"][name="value"]').get('value')
+        };
+
+        headers.keys.each(function(key, index) {
+            if (key != '') {
+                request.addHeader(key, headers.values[index]);
+            }
+        });
+
+        // query string data
+        var query = {
+            'keys': form.getElements('[data-storage="queryString"][name="key"]').get('value'),
+            'values': form.getElements('[data-storage="queryString"][name="value"]').get('value')
+        };
+
+        query.keys.each(function(key, index) {
+            if (key != '') {
+                request.addQueryParam(key, query.values[index]);
+            }
+        });
+
+        localStorage.setItem('defaults', JSON.stringify(request.toObject()));
+    },
+
+    'resetValues': function(defaults) {
+        var debug = new Console();
+
+        debug.groupStart('REST Console: Loading Defaults ...');
+
         // main fields
-        document.getElement('input[name="url"]').set('value', defaults.get('url')).fireEvent('change');
-        document.getElement('input[name="method"]').set('value', defaults.get('method')).fireEvent('change');
-        document.getElement('textarea[name="payload"]').set('value', defaults.get('postData').text).fireEvent('change');
+        debug.group('main fields');
+        document.getElement('input[name="url"]').set('value', defaults.url).fireEvent('change');
+        document.getElement('input[name="method"]').set('value', defaults.method).fireEvent('change');
+        document.getElement('textarea[name="payload"]').set('value', defaults.postData.text).fireEvent('change');
 
         // query string params
-        defaults.get('queryString').each(function(param) {
+        debug.group('query string');
+        defaults.queryString.each(function(param) {
             document.getElement('.pairs.query .controls').fireEvent('addRow', param)
         });
 
         // headers
-        defaults.get('headers').each(function(header) {
+        debug.group('headers');
+        defaults.headers.each(function(header) {
             var input = document.getElement('[data-storage="header"][name="' + header.name + '"]');
 
             if (input) {
@@ -2554,9 +2582,10 @@ var App = new Class({
             }
         });
 
-        // extra fields
-        Object.each(defaults.get('extra'), function(value, name) {
-            var input = document.getElement('[data-storage="extra"][name="' + name + '"], [data-storage="authorization"][name="' + name + '"]');
+        // authorization
+        debug.group('authorization fields');
+        Object.each(defaults.authorization, function(value, name) {
+            var input = document.getElement('[data-storage="authorization"][name="' + name + '"]');
 
             if (input) {
                 var container = input.set('value', value).getParent('.input-prepend');
@@ -2566,6 +2595,62 @@ var App = new Class({
                 }
             }
         });
+
+        // extra
+        debug.group('extras');
+        Object.each(defaults.extra, function(value, name) {
+            var input = document.getElement('[data-storage="extra"][name="' + name + '"]');
+
+            if (input) {
+                var container = input.set('value', value).getParent('.input-prepend');
+
+                if (container) {
+                    container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
+                }
+            }
+        });
+
+        debug.groupEnd();
+
+        // focus on method field
+        document.getElement('input[name="method"]').focus();
+    },
+
+    'initInterface': function() {
+        var debug = new Console();
+
+        debug.groupStart('Loading Interface Defaults ...');
+
+        var tabs        = new Storage('tabs');
+        var sections    = new Storage('sections');
+
+        // sections
+        debug.group('sections');
+        document.getElements('section').each(function(section) {
+            var data = sections.get(section.get('id'));
+
+            if (data != null) {
+                section.removeClass('collapsed');
+
+                if (data == false) {
+                    section.addClass('collapsed');
+                }
+            }
+        });
+
+        // tabs
+        debug.group('tabs');
+        document.getElements('.tabbable .tabs').each(function(tab) {
+            var index = tabs.get(tab.getParent('.tabbable').dataset.name);
+
+            var link = tab.getElement('li:nth-of-type({0}) a'.substitute([index + 1]));
+
+            document.fireEvent('click', new FakeEvent(link));
+
+            tab.fireEvent('click', new FakeEvent(link));
+        });
+
+        debug.groupEnd();
     },
 
     'setProgress': function(progress) {
@@ -2579,7 +2664,7 @@ var App = new Class({
         document.getElements('*[required]').each(function(element) {
             if (!error && !element.get('disabled') && element.get('value').length == 0) {
                 element.focus();
-                console.log('REST Console Error: Missing ' + element.get('name'));
+                new Console().log('Missing ' + element.get('name'));
                 new Alert('danger', 'Missing Data', 'Please Fill out all the required fields');
                 error = true;
             }
@@ -2590,10 +2675,10 @@ var App = new Class({
 
             // check for authorization data
             switch (true) {
-                case (data.extra.consumer_key  != undefined && data.extra.consumer_secret  != undefined):
+                case (data.authorization.consumer_key  != undefined && data.authorization.consumer_secret  != undefined):
                     var oauth = this.signOAuth();
 
-                    if (data.extra.method == 'header') {
+                    if (data.authorization.method == 'header') {
                         data.headers.push({
                             'name': 'Authorization',
                             'value': oauth.header
@@ -2608,7 +2693,17 @@ var App = new Class({
                     }
                     break;
 
-                case (data.extrausername != undefined):
+                case (data.authorization['basic-username'] != undefined):
+                    var header = data.authorization['basic-username'] + ':';
+
+                    if (data.authorization['basic-password'] != undefined) {
+                        header += data.authorization['basic-password'];
+                    }
+
+                     data.headers.push({
+                        'name': 'Authorization',
+                        'value': 'Basic ' + btoa(header)
+                    });
                     break;
             }
 
@@ -2616,7 +2711,7 @@ var App = new Class({
             var contentType = document.getElement('input[name="Content-Type"]');
 
             if (!contentType.get('disabled')) {
-                data.postData.mimeType = contentType.get('value').split(";")[0];
+                data.postData.mimeType = contentType.get('value').split(';')[0];
             }
 
             document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
@@ -2720,7 +2815,11 @@ var App = new Class({
 
         var xhr = Object.clone(this.xhr);
 
-        var mimeType = this.xhr.getResponseHeader('Content-Type').split(";")[0];
+        var mimeType = this.xhr.getResponseHeader('Content-Type');
+
+        if (mimeType) {
+            mimeType = mimeType.split(';')[0];
+        }
 
         if (['image/gif', 'image/png', 'image/jpeg'].contains(mimeType)) {
             var binary = true;
@@ -2753,24 +2852,9 @@ var App = new Class({
             'response': harResponse
         }).toObject());
 
-        // modify request object for templates
-        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
-        var parts = exp.exec(request.url);
+        request.url = request.url.parseUrl();
 
-        if (parts[3] == undefined) {
-            parts[3] = '/';
-        }
-
-        request.host = parts[2];
-        request.path = parts[3];
-
-        var queryString = {};
-
-        request.queryString.each(function(param) {
-            queryString[param.name] = param.value;
-        });
-
-        request.queryString = Object.toQueryString(queryString);
+        request.queryString = request.queryString.toQueryString();
 
         // beautify
         var prettify = {

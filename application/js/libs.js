@@ -1,10 +1,35 @@
-﻿function uint8ToString(buf) {
-    var i, length, out = '';
-    for (i = 0, length = buf.length; i < length; i += 1) {
-        out += String.fromCharCode(buf[i]);
+﻿var Console = new Class({
+    'initialize': function() {
+        if  (typeof(console) !== 'undefined') {
+            this.enabled = true;
+        }
+    },
+
+    'log': function() {
+        if (this.enabled) {
+            arguments[0] = 'REST Console: ' + arguments[0];
+            console.log.apply(console, arguments);
+        }
+    },
+
+    'group': function() {
+        if (this.enabled) {
+            console.log.apply(console, arguments);
+        }
+    },
+
+    'groupStart': function() {
+        if (this.enabled) {
+            console.groupCollapsed.apply(console, arguments);
+        }
+    },
+
+    'groupEnd': function() {
+        if (this.enabled) {
+            console.groupEnd.apply(console, arguments);
+        }
     }
-    return out;
-}
+})
 
 /**
  * Template class shortcut for Mooml templates
@@ -34,6 +59,43 @@ Templates = new Class({
 String.implement({
     'htmlEntities': function() {
         return this.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    },
+
+    'parseUrl': function() {
+        var exp = /\b(https?|ftp):\/\/([-A-Z0-9.]+)(\/[-A-Z0-9+&@#\/%=~_|!:,.;]*)?(\?[-A-Z0-9+&@#\/%=~_|!:,.;]*)?/i;
+        var parts = exp.exec(this);
+
+        if (parts) {
+            if (parts[3] == undefined) {
+                parts[3] = '/';
+            }
+
+            return {
+                'scheme': parts[1],
+                'host': parts[2],
+                'path': parts[3],
+                'queryString': parts[4]
+            }
+        } else {
+            return {
+                'scheme': null,
+                'host': null,
+                'path': null,
+                'queryString': null
+            }
+        }
+    }
+});
+
+Array.implement({
+    'toQueryString': function() {
+        var queryString = {};
+
+        this.each(function(param) {
+            queryString[param.name] = param.value;
+        });
+
+        return Object.toQueryString(queryString);
     }
 });
 
@@ -166,3 +228,11 @@ FakeEvent = new Class({
         return event;
     }
 });
+
+function uint8ToString(buf) {
+    var i, length, out = '';
+    for (i = 0, length = buf.length; i < length; i += 1) {
+        out += String.fromCharCode(buf[i]);
+    }
+    return out;
+}
