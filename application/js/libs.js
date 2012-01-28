@@ -1,4 +1,12 @@
-﻿/**
+﻿function uint8ToString(buf) {
+    var i, length, out = '';
+    for (i = 0, length = buf.length; i < length; i += 1) {
+        out += String.fromCharCode(buf[i]);
+    }
+    return out;
+}
+
+/**
  * Template class shortcut for Mooml templates
  */
 Template = new Class({

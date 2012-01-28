@@ -704,7 +704,7 @@ var App = new Class({
                                     }
                                 }},
 
-                                li({'class': 'active'}, a({'accesskey': 'm', 'data-target': 'main'}, i({'class': 'icon home'}), span('M'), 'ain')),
+                                li({'class': 'active'}, a({'accesskey': 'm', 'data-target': 'main'}, i({'class': 'icon white home'}), span('M'), 'ain')),
                                 li(a({'accesskey': 's', 'data-target': 'settings'}, i({'class': 'icon settings'}), span('S'), 'ettings')),
                                 li(a({'data-target': 'help'}, i({'class': 'icon question'}), 'Help')),
                                 li(a({'data-target': 'about'}, i({'class': 'icon info'}), 'About'))
@@ -1053,20 +1053,19 @@ var App = new Class({
                     div({'class': 'arrow'}),
                     div({'class': 'inner'},
                         h3({'class': 'title'},
-                            button(i({'class': 'icon repeat'}), 'Repeat'), ' ',
-                            button({
-                                    'events': {
-                                        'click': function(event) {
-                                            var item = this.getParent('li');
-                                            var index = this.getParent('ul').getElements('li').indexOf(item);
+                            a({'class': 'btn'}, i({'class': 'icon repeat'}), 'Repeat'), ' ',
+                            a({
+                                'class': 'btn danger',
+                                'events': {
+                                    'click': function(event) {
+                                        var item = this.getParent('li');
+                                        var index = this.getParent('ul').getElements('li').indexOf(item);
 
-                                            new History().remove(index);
+                                        new History().remove(index);
 
-                                            item.destroy();
-                                        }
+                                        item.destroy();
                                     }
-                                },
-                                i({'class': 'icon trash'}), 'Delete'
+                                }}, i({'class': 'icon white trash'}), 'Delete'
                             )
                         ),
 
@@ -2320,12 +2319,14 @@ var App = new Class({
                         li({'class': 'active'}, a({'accesskey': 'q', 'data-toggle': 'tab'}, 'Re', span('q'), 'uest')),
                         li(a({'accesskey': 'n', 'data-toggle': 'tab'}, 'Respo', span('n'), 'se')),
                         li(a({'accesskey': 'v', 'data-toggle': 'tab'}, 'Pre', span('v'), 'iew')),
-                        li(a({'accesskey': 'c', 'data-toggle': 'tab'}, 'HTTP Ar', span('c'), 'hive (HAR)'))
+                        li(a({'accesskey': 'c', 'data-toggle': 'tab'}, 'HTTP Ar', span('c'), 'hive'))
                     ),
 
                     div({'class': 'tab-content'},
                         div({'class': 'tab-pane'},
-                            pre({'class': 'prettyprint linenums request'}, code())
+                            pre({'class': 'prettyprint linenums request'}, code()),
+                            a({'class': 'har btn disabled', 'download': 'request'}, i({'class': 'icon download-alt'}), 'Download HTTP Request'),
+                            a({'class': 'har btn disabled', 'download': 'requestBody'}, i({'class': 'icon download-alt'}), 'Download Body')
                         ),
 
                         div({'class': 'tab-pane active'},
@@ -2341,16 +2342,19 @@ var App = new Class({
                                         //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
                                     }
                                 }
-                            }, code())
+                            }, code()),
+                            a({'class': 'har btn disabled', 'download': 'response'}, i({'class': 'icon download-alt'}), 'Download HTTP Response'),
+                            a({'class': 'har btn disabled', 'download': 'responseBody'}, i({'class': 'icon download-alt'}), 'Download Body')
                         ),
 
                         div({'class': 'tab-pane'},
-                            div({'id': 'preview'})
+                            div({'id': 'preview'}),
+                            a({'class': 'har btn disabled', 'download': 'preview'}, i({'class': 'icon download-alt'}), 'Download Body')
                         ),
 
                         div({'class': 'tab-pane'},
                             pre({'class': 'prettyprint linenums har'}, code({'class': 'language-js'})),
-                            a({'class': 'har', 'download': 'har.log'}, 'download')
+                            a({'class': 'har btn disabled', 'download': 'har'}, i({'class': 'icon download-alt'}), 'Download')
                         )
                     )
                 )
@@ -2362,8 +2366,7 @@ var App = new Class({
         document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
         document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
         document.getElement('#response').setStyle('min-height', window.getHeight() - 140);
-        document.getElements('#response pre').setStyle('height', window.getHeight() - 260);
-        document.getElement('#preview').setStyle('height', window.getHeight() - 260);
+        document.getElements('#response pre, #preview').setStyle('height', window.getHeight() - 298);
     },
 
     'signOAuth': function() {
@@ -2419,8 +2422,8 @@ var App = new Class({
         OAuth.completeRequest(message, accessor);
 
         // debug
-        console.log(message);
-        console.log(OAuth.SignatureMethod.getBaseString(message));
+        //console.log(message);
+        //console.log(OAuth.SignatureMethod.getBaseString(message));
 
         return {
             'header': OAuth.getAuthorizationHeader(data.realm, message.parameters),
@@ -2613,17 +2616,7 @@ var App = new Class({
             var contentType = document.getElement('input[name="Content-Type"]');
 
             if (!contentType.get('disabled')) {
-                var mimeType = contentType.get('value');
-
-                if (mimeType != null) {
-                    var index = mimeType.indexOf(';');
-
-                    if (index > 1) {
-                        mimeType = mimeType.slice(0, index);
-                    }
-
-                    data.postData.mimeType = mimeType;
-                }
+                data.postData.mimeType = contentType.get('value').split(";")[0];
             }
 
             document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
@@ -2727,30 +2720,16 @@ var App = new Class({
 
         var xhr = Object.clone(this.xhr);
 
-        var mimeType = this.xhr.getResponseHeader('Content-Type');
-
-        if (mimeType != null) {
-            var index = mimeType.indexOf(';');
-
-            if (index > 1) {
-                mimeType = mimeType.slice(0, index);
-            }
-        }
+        var mimeType = this.xhr.getResponseHeader('Content-Type').split(";")[0];
 
         if (['image/gif', 'image/png', 'image/jpeg'].contains(mimeType)) {
             var binary = true;
-            var binaryText = '';
-            var responseText = xhr.responseText;
 
-            for (var i = 0; i < responseText.length; i+=4) {
-                binaryText += String.fromCharCode(responseText.charCodeAt(i+0) & 0xff, responseText.charCodeAt(i+1) & 0xff, responseText.charCodeAt(i+2) & 0xff, responseText.charCodeAt(i+3) & 0xff);
+            var byteArray = new Uint8Array(xhr.responseText.length);
+
+            for (var i = 0; i < xhr.responseText.length; i++) {
+                byteArray[i] = xhr.responseText.charCodeAt(i) & 0xff;
             }
-
-            for (i-=4; i < responseText.length; i+=1) {
-                binaryText += String.fromCharCode(responseText.charCodeAt(i) & 0xff);
-            }
-
-            xhr.responseText = binaryText;
         }
 
         // get history
@@ -2760,10 +2739,9 @@ var App = new Class({
         // construct HAR objects
         var response = new HAR.Response();
         response.fromXHR(this.xhr);
-        response.setContentText(xhr.responseText);
 
         if (binary) {
-            console.log('encoding response text');
+            response.setContentText(uint8ToString(byteArray));
             response.encode('base64');
         }
 
@@ -2926,8 +2904,10 @@ var App = new Class({
             case 'image/gif':
             case 'image/png':
             case 'image/jpeg':
-                var img = document.createElement('img');
-                img.set('src', 'data:' + mimeType + ';base64,' + btoa(xhr.responseText));
+                var bb = new BlobBuilder();
+                bb.append(byteArray.buffer);
+                blob = bb.getBlob(mimeType);
+                var img = document.createElement('img').set('src', window.URL.createObjectURL(blob));
                 document.id('preview').adopt(img);
                 break;
         }
@@ -2943,12 +2923,55 @@ var App = new Class({
         document.getElement('pre.response code').adopt($RESTConsole.renderTemplate('httpResponse', response.toObject())).appendText(xhr.responseText);
 
         // generate download links
-        var link = document.getElement('a[download].har');
-        window.URL.revokeObjectURL(link);
+        ['request', 'requestBody', 'response', 'responseBody', 'preview', 'har'].each(function(download) {
+            var link = document.getElement('a[download="' + download + '"]').removeClass('disabled');
+            window.URL.revokeObjectURL(link);
 
-        var blob = new BlobBuilder();
-        blob.append(harText);
-        link.set('download', 'har.log').set('href', window.URL.createObjectURL(blob.getBlob('text/plain')));
+            var blob = null;
+            var bb = new BlobBuilder();
+
+            switch (download) {
+                case 'request':
+                    bb.append(document.getElement('pre.request code').get('text'));
+                    blob = bb.getBlob('message/http');
+                    break;
+
+                case 'requestBody':
+                    bb.append(request.postData.text);
+                    blob = bb.getBlob(request.postData.mimeType);
+                    break;
+
+                case 'response':
+                    if (binary) {
+                        var body = document.getElements('pre.response code .nocode').get('text').join('\r\n') + '\n\n' + harResponse.content.text;
+                    } else {
+                        var body = document.getElement('pre.response code').get('text');
+                    }
+
+                    bb.append(body);
+                    blob = bb.getBlob('message/http');
+                    break;
+
+                case 'preview':
+                case 'responseBody':
+                    if (binary) {
+                        var body = byteArray.buffer;
+                    } else {
+                        var body = harResponse.content.text;
+                    }
+
+                    bb.append(body);
+                    blob = bb.getBlob(mimeType);
+                    break;
+
+                case 'har':
+                    bb.append(harText);
+                    blob = bb.getBlob('application/json');
+                    break;
+            }
+
+            link.set('href', window.URL.createObjectURL(blob));
+        }.bind(this));
 
         $RESTConsole.setProgress(100);
 

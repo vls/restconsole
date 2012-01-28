@@ -56,8 +56,6 @@ html {
         background-color: @gridBlue;
         background-image: url('/images/bg.png');
 
-        padding-top: @navbarHeight;
-
         .user-select(none);
 
         .selectable {
@@ -81,6 +79,10 @@ html {
 
         a {
             cursor: pointer;
+
+            &[download] {
+                margin: 10px 10px 0px 0px;
+            }
         }
 
         details {
@@ -100,59 +102,76 @@ html {
             margin-top: 2px;
             margin-right: 4px;
 
-            background-image: url('/images/icons/halflings.png');
+            background-image: url('/images/icons/glyphicons-halflings.png');
+
+            &.white {
+                background-image: url('/images/icons/glyphicons-halflings-white.png');
+            }
 
             &.info {
                 background-image: url('/images/icons/info.png');
+                background-position: 0px 0px;
             }
 
             &.question {
                 background-image: url('/images/icons/question.png');
-            }
-
-            &.home {
-                background-image: url('/images/icons/home.png');
                 background-position: 0px 0px;
             }
 
             &.settings {
                 background-image: url('/images/icons/settings.png');
+                background-position: 0px 0px;
             }
 
             &.history {
                 background-image: url('/images/icons/history.png');
+                background-position: 0px 0px;
             }
 
             &.facebook {
                 background-image: url('/images/presets/facebook.png');
+                background-position: 0px 0px;
             }
 
             &.flickr {
                 background-image: url('/images/presets/flickr.png');
+                background-position: 0px 0px;
             }
 
             &.foursquare {
                 background-image: url('/images/presets/foursquare.png');
+                background-position: 0px 0px;
             }
 
             &.googleplus {
                 background-image: url('/images/presets/googleplus.png');
+                background-position: 0px 0px;
             }
 
             &.linkedin {
                 background-image: url('/images/presets/linkedin.png');
+                background-position: 0px 0px;
             }
 
             &.quora {
                 background-image: url('/images/presets/quora.png');
+                background-position: 0px 0px;
             }
 
             &.twitter {
                 background-image: url('/images/presets/twitter.png');
+                background-position: 0px 0px;
             }
 
             &.youtube {
                 background-image: url('/images/presets/youtube.png');
+                background-position: 0px 0px;
+            }
+        }
+
+        .btn {
+            .icon {
+                margin-top: 0px;
             }
         }
 
@@ -528,7 +547,7 @@ html {
                         }
 
                         .nav.list {
-                            height: 190px;
+                            height: 150px;
 
                             .scrollbar(vertical);
 
@@ -672,14 +691,11 @@ html {
             }
 
             &#response {
-                min-height: 500px;
-
                 pre {
                     font-family: @monoFontFamily;
                     font-size: @baseFontSize;
 
                     .user-select(text);
-                    min-height: 300px;
 
                     white-space: pre;
                     word-wrap: normal;
@@ -690,27 +706,35 @@ html {
 
                     margin-bottom: 0px;
 
-                    &:empty {
-                        &:before {
-                            content: 'No Information Available';
-                            display: block;
-                            width: 150px;
-                            margin: 0 auto;
-                            padding: 10px;
-                        }
-                    }
-
                     &.har {
                         word-wrap: break-word;
                     }
 
                     code {
+                        display: block;
                         color: inherit;
                         border: none;
+                        width: 100%;
+
+                        &:empty {
+                            &:before {
+                                content: 'No Information Available';
+                                display: block;
+                                width: 200px;
+                                margin: 0 auto;
+                                padding: 10px;
+                            }
+                        }
                     }
                 }
 
                 #preview {
+                    padding: 8px;
+                    background-color: #F7F7F9;
+                    border: 1px solid #E1E1E8;
+                    .border-radius(4px);
+                    .scrollbar(vertical);
+
                     &:empty {
                         font-family: @baseFontFamily;
                         font-size: @baseFontSize;
@@ -736,6 +760,11 @@ html {
                         height: 100%;
                         border: none;
                         .border-radius(6px);
+                    }
+
+                    img {
+                        display: block;
+                        margin: 10px auto;
                     }
                 }
             }
