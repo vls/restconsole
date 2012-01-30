@@ -365,7 +365,7 @@ var App = new Class({
     }],
 
     'events': {
-        'change:relay(select, input[type="text"], input[type="password"], input[type="number"], textarea)': function(event) {
+        'change:relay(*[data-storage])': function(event) {
             $RESTConsole.saveValues();
         },
 
@@ -516,7 +516,7 @@ var App = new Class({
 
                     div({'class': 'input-append pair'},
                         input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
-                        input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
+                        data.name == 'files' ? input({'class': 'span3', 'type': 'file', 'name': 'files[]', 'multiple': false, 'tabindex': data.tabindex, 'autocomplete': false, 'value': null}) : input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
 
                         span({'class': 'add-on btn add success'}),
                         span({'class': 'add-on btn remove danger'})
@@ -705,7 +705,31 @@ var App = new Class({
 
                         div({'class': 'tab-content'},
                             div({'class': 'tab-pane active'},
-                                ul({'class': 'nav list history'})
+                                ul({
+                                    'class': 'nav list history',
+                                    'events': {
+                                        'change': function(event) {
+                                            if (this.getChildren().length > 0) {
+                                                this.getNext('button').set('disabled', false);
+                                            } else {
+                                                this.getNext('button').set('disabled', true);
+                                            }
+                                        }
+                                    }
+                                }),
+
+                                button({
+                                    'class': 'btn danger',
+                                    'disabled': 'true',
+                                    'events': {
+                                        'click': function(event) {
+                                            document.getElement('.nav.list.history').empty().fireEvent('change');
+                                            localStorage.removeItem('history');
+                                        }
+                                    }},
+
+                                    i({'class': 'icon white trash'}), 'Clear History'
+                                )
                             )
 
                             /*
@@ -740,16 +764,6 @@ var App = new Class({
                             */
                         )
                     ),
-
-
-                    button({
-                        'class': 'btn danger',
-                        'events': {
-                            'click': function(event) {
-                                document.getElement('.nav.list.history').empty();
-                                localStorage.removeItem('history');
-                            }
-                        }}, i({'class': 'icon white trash'}), 'Clear History'),
 
                     div({'class': 'well'},
                         ul({'class': 'nav list'},
@@ -979,10 +993,6 @@ var App = new Class({
             li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=restconsole&type=fork&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '60px', 'height': '20px'})),
             li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&type=follow&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '150px', 'height': '20px'}))
             */
-        }),
-
-        'fonts': new Template(function(data) {
-            link({'rel': 'stylesheet', 'type': 'text/css', 'href': 'http://fonts.googleapis.com/css?family=Ubuntu:400,700|Orbitron:400,700|Ubuntu+Mono:400,700'})
         }),
 
         'scripts': new Template(function(data) {
@@ -1351,16 +1361,11 @@ var App = new Class({
                                     })
                                 ),
 
-                                div({'class': 'tab-pane'},
-                                    fieldset({'class': 'control-group pairs'},
-                                        div({'class': 'controls'},
-                                            div({'class': 'input-append'},
-                                                input({'tabindex': -1, 'class': 'span3', 'name': 'file', 'type': 'file', 'multiple': false}),
-                                                input({'class': 'span3', 'type': 'text', 'name': 'name', 'tabindex': 2, 'autocomplete': true, 'placeholder': 'ex: file, Files[]'}),
-                                                span({'class': 'add-on btn add success'})
-                                            )
-                                        )
-                                    )
+                                div({'class': 'tab-pane attachments'},
+                                    this.renderTemplate('pairs', {
+                                        'name': 'files',
+                                        'tabindex': 2
+                                    })
                                 )
                             )
                         )
@@ -2313,7 +2318,7 @@ var App = new Class({
 
                         div({'class': 'tab-pane'},
                             div({'id': 'preview'}),
-                            a({'class': 'har btn disabled', 'download': 'preview'}, i({'class': 'icon download-alt'}), 'Download Body')
+                            a({'class': 'har btn disabled', 'download': 'preview'}, i({'class': 'icon download-alt'}), 'Download')
                         ),
 
                         div({'class': 'tab-pane'},
@@ -2419,7 +2424,7 @@ var App = new Class({
 
         // load history
         debug.group('loading history');
-        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', new History().getAll()));
+        document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', new History().getAll())).fireEvent('change');
 
         // assign global events
         debug.group('attaching events');
@@ -2433,7 +2438,6 @@ var App = new Class({
             debug.group('setting up autocomplete');
             new AutoComplete();
         }
-
 
         this.initInterface(defaults);
 
@@ -2464,7 +2468,6 @@ var App = new Class({
 
         if (window.navigator.onLine) {
             debug.group('online :)');
-            document.head.adopt(app.renderTemplate('fonts'));
             document.body.adopt(app.renderTemplate('scripts'));
             document.getElement('.social').adopt(app.renderTemplate('social'));
 
@@ -2577,6 +2580,8 @@ var App = new Class({
                 if (container) {
                     container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
                 }
+
+                input.fireEvent('change')
             } else {
                 document.getElement('.pairs.headers .controls').fireEvent('addRow', header)
             }
@@ -2593,6 +2598,8 @@ var App = new Class({
                 if (container) {
                     container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
                 }
+
+                input.fireEvent('change')
             }
         });
 
@@ -2607,6 +2614,8 @@ var App = new Class({
                 if (container) {
                     container.getElement('input[type="checkbox"]').set('checked', true).fireEvent('change');
                 }
+
+                input.fireEvent('change');
             }
         });
 
@@ -2714,7 +2723,7 @@ var App = new Class({
                 data.postData.mimeType = contentType.get('value').split(';')[0];
             }
 
-            document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data));
+            document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data)).fireEvent('change');
 
             // store into history
             new History().add(data);
@@ -2758,15 +2767,14 @@ var App = new Class({
                 },
 
                 'onTimeout': function() {
-                    // TODO replace with notice
-                    Error('Error', 'Connection Timed-out');
+                    window.XHR.cancel();
 
-                    // remove loading animation
-                    document.getElement('footer').removeClass('active');
+                    new Alert('danger', 'Connection Timed-out', '');
                 },
 
                 'onCancel': function() {
-                    //this.fireEvent('stop');
+                    // remove loading animation
+                    document.getElement('footer').removeClass('active');
                 }.bind(this),
 
                 'onComplete': this.processResponse
