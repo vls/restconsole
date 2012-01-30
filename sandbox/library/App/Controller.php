@@ -8,30 +8,30 @@ abstract class App_Controller extends REST_Controller
 
     public function indexAction()
     {
-        $this->notAllowed();
+        $this->__call();
     }
 
     public function getAction()
     {
-        $this->notAllowed();
+        $this->__call();
     }
 
     public function putAction()
     {
-        $this->notAllowed();
+        $this->__call();
     }
 
     public function postAction()
     {
-        $this->notAllowed();
+        $this->__call();
     }
 
     public function deleteAction()
     {
-        $this->notAllowed();
+        $this->__call();
     }
 
-    public function __call($method, $arguments = array())
+    public function __call($method = false, $arguments = array())
     {
         $this->notAllowed();
     }

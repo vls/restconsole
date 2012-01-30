@@ -1,31 +1,6 @@
 <?php
 class EchoController extends App_Controller
 {
-    public function indexAction()
-    {
-        $this->__call();
-    }
-
-    public function getAction()
-    {
-        $this->__call();
-    }
-
-    public function putAction()
-    {
-        $this->__call();
-    }
-
-    public function postAction()
-    {
-        $this->__call();
-    }
-
-    public function deleteAction()
-    {
-        $this->__call();
-    }
-
     public function __call($method = false, $arguments = array())
     {
         $cookies        = array();
