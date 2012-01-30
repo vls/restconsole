@@ -456,6 +456,11 @@ var App = new Class({
                             this.getParent('.controls').fireEvent('click', new FakeEvent(this.getNext('.add')));
                         },
 
+                        'click:relay(.pair:last-child input[type="file"])': function(event) {
+                            event.preventDefault();
+                            this.getParent('.controls').fireEvent('click', new FakeEvent(this.getNext('.add')));
+                        },
+
                         // clear error highlight on pairs
                         'keyup:relay(.error input[type="text"]:first-child)': function(event) {
                             this.getParent('.pair').removeClass('error');
@@ -516,7 +521,7 @@ var App = new Class({
 
                     div({'class': 'input-append pair'},
                         input({'class': 'span3', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
-                        data.name == 'files' ? input({'class': 'span3', 'type': 'file', 'name': 'files[]', 'multiple': false, 'tabindex': data.tabindex, 'autocomplete': false, 'value': null}) : input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
+                        data.name == 'files' ? input({'class': 'span3', 'type': 'file', 'name': 'file', 'multiple': false, 'tabindex': data.tabindex, 'autocomplete': false, 'value': null}) : input({'class': 'span3', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
 
                         span({'class': 'add-on btn add success'}),
                         span({'class': 'add-on btn remove danger'})
@@ -2333,7 +2338,6 @@ var App = new Class({
 
     'resizeEvent': function(event) {
         document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
-        document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
         document.getElement('#response').setStyle('min-height', window.getHeight() - 140);
         document.getElements('#response pre, #preview').setStyle('height', window.getHeight() - 298);
     },
@@ -2723,16 +2727,16 @@ var App = new Class({
                 data.postData.mimeType = contentType.get('value').split(';')[0];
             }
 
-            document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data)).fireEvent('change');
-
             // store into history
-            new History().add(data);
+            if (new History().add(data)) {
+                document.getElement('.nav.list.history').adopt(this.renderTemplate('historyItem', data)).fireEvent('change');
+            }
 
             var options = {
                 'url': data.url,
                 'query': {},
-                'payload': {},
-                'files': {},
+                'payload': '',
+                'files': [],
                 'headers': {},
                 'async': true,
                 'method': data.method,
@@ -2755,15 +2759,11 @@ var App = new Class({
                 },
 
                 'onProgress': function(event, xhr) {
-                    /*
                     if (event.lengthComputable) {
-                        var loaded = event.loaded, total = event.total;
-
-                        console.log(parseInt(loaded / total * 100, 10));
+                        $RESTConsole.setProgress((event.loaded / event.total) * 100);
+                    } else {
+                        $RESTConsole.setProgress(50);
                     }
-                    */
-
-                    $RESTConsole.setProgress(50);
                 },
 
                 'onTimeout': function() {
@@ -2790,6 +2790,13 @@ var App = new Class({
                 options.headers[header.name] = header.value;
             });
 
+            // set payload
+            if (options.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
+                options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
+            } else {
+                options.payload = data.postData.text;
+            };
+
             // modify Content-Type header based on encoding charset
             // TODO: shouldn't this be done as a rule in the REQUEST object?
             if (data.extra['content-encoding']) {
@@ -2797,12 +2804,16 @@ var App = new Class({
                 options.headers['Content-Type'] = options.headers['Content-Type'] + '; charset=' + options.encoding;
             }
 
-            // set payload
-            if (data.headers['Content-Type'] == 'application/x-www-form-urlencoded') {
-                options.payload = (data.postData.text.length) ? data.postData.text.parseQueryString() : {};
-            } else {
-                options.payload = data.postData.text;
-            };
+            // files
+            document.getElements('.input-append:not(:last-of-type) input[type="file"]').each(function(input) {
+                var key = input.getPrevious('input[name="key"]').get('value');
+
+                if (key != '') {
+                    input.files[0].key = key;
+                }
+
+                options.files.push(input.files);
+            });
 
             // clear response area
             document.getElements('#preview, pre.har code, pre.request code, pre.response code').each(function(code) {

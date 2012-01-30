@@ -201,9 +201,23 @@ var History = new Class({
         return this.get(this.data.length - 1);
     },
 
-    'add': function(record) {
-        this.data.push(record);
-        this.save();
+    'add': function(item) {
+        var duplicate = false;
+
+        this.data.each(function(record) {
+            if (JSON.stringify(record) == JSON.stringify(item)) {
+                duplicate = true;
+            }
+        });
+
+        if (!duplicate) {
+            this.data.push(item);
+            this.save();
+
+            return true;
+        } else {
+            return false;
+        }
     },
 
     'remove': function(index) {
