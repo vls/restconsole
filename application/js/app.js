@@ -871,6 +871,7 @@ var App = new Class({
                                             'name': 'help',
                                             'events': {
                                                 'change': function(event) {
+                                                    console.log('here');
                                                     if (this.get('checked')) {
                                                         document.body.addClass('no-help');
                                                     } else {
@@ -881,10 +882,6 @@ var App = new Class({
                                         }),
 
                                         'Hide Help Lines'
-                                    ),
-
-                                    label({'class': 'checkbox'},
-                                        input({'type': 'checkbox', 'name': 'lines'}), 'Hide Line Numbers *'
                                     ),
 
                                     p({'class': 'help-text'}, '* will affect next request.')
@@ -1355,6 +1352,11 @@ var App = new Class({
                                                 // trigger change event to store the resutls
                                                 document.fireEvent('change', new FakeEvent(textarea));
                                             }
+                                        },
+
+                                        'click:relay(.remove)': function(event) {
+                                            var container = document.getElement('.urlencoded');
+                                            container.fireEvent('change', new FakeEvent(container.getElement('input[type="text"]')));
                                         }
                                     }},
 
@@ -1362,14 +1364,14 @@ var App = new Class({
 
                                     this.renderTemplate('pairs', {
                                         'name': 'payload',
-                                        'tabindex': 2
+                                        'tabindex': 0
                                     })
                                 ),
 
                                 div({'class': 'tab-pane attachments'},
                                     this.renderTemplate('pairs', {
                                         'name': 'files',
-                                        'tabindex': 2
+                                        'tabindex': 0
                                     })
                                 )
                             )
@@ -2338,6 +2340,7 @@ var App = new Class({
 
     'resizeEvent': function(event) {
         document.getElement('.fluid-container.main').setStyle('height', window.getHeight() - 80);
+        document.getElement('.fluid-sidebar').setStyle('height', window.getHeight() - 140);
         document.getElement('#response').setStyle('min-height', window.getHeight() - 140);
         document.getElements('#response pre, #preview').setStyle('height', window.getHeight() - 298);
     },
@@ -3098,15 +3101,9 @@ var App = new Class({
         });
 
         document.getElement('footer').removeClass('active');
-return;
 
         if (xhr.status == 0) {
-            Error('Connection Failed!', 'Check your connectivity and try again');
-
-            //document.getElement('form[name="request"]').fireEvent('stop');
-        } else {
-            // trigger syntax highlighting
-            document.getElement('input[name="highlight"][value="' + style + '"]').fireEvent('click');
+            new Alert('warning', 'Connection Failed!', 'Check your connectivity and try again');
         }
     }
 });
