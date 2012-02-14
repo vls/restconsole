@@ -8,7 +8,9 @@
 
         <link rel="stylesheet/less" href="css/app.less"/>
 
+<!--
         <script type="text/javascript">var less = {env: 'production'}</script>
+-->
         <script type="text/javascript" src="js/less-1.2.1.js"></script>
 
         <script type="text/javascript" src="js/sha1.js"></script>
@@ -32,6 +34,1959 @@
         <script type="text/javascript" src="js/ui.js"></script>
         <script type="text/javascript" src="js/app.js"></script>
     </head>
+
+    <!-- main body -->
+    <script type="text/mooml" name="body">
+        header({'class': 'navbar navbar-fixed-top'},
+            div({'class': 'navbar-inner'},
+                div({'class': 'container-fluid'},
+                    div({'class': 'row-fluid'},
+                        div({'class': 'span3 brand'},
+                            img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0 BETA')
+                        ),
+
+                        div({'class': 'span9'},
+                            ul({
+                                'class': 'nav',
+                                'events': {
+                                    'click:relay(a)': function(event) {
+                                        event.preventDefault();
+
+                                        var container = document.getElement('[data-screen]');
+
+                                        container.dataset.screen = this.dataset.target;
+
+                                        new Fx.Scroll(container).toTop();
+
+                                        container.fireEvent('scroll');
+
+                                        this.getParent('ul').getElement('.active').removeClass('active');
+                                        this.getParent('li').addClass('active');
+                                    }
+                                }},
+
+                                li({'class': 'active'}, a({'accesskey': 'm', 'data-target': 'main'}, i({'class': 'icon-home'}), span('M'), 'ain')),
+                                li(a({'accesskey': 's', 'data-target': 'settings'}, i({'class': 'icon-cog'}), span('S'), 'ettings')),
+                                li(a({'data-target': 'help'}, i({'class': 'icon-question-sign'}), 'Help')),
+                                li(a({'data-target': 'about'}, i({'class': 'icon-info-sign'}), 'About'))
+                            ),
+
+                            ul({'class': 'nav social pull-right'})
+                        )
+                    )
+                )
+            )
+        ),
+
+        div({
+            'class': 'main container-fluid',
+            'data-screen': 'main',
+            'events': {
+                'scroll': function(event) {
+                    document.getElements('a[data-spy="scroll"]').each(function(link) {
+                        var target = link.get('href');
+                        var targetPosition = document.getElement(target).getCoordinates(this).top;
+
+                        if (targetPosition - 20 <= 0) {
+                            link.getParent('ul').getElement('.active').removeClass('active');
+                            link.getParent('li').addClass('active');
+                        }
+                    }.bind(this));
+                }
+            }},
+
+            div({'class': 'row-fluid'},
+                div({'class': 'span3'},
+                    div({'class': 'sidebar'},
+                        div({'class': 'well'},
+                            ul({'class': 'nav nav-list navigation', 'data-screen': 'main'},
+                                li({'class': 'nav-header'}, 'Navigation'),
+                                li({'class': 'active'}, a({'accesskey': 't', 'tabindex': -1, 'href': '#target', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}), span('T'), 'arget')),
+                                li(a({'accesskey': 'p', 'tabindex': -1, 'href': '#payload', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}), span('P'), 'ayload')),
+                                li(a({'accesskey': 'a', 'tabindex': -1, 'href': '#authorization', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}), span('A'), 'uthorization')),
+                                li(a({'accesskey': 'h', 'tabindex': -1, 'href': '#headers', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}),  span('H'), 'eaders')),
+                                li(a({'accesskey': 'r', 'tabindex': -1, 'href': '#response', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}),  span('R'), 'esponse'))
+                            ),
+
+                            ul({'class': 'nav nav-list navigation', 'data-screen': 'settings'},
+                                li({'class': 'active'}, a({'tabindex': -1, 'href': '#general', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}), 'General')),
+                                li(a({'tabindex': -1, 'href': '#display', 'data-scroll': 'smooth', 'data-spy': 'scroll'}, i({'class': 'icon-chevron-right'}), 'Display'))
+                            )
+                        ),
+
+                        div({'class': 'tabbable', 'data-screen': 'main'},
+                            ul({'class': 'nav nav-tabs'},
+                                li({'class': 'active'}, a({'data-toggle': 'tab'}, i({'class': 'icon-time'}), 'History'))
+                                // li(a({'data-toggle': 'tab'}, i({'class': 'icon-star'}), 'Presets')),
+                            ),
+
+                            div({'class': 'tab-content'},
+                                div({'class': 'tab-pane active'},
+                                    ul({
+                                        'class': 'nav nav-list history',
+                                        'events': {
+                                            'change': function(event) {
+                                                if (this.getChildren().length > 0) {
+                                                    this.getNext('button').set('disabled', false);
+                                                } else {
+                                                    this.getNext('button').set('disabled', true);
+                                                }
+                                            }
+                                        }
+                                    }),
+
+                                    button({
+                                        'class': 'btn-danger',
+                                        'disabled': 'true',
+                                        'events': {
+                                            'click': function(event) {
+                                                document.getElement('.nav-list.history').empty().fireEvent('change');
+                                                localStorage.removeItem('history');
+                                            }
+                                        }},
+
+                                        i({'class': 'icon-trash icon-white'}), 'Clear History'
+                                    )
+                                )
+
+                                /*
+                                div({'class': 'tab-pane active'},
+                                    ul({'class': 'nav nav-list presets'},
+                                        li({'class': 'nav-header'}, 'User'),
+                                        li(a({
+                                            'events': {
+                                                'click': function(event) {
+                                                    event.stop();
+
+                                                    alert('Coming Soon!');
+                                                }
+                                            }
+                                        }, i({'class': 'icon-plus'}), 'Import WADL')),
+
+                                        li(a({
+                                            'events': {
+                                                'click': function(event) {
+                                                    event.stop();
+
+                                                    alert('Coming Soon!');
+                                                }
+                                            }
+                                        }, i({'class': 'icon-plus'}), 'Import HAR')),
+
+                                        li({'class': 'nav-header'}, 'Defaults'),
+
+                                        Mooml.renderTemplate('presets', this.presets)
+                                    )
+                                ),
+                                */
+                            )
+                        ),
+
+                        div({'class': 'well'},
+                            ul({'class': 'nav nav-list'},
+                                li({'class': 'nav-header'}, 'Donate'),
+                                li(a({'tabindex': -1, 'href': 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UJ2B2BTK9VLRS', 'target': '_blank'}, i({'class': 'icon-star-empty'}), 'Paypal')),
+                                li(a({'tabindex': -1, 'href': 'https://flattr.com/thing/156628/REST-Console', 'target': '_blank'}, i({'class': 'icon-star-empty'}), 'Flattr')),
+                                li(a({'tabindex': -1, 'href': 'http://utip.it/codeinchaos', 'target': '_blank'}, i({'class': 'icon-star-empty'}), 'TipIt'))
+                            )
+                        )
+                    )
+                ),
+
+                div({'class': 'span9 content'},
+                    div({'data-screen': 'main'},
+                        form({
+                            'name': 'main',
+                            'novalidate': true,
+                            'events': {
+                                'keydown:relay(input)': function(event) {
+                                    if (event.key == 'enter') {
+                                        // save first
+                                        document.fireEvent('change', new FakeEvent(this));
+
+                                        event.stop();
+                                        $RESTConsole.send();
+                                    }
+                                }
+                            }},
+
+                            Mooml.renderTemplate('target'),
+                            Mooml.renderTemplate('payload'),
+                            Mooml.renderTemplate('authorization'),
+                            Mooml.renderTemplate('headers')
+                        ),
+
+                        Mooml.renderTemplate('response')
+                    ),
+
+                    div({'data-screen': 'settings'},
+                        section({'id': 'display'},
+                            Mooml.renderTemplate('section-header', 'Display')
+                        ),
+
+                        section({'id': 'general'},
+                            Mooml.renderTemplate('section-header', 'General'),
+
+                            a({
+                                'events': {
+                                    'click': function(event) {
+                                        event.preventDefault();
+                                        chrome.webstore.install('https://chrome.google.com/webstore/detail/faceofpmfclkengnkgkgjkcibdbhemoc');
+                                    }
+                                }
+                            }, 'Install Extension'),
+
+                            form({
+                                'name': 'options',
+                                'class': 'form-stacked',
+                                'novalidate': true,
+                                'events': {
+                                    'init': function() {
+                                        var options = new Storage('options');
+
+                                        this.getElements('input[type="checkbox"]').each(function(checkbox) {
+                                            var data = options.get(checkbox.get('name'));
+
+                                            if (data != null) {
+                                                if (data == true) {
+                                                    checkbox.set('checked', true);
+                                                } else {
+                                                    checkbox.set('checked', false);
+                                                }
+                                            }
+
+                                            checkbox.fireEvent('change');
+                                        });
+                                    }
+                                }},
+
+                                div({'class': 'row-fluid'},
+                                    div({'class': 'span6'},
+                                        fieldset({'class': 'control-group'},
+                                            label({'class': 'control-label'}, 'General'),
+                                            div({'class': 'controls'},
+                                                label({'class': 'checkbox'},
+                                                    input({
+                                                        'type': 'checkbox',
+                                                        'name': 'help',
+                                                        'events': {
+                                                            'change': function(event) {
+                                                                console.log('here');
+                                                                if (this.get('checked')) {
+                                                                    document.body.addClass('no-help');
+                                                                } else {
+                                                                    document.body.removeClass('no-help');
+                                                                }
+                                                            }
+                                                        }
+                                                    }),
+
+                                                    'Hide Help Lines'
+                                                ),
+
+                                                p({'class': 'help-text'}, '* will affect next request.')
+                                            )
+                                        )
+                                    ),
+
+                                    div({'class': 'span'},
+                                        fieldset({'class': 'control-group'},
+                                            label({'class': 'control-label'}, 'Color Theme'),
+                                            div({
+                                                'class': 'controls',
+                                                'events': {
+                                                    'change:relay(input)': function(event) {
+                                                        if (this.get('checked')) {
+                                                            document.id('theme').set('href', 'css/prettify/{0}.css'.substitute([this.get('value')]));
+                                                        }
+                                                    }
+                                                }},
+
+                                                label({'class': 'radio'},
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'default'}), 'Default'
+                                                ),
+
+                                                label({'class': 'radio'},
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap', 'checked': true}), 'Bootstrap'
+                                                ),
+
+                                                label({'class': 'radio'},
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'bootstrap-dark'}), 'Bootstrap Dark'
+                                                ),
+
+                                                label({'class': 'radio'},
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'desert'}), 'Desert'
+                                                ),
+
+                                                label({'class': 'radio'},
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'sunburst'}), 'Sunburst'
+                                                ),
+
+                                                label({'class': 'radio'},
+                                                    input({'type': 'radio', 'name': 'theme', 'value': 'sons-of-obsidian'}), 'Sons of Obsidian'
+                                                ),
+
+                                                p({'class': 'help-text'}, 'Syntax highlighting default color theme')
+                                            )
+                                        )
+                                    )
+                                )
+                            ).fireEvent('init')
+                        )
+                    ),
+
+                    div({'data-screen': 'help'},
+                        section({'id': 'help'},
+                            Mooml.renderTemplate('section-header', 'Help')
+                        )
+                    ),
+
+                    div({'data-screen': 'about'},
+                        section({'id': 'about'},
+                            Mooml.renderTemplate('section-header', 'About')
+                        )
+                    )
+                )
+            )
+        ),
+
+        footer({'class': 'navbar navbar-fixed-bottom'},
+            div({'class': 'navbar-inner'},
+                div({'class': 'container-fluid'},
+                    div({
+                        'class': 'offset3 controls',
+                        'events': {
+                            'click:relay(button)': function(event) {
+                                this.send();
+                            }.bind(this)
+                        }},
+
+                        div({'class': 'row-fluid'},
+                            div({'class': 'span10'},
+                                div({'class': 'progress info striped active'},
+                                    div({'class': 'bar', 'style': 'width: 0%'})
+                                ),
+
+                                button({'tabindex': -1, 'data-action': 'submit', 'class': 'btn-primary'}, 'Send'),
+                                button({'tabindex': -1, 'data-action': 'get', 'class': 'btn'}, 'GET'),
+                                button({'tabindex': -1, 'data-action': 'post', 'class': 'btn'}, 'POST'),
+                                button({'tabindex': -1, 'data-action': 'put', 'class': 'btn'}, 'PUT'),
+                                button({'tabindex': -1, 'data-action': 'delete', 'class': 'btn'}, 'DELETE')
+                            ),
+
+                            div({'class': 'pull-right'},
+                                button({'tabindex': -1, 'data-action': 'stop', 'class': 'btn-danger'}, i({'class': 'icon-ban-circle icon-white'}), ' Stop')
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    </script>
+
+    <!-- sections -->
+    <script type="text/mooml" name="section-header">
+        header(
+            a({
+                'events': {
+                    'click': function(event) {
+                        var section = this.getParent('section').removeEvents('webkitTransitionEnd');
+
+                        var height = section.getScrollSize().y;
+
+                        if (section.hasClass('minimize')) {
+                            section.setStyle('height', height).addEvent('webkitTransitionEnd', function(event) {
+                                this.setStyle('height', 'auto');
+                            });
+                        } else {
+                            section.setStyle('height', 32).addEvent('webkitTransitionEnd', function(event) {
+                                this.addClass('minimize');
+                            });
+                        }
+
+                        // change class
+                        section.toggleClass('collapse');
+
+                        // store status
+                        new Storage('sections').set(section.get('id'), !section.hasClass('collapse'));
+
+                        // fire resize event to trigger hidden elements resize
+                        window.fireEvent('resize');
+                    }
+                }
+            }),
+
+            h2(data)
+        )
+    </script>
+
+    <script type="text/mooml" name="target">
+        section({'id': 'target'},
+
+            Mooml.renderTemplate('section-header', 'Target'),
+
+            div({'class': 'row-fluid'},
+                div({'class': 'span2'},
+                    Mooml.renderTemplate('standard-input', {
+                        'rfc': '5.1.1',
+                        'label': 'Method',
+                        'help': 'HTTP Verb',
+                        'attributes': {
+                            'type': 'text',
+                            'data-storage': 'option',
+                            'name': 'method',
+                            'tabindex': 1,
+                            'autocomplete': true,
+                            'placeholder': 'ex: POST',
+                            'list': 'methods',
+                            'required': true
+                        }
+                    })
+                ),
+
+                div({'class': 'span8'},
+                    Mooml.renderTemplate('standard-input', {
+                        'rfc': '3.2',
+                        'label': 'URI',
+                        'help': 'Universal Resource Identifier. ex: https://www.sample.com:9000',
+                        'attributes': {
+                            'type': 'text',
+                            'data-storage': 'option',
+                            'name': 'url',
+                            'tabindex': 1,
+                            'autocomplete': true,
+                            'placeholder': 'ex: http://example.com/resources/ef7d-xj36p',
+                            'required': true,
+                            'events': {
+                                'change': function(event) {
+                                    var value = this.get('value');
+
+                                    if (value.length && value.substr(0, 4) != 'http') {
+                                        this.set('value', 'http://' + value);
+                                    }
+
+                                    this.fireEvent('highlight');
+                                }
+                            }
+                        }
+                    })
+                ),
+
+                div({'class': 'span2'},
+                    Mooml.renderTemplate('standard-input', {
+                        'label': 'Timeout',
+                        'help': 'seconds',
+                        'attributes': {
+                            'type': 'number',
+                            'data-storage': 'extra',
+                            'name': 'timeout',
+                            'value': 60,
+                            'tabindex': 1,
+                            'min': 1,
+                            'step': 1,
+                            'required': true
+                        }
+                    })
+                )
+            ),
+
+            div({'class': 'row-fluid'},
+                Mooml.renderTemplate('pairs', [
+                    {
+                        'name': 'query',
+                        'label': 'Query String',
+                        'data-storage': 'queryString',
+                        'tabindex': 0
+                    },
+
+                    {
+                        'name': 'headers',
+                        'label': 'Headers',
+                        'data-storage': 'headerCollection',
+                        'tabindex': 0
+                    }
+                ])
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="payload">
+        section({'id': 'payload', 'class': 'collapse'},
+            Mooml.renderTemplate('section-header', 'Payload'),
+
+            div({'class': 'row-fluid'},
+                div({'class': 'span6'},
+                    Mooml.renderTemplate('optional-input', [
+                        {
+                            'label': 'Content-Type',
+                            'help': 'The mime type of the body of the request',
+                            'attributes': {
+                                'class': 'span6',
+                                'type': 'text',
+                                'data-storage': 'header',
+                                'name': 'Content-Type',
+                                'tabindex': 2,
+                                'autocomplete': false,
+                                'placeholder': 'ex: application/x-www-form-urlencoded',
+                                'list': 'mimetypes',
+                                'disabled': true,
+                                'events': {
+                                    'change': function(event) {
+                                        var payload = this.getParent('#payload');
+                                        var tab = payload.getElement('.tab-pane.urlencoded');
+                                        var textarea = payload.getElement('textarea');
+
+                                        if (this.get('disabled') != true && this.get('value').toLowerCase() == 'application/x-www-form-urlencoded') {
+                                            tab.addClass('enabled');
+                                            textarea.fireEvent('change');
+                                        } else {
+                                            tab.removeClass('enabled');
+                                        }
+
+                                        this.fireEvent('highlight');
+                                    }
+                                }
+                            }
+                        },
+
+                        {
+                            'label': 'Content-Type Encoding',
+                            'help': 'Acceptable encodings',
+                            'attributes': {
+                                'class': 'span6',
+                                'type': 'text',
+                                'data-storage': 'extra',
+                                'name': 'content-encoding',
+                                'tabindex': 2,
+                                'autocomplete': false,
+                                'placeholder': 'ex: utf-8',
+                                'list': 'charset',
+                                'disabled': true
+                            }
+                        },
+/*
+                        {
+                            'label': 'Content-Length',
+                            'help': 'The length of the request body in octets (8-bit bytes).',
+                            'attributes': {
+                                'class': 'span6',
+                                'type': 'text',
+                                'data-storage': 'header',
+                                'name': 'Content-Length',
+                                'tabindex': 2,
+                                'autocomplete': true,
+                                'placeholder': 'ex: 348',
+                                'disabled': true
+                            }
+                        },
+*/
+                        {
+                            'label': 'Content-MD5',
+                            'help': 'A Base64-encoded binary MD5 sum of the content of the request body.',
+                            'attributes': {
+                                'class': 'span6',
+                                'type': 'text',
+                                'data-storage': 'header',
+                                'name': 'Content-MD5',
+                                'tabindex': 2,
+                                'autocomplete': true,
+                                'placeholder': 'ex: Q2hlY2sgSW50ZWdyaXR5IQ==',
+                                'disabled': true
+                            }
+                        }
+                    ])
+                ),
+
+                div({'class': 'span6'},
+                    div({'class': 'tabbable', 'data-name': 'payload'},
+                        ul({'class': 'nav nav-tabs'},
+                            li({'class': 'active'}, a({'data-toggle': 'tab'}, 'RAW Body')),
+                            li(a({'data-toggle': 'tab'}, 'Form Data')),
+                            li(a({'data-toggle': 'tab'}, 'Attachments'))
+                        ),
+
+                        div({'class': 'tab-content'},
+                            div({'class': 'tab-pane active'},
+                                fieldset({'class': 'control-group'},
+                                    div({'class': 'controls'},
+                                        textarea({
+                                            'class': 'span6 padded',
+                                            'name': 'payload',
+                                            'data-storage': 'post-text',
+                                            'rows': 5,
+                                            'tabindex': 2,
+                                            'placeholder': 'ex: XML, JSON, etc ...',
+                                            'events': {
+                                                'change': function(event) {
+                                                    var payload = this.get('value');
+                                                    var section = this.getParent('#payload');
+                                                    var type = section.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                                    var pairs = section.getElement('.pairs.payload');
+                                                    var controls = pairs.getElement('.controls');
+
+                                                    // remove all but last one
+                                                    pairs.getElements('.input-append:nth-last-of-type(n+2)').destroy();
+
+                                                    if (type == 'application/x-www-form-urlencoded') {
+                                                        if (payload != '') {
+                                                            payload = payload.parseQueryString();
+
+                                                            Object.each(payload, function(value, key) {
+                                                                if (typeOf(value) == 'array') {
+                                                                    value.each(function(val) {
+                                                                        controls.fireEvent('addRow', {'name': key, 'value': val});
+                                                                    });
+                                                                } else {
+                                                                    controls.fireEvent('addRow', {'name': key, 'value': value});
+                                                                }
+                                                            }.bind(this));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }),
+
+                                        p({'class': 'help-text'}, 'Remember to set the Content-Type header.')
+                                    )
+                                )
+                            ),
+
+                            div({
+                                'class': 'tab-pane urlencoded',
+                                'events': {
+                                    'change:relay(input[type="text"])': function(event) {
+                                        var form = this.getParent('form');
+                                        var data = form.getPairs('payload');
+                                        var type = form.getElement('input[name="Content-Type"]').get('value').toLowerCase();
+                                        var textarea = form.getElement('textarea[name="payload"]');
+
+                                        if (type == 'application/x-www-form-urlencoded') {
+                                            textarea.set('value', Object.toQueryString(data));
+
+                                            // trigger change event to store the resutls
+                                            document.fireEvent('change', new FakeEvent(textarea));
+                                        }
+                                    },
+
+                                    'click:relay(.remove)': function(event) {
+                                        var container = document.getElement('.urlencoded');
+                                        container.fireEvent('change', new FakeEvent(container.getElement('input[type="text"]')));
+                                    }
+                                }},
+
+                                p({'class': 'help-text'}, 'Only Enabled for Content-Type: application/x-www-form-urlencoded'),
+
+                                Mooml.renderTemplate('pairs', {
+                                    'name': 'payload',
+                                    'tabindex': 0
+                                })
+                            ),
+
+                            div({'class': 'tab-pane attachments'},
+                                Mooml.renderTemplate('pairs', {
+                                    'name': 'files',
+                                    'tabindex': 0
+                                })
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="authorization">
+        section({'id': 'authorization', 'class': 'collapse'},
+            Mooml.renderTemplate('section-header', 'Authorization'),
+
+            div({'class': 'tabbable', 'data-name': 'authorization'},
+                ul({
+                    'class': 'nav nav-tabs',
+                    'events': {
+                        'click:relay(li a)': function(event) {
+                            var tabbable = this.getParent('.tabbable');
+                            var tabs = tabbable.getElements('.nav-tabs li a');
+                            var index = tabs.indexOf(this) + 1;
+
+                            var pane = tabbable.getElement('> .tab-content > .tab-pane:nth-of-type(' + index + ')');
+                            var panes = tabbable.getElements('> .tab-content > .tab-pane:not(:nth-of-type(' + index + '))');
+
+                            panes.getElements('input[type="checkbox"]').each(function(checkbox) {
+                                checkbox.set('checked', false).fireEvent('change');
+                            });
+
+                            panes.getElements('select').each(function(select) {
+                                select.set('disabled', true);
+                            });
+
+                            pane.getElements('select').set('disabled', false);
+                        }
+                    }},
+
+                    li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Custom')),
+                    li(a({'data-toggle': 'tab'}, 'Basic')),
+                    li(a({'data-toggle': 'tab'}, 'Digest')),
+                    li(a({'data-toggle': 'tab'}, 'oAuth'))
+                ),
+
+                div({'class': 'tab-content'},
+                    div({'class': 'tab-pane active'},
+                        Mooml.renderTemplate('optional-input', [
+                            {
+                                'label': 'Authorization',
+                                'help': 'Authentication credentials for HTTP authentication.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Authorization',
+                                    'tabindex': 3,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.34',
+                                'label': 'Proxy-Authorization',
+                                'help': 'Authorization credentials for connecting to a proxy.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Proxy-Authorization',
+                                    'tabindex': 3,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
+
+                    div({'class': 'tab-pane'},
+                        input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
+
+                        Mooml.renderTemplate('optional-input', [
+                            {
+                                'label': 'Username',
+                                'help': '',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'authorization',
+                                    'name': 'basic-username',
+                                    'tabindex': 3,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: username',
+                                    'required': true,
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'label': 'Password',
+                                'help': '',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'password',
+                                    'data-storage': 'authorization',
+                                    'name': 'basic-password',
+                                    'tabindex': 3,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: password',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
+
+                    div({'class': 'tab-pane'},
+                        input({'name': 'Authorization', 'type': 'hidden', 'disabled': true}),
+
+                        Mooml.renderTemplate('optional-input', [
+                            {
+                                'label': 'Username',
+                                'help': '',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'name': 'digest-username',
+                                    'tabindex': 3,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: username',
+                                    'required': true,
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'label': 'Password',
+                                'help': '',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'password',
+                                    'name': 'digest-password',
+                                    'tabindex': 3,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: password',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
+
+                    div({'class': 'tab-pane oauth'},
+                        div({'class': 'row-fluid'},
+                            div({'class': 'span6'},
+                                div({'class': 'row-fluid'},
+                                    div({'class': 'span2'},
+                                        Mooml.renderTemplate('optional-input', {
+                                            'label': 'Version',
+                                            'help': '',
+                                            'attributes': {
+                                                'class': 'span2',
+                                                'type': 'number',
+                                                'data-storage': 'authorization',
+                                                'name': 'version',
+                                                'tabindex': 3,
+                                                'autocomplete': true,
+                                                'placeholder': 'ex: 1.0',
+                                                'required': true,
+                                                'disabled': true,
+                                                'events': {
+                                                    'change': function(event) {
+                                                        this.set('value', parseInt(this.get('value')).toFixed(1));
+
+                                                        this.fireEvent('highlight');
+                                                    }
+                                                }
+                                            }
+                                        })
+                                    ),
+
+                                    div({'class': 'span2'},
+                                        fieldset({'class': 'control-group'},
+                                            label({'class': 'control-label', 'for': 'signature'}, 'Signature Method'),
+                                            div({'class': 'controls'},
+                                                select({'class': 'span2', 'name': 'signature', 'data-storage': 'authorization', 'tabindex': 3, 'disabled': true},
+                                                    option({'value': 'HMAC-SHA1', 'selected': true},'HMAC-SHA1'),
+                                                    option({'value': 'PLAINTEXT'}, 'PLAINTEXT')
+                                                ),
+                                                p({'class': 'help-text'}, '')
+                                            )
+                                        )
+                                    ),
+
+                                    div({'class': 'span2'},
+                                        fieldset({'class': 'control-group'},
+                                            label({'class': 'control-label', 'for': 'method'}, 'Preferred Method'),
+                                            div({'class': 'controls'},
+                                                select({'class': 'span2', 'name': 'method', 'data-storage': 'authorization', 'tabindex': 3, 'disabled': true},
+                                                    option({'value': 'header', 'selected': true}, 'Header'),
+                                                    option({'value': 'query'},'Query String')
+                                                ),
+                                                p({'class': 'help-text'}, '')
+                                            )
+                                        )
+                                    )
+                                ),
+
+                                Mooml.renderTemplate('optional-input', [
+                                    {
+                                        'label': 'Consumer Key',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'consumer_key',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'required': true,
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Consumer Secret',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'consumer_secret',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'required': true,
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Token Key',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'token_key',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Token Secret',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'token_secret',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Scope',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'scope',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: ',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Realm',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span6',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'realm',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: ',
+                                            'disabled': true
+                                        }
+                                    }
+                                ])
+                            ),
+
+                            div({
+                                'class': 'span5',
+                                'events': {
+                                    'keyup:relay(input[type="text"])': function(event) {
+                                        var container = this.getParent('.span5');
+                                        var button = container.getElement('button');
+                                        var urls = container.getElements('input[type="text"][name$="_url"]').get('value');
+
+                                        button.set('disabled', urls.contains(''));
+                                    }
+                                }},
+
+                                Mooml.renderTemplate('optional-input', [
+                                    {
+                                        'label': 'Request token URL',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span5',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'request_url',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: https://api.provider.com/oauth/request_token',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Access token URL',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span5',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'access_url',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: https://api.provider.com/oauth/access_token',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Authorize URL',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span5',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'authorize_url',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: https://api.provider.com/oauth/authorize',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Oauth Callback',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span5',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'oauth_callback',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: https://www.domain.com',
+                                            'disabled': true
+                                        }
+                                    },
+
+                                    {
+                                        'label': 'Oauth Verifier',
+                                        'help': '',
+                                        'attributes': {
+                                            'class': 'span5',
+                                            'type': 'text',
+                                            'data-storage': 'authorization',
+                                            'name': 'oauth_verifier',
+                                            'tabindex': 3,
+                                            'autocomplete': true,
+                                            'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                            'disabled': true
+                                        }
+                                    }
+                                ]),
+
+                                button({
+                                    'class': 'btn-info',
+                                    'disabled': true,
+                                    'events': {
+                                        'click': function(event) {
+                                            alert('awesome');
+                                        }
+                                    }
+                                }, 'Authorize')
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="headers">
+        section({'id': 'headers', 'class': 'collapse'},
+            Mooml.renderTemplate('section-header', 'Headers'),
+
+            div({'class': 'tabbable'},
+                ul({'class': 'nav nav-tabs'},
+                    li({'class': 'active'}, a({'data-toggle': 'tab'}, 'Standard Headers')),
+                    li(a({'data-toggle': 'tab'}, 'Cache')),
+                    li(a({'data-toggle': 'tab'}, 'Common non-standard headers'))
+                ),
+
+                div({'class': 'tab-content'},
+                    div({'class': 'tab-pane active'},
+                        Mooml.renderTemplate('optional-input', [
+                            {
+                                'rfc': '14.1',
+                                'label': 'Accept',
+                                'help': 'Content-Types that are acceptable.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Accept',
+                                    'tabindex': 4,
+                                    'autocomplete': false,
+                                    'placeholder': 'ex: text/plain',
+                                    'list': 'mimetypes',
+                                    'disabled': true
+                                }
+                            },
+/*
+                            {
+                                'rfc': '14.2',
+                                'label': 'Accept Charset',
+                                'help': 'Character sets that are acceptable.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Accept-Charset',
+                                    'tabindex': 4,
+                                    'autocomplete': false,
+                                    'placeholder': 'ex: utf-8',
+                                    'list': 'charset',
+                                    'disabled': true
+                                }
+                            },
+                            {
+                                'rfc': '14.3',
+                                'label': 'Accept Encoding',
+                                'help': 'Acceptable encodings.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Accept-Encoding',
+                                    'tabindex': 4,
+                                    'autocomplete': false,
+                                    'placeholder': 'ex: identity',
+                                    'list': 'encoding',
+                                    'disabled': true
+                                }
+                            },
+*/
+
+                            {
+                                'rfc': '14.4',
+                                'label': 'Accept Language',
+                                'help': 'Acceptable languages for response.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Accept-Language',
+                                    'tabindex': 4,
+                                    'autocomplete': false,
+                                    'placeholder': 'ex: en-US',
+                                    'list': 'languages',
+                                    'disabled': true
+                                }
+                            },
+/*
+                            {
+                                'rfc': '14.10',
+                                'label': 'Connection',
+                                'help': 'What type of connection the user-agent would prefer',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Connection',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: keep-alive',
+                                    'disabled': true
+                                }
+                            },
+                            *
+                            {
+                                'label': 'Cookie',
+                                'help': 'an HTTP cookie previously sent by the server',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Cookie',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: UserID=JohnDoe; Max-Age=3600; Version=1',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.18',
+                                'label': 'Date',
+                                'help': 'The date and time that the message was sent',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Date',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Tue, 15 Nov 1994 08:12:31 GMT',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.20',
+                                'label': 'Expect',
+                                'help': 'Indicates that particular server behaviors are by the client',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Expect',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 100-continue',
+                                    'disabled': true
+                                }
+                            },
+*/
+                            {
+                                'rfc': '14.22',
+                                'label': 'From',
+                                'help': 'The email address of the user making the request.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'From',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: user@example.com',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.31',
+                                'label': 'Max-Forwards',
+                                'help': 'Limit the number of times the message can be forwarded through proxies or gateways.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Max-Forwards',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 10',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.32',
+                                'label': 'Pragma',
+                                'help': 'Implementation-specific headers that may have various effects anywhere along the request-response chain.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Pragma',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: no-cache',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.35',
+                                'label': 'Range',
+                                'help': 'Request only part of an entity. Bytes are numbered from 0.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Range',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: bytes=500-999',
+                                    'disabled': true
+                                }
+                            },
+/*
+                            {
+                                'rfc': '14.36',
+                                'label': 'Referer',
+                                'help': 'This address of the previous web page from which a link to the currently requested page was followed.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Referer',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: http://www.restconsole.com/',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.41',
+                                'label': 'Transfer-Encoding',
+                                'help': 'The transfer encodings the user agent is willing to accept.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'TE',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: trailers, deflate',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.42',
+                                'label': 'Upgrade',
+                                'help': 'Ask the server to upgrade to another protocol.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Upgrade',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: HTTP/2.0, SHTTP/1.3, IRC/6.9, RTA/x11',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.43',
+                                'label': 'User-Agent',
+                                'help': 'The user agent string of the user agent.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'User-Agent',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.45',
+                                'label': 'Via',
+                                'help': 'Informs the server of proxies through which the request was sent.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Via',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 1.0 fred, 1.1 nowhere.com (Apache/1.1)',
+                                    'disabled': true
+                                }
+                            },
+*/
+                            {
+                                'rfc': '14.64',
+                                'label': 'Warning',
+                                'help': 'A general warning about possible problems with the entity body.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Warning',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 199 Miscellaneous warning',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
+
+                    div({'class': 'tab-pane'},
+                        Mooml.renderTemplate('optional-input', [
+                            {
+                                'rfc': '14.9',
+                                'label': 'Cache-Control',
+                                'help': 'Used to specify caching mechanisms along the request/response chain',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Cache-Control',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: no-cache',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.24',
+                                'label': 'If-Match',
+                                'help': 'Only perform the action if the client supplied entity matches the same entity on the server.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'If-Match',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.25',
+                                'label': 'If-Modified-Since',
+                                'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'If-Modified-Since',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.26',
+                                'label': 'If-None-Match',
+                                'help': 'Allows a 304 Not Modified to be returned if content is unchanged',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'If-None-Match',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.27',
+                                'label': 'If-Range',
+                                'help': 'If the entity is unchanged, send the missing part(s); otherwise, send the entire new entity',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'If-Range',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 737060cd8c284d8af7ad3082f209582d',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'rfc': '14.28',
+                                'label': 'If-Unmodified-Since',
+                                'help': 'Only send the response if the entity has not been modified since a specific time.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'If-Unmodified-Since',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: Sat, 29 Oct 1994 19:43:31 GMT',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    ),
+
+                    div({'class': 'tab-pane'},
+                        Mooml.renderTemplate('optional-input', [
+/*
+                            {
+                                'label': 'Origin',
+                                'help': '',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'Origin',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: chrome-extension',
+                                    'disabled': true
+                                }
+                            },
+*/
+                            {
+                                'label': 'X-HTTP-Method-Override',
+                                'help': 'mainly used bypass firewalls and browsers limitations.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'X-HTTP-Method-Override',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: PUT',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'label': 'X-Requested-With',
+                                'help': 'mainly used to identify Ajax requests.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'X-Requested-With',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: XMLHttpRequest',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'label': 'X-Forwarded-For',
+                                'help': '',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'X-Forwarded-For',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: ',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'label': 'X-Do-Not-Track',
+                                'help': 'Requests a web application to disable their tracking of a user.',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'X-Do-Not-Track',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 1',
+                                    'disabled': true
+                                }
+                            },
+
+                            {
+                                'label': 'DNT',
+                                'help': 'Requests a web application to disable their tracking of a user. (This is Mozilla\'s version of the X-Do-Not-Track header',
+                                'attributes': {
+                                    'class': 'span12 padded',
+                                    'type': 'text',
+                                    'data-storage': 'header',
+                                    'name': 'DNT',
+                                    'tabindex': 4,
+                                    'autocomplete': true,
+                                    'placeholder': 'ex: 1',
+                                    'disabled': true
+                                }
+                            }
+                        ])
+                    )
+                )
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="response">
+        section({'id': 'response'},
+            Mooml.renderTemplate('section-header', 'Response'),
+
+            div({'class': 'tabbable', 'data-name': 'response'},
+                ul({'class': 'nav nav-tabs'},
+                    li({'class': 'active'}, a({'accesskey': 'q', 'data-toggle': 'tab'}, 'Re', span('q'), 'uest')),
+                    li(a({'accesskey': 'n', 'data-toggle': 'tab'}, 'Respo', span('n'), 'se')),
+                    li(a({'accesskey': 'v', 'data-toggle': 'tab'}, 'Pre', span('v'), 'iew')),
+                    li(a({'accesskey': 'c', 'data-toggle': 'tab'}, 'HTTP Ar', span('c'), 'hive'))
+                ),
+
+                div({'class': 'tab-content'},
+                    div({'class': 'tab-pane'},
+                        pre({'class': 'prettyprint linenums request'}, code()),
+
+                        div({'class': 'btn-group'},
+                            button({'class': 'har btn disabled', 'download': 'request'}, i({'class': 'icon-download-alt'}), 'Download HTTP Request'),
+                            button({'class': 'har btn disabled', 'download': 'requestBody'}, i({'class': 'icon-download-alt'}), 'Download Body')
+                        )
+                    ),
+
+                    div({'class': 'tab-pane active'},
+                        pre({
+                            'class': 'prettyprint linenums response',
+                            'events': {
+                                // clicks within the response body
+                                'click:relay(a[href])': function(event) {
+                                    event.preventDefault();
+
+                                    document.getElement('input[name="url"]').set('value', this.get('href'));
+                                    document.getElement('input[name="method"]').set('value', 'GET');
+                                    //document.getElement('form[name="request"]').fireEvent('submit', new DOMEvent);
+                                }
+                            }
+                        }, code()),
+                        button({'class': 'har btn disabled', 'download': 'response'}, i({'class': 'icon-download-alt'}), 'Download HTTP Response'),
+                        button({'class': 'har btn disabled', 'download': 'responseBody'}, i({'class': 'icon-download-alt'}), 'Download Body')
+                    ),
+
+                    div({'class': 'tab-pane'},
+                        div({'id': 'preview'}),
+                        button({'class': 'har btn disabled', 'download': 'preview'}, i({'class': 'icon-download-alt'}), 'Download')
+                    ),
+
+                    div({'class': 'tab-pane'},
+                        pre({'class': 'prettyprint linenums har'}, code({'class': 'language-js'})),
+                        button({'class': 'har btn disabled', 'download': 'har'}, i({'class': 'icon-download-alt'}), 'Download')
+                    )
+                )
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="rfc-link">
+        if (data) {
+            section = data.split('.')[0];
+
+            a({
+                'tabindex': -1,
+                'data-type': 'panel',
+                'href': 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec{0}.html#sec{1}'.substitute([section, data])
+            })
+        }
+    </script>
+
+    <!-- inputs -->
+    <script type="text/mooml" name="standard-input">
+        fieldset({'class': 'control-group'},
+            label({'class': 'control-label', 'for': data.attributes.name}, Mooml.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
+            div({'class': 'controls'},
+                Mooml.renderTemplate('input', data.attributes),
+                p({'class': 'help-text'}, data.help)
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="optional-input">
+        fieldset({'class': 'control-group'},
+            label({'class': 'control-label', 'for': data.attributes.name}, Mooml.renderTemplate('rfc-link', data.rfc ? data.rfc : false), data.label),
+            div({'class': 'controls'},
+                div({'class': 'input-prepend'},
+                    label({'class': 'add-on'},
+                        input({
+                            'tabindex': -1,
+                            'type': 'checkbox',
+                            'events': {
+                                'change': function(event) {
+                                    var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+                                    var checked = this.get('checked');
+
+                                    if (checked) {
+                                        input.set('disabled', false).fireEvent('highlight').fireEvent('focus').focus();
+
+                                        // prevent autoComplete
+                                        if (event) {
+                                            event.stopPropagation();
+                                        }
+                                    } else {
+                                        input.set('disabled', true).fireEvent('highlight');
+                                        this.getParent('.control-group').removeClass('success').removeClass('error').removeClass('warning');
+                                    }
+                                },
+
+                                'click': function(event) {
+                                    var input = this.getParent('.input-prepend').getElement('input[type="text"], input[type="password"], input[type="number"]');
+
+                                    input.fireEvent('change');
+                                    document.fireEvent('change', new FakeEvent(input));
+                                }
+                            }
+                        })
+                    ),
+
+                    Mooml.renderTemplate('input', data.attributes),
+
+                    p({'class': 'help-text'}, data.help)
+                )
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="input">
+        // speech
+        data['x-webkit-speech'] = true;
+
+        // init events object
+        if (!data.events) {
+            data.events = {};
+        }
+
+        // default change event
+        if (!data.events.change) {
+            data.events.change = function(event) {
+                this.fireEvent('highlight');
+            }
+        }
+
+        // highlight event
+        data.events.highlight = function(event) {
+            var value = this.get('value');
+            var disabled = this.get('disabled');
+            var group = this.getParent('.control-group');
+
+            // reset classes
+            group.removeClass('success').removeClass('error').removeClass('warning');
+
+            // empty check
+            if (!disabled) {
+                if (value == '') {
+                    if (this.get('required')) {
+                        group.addClass('error');
+                    } else {
+                        group.addClass('warning');
+                    }
+                } else {
+                    group.addClass('success');
+                }
+            }
+        }
+
+        input(data)
+    </script>
+
+    <!-- pairs -->
+    <script type="text/mooml" name="pairs">
+        fieldset({'class': 'control-group span6 pairs ' + data.name},
+            label({'class': 'control-label', 'for': data.name}, data.label),
+
+            div({
+                'class': 'controls',
+                'events': {
+                    'focus:relay(.pair:last-child input[type="text"])': function(event) {
+                        this.getParent('.controls').fireEvent('click', new FakeEvent(this.getNext('.add')));
+                    },
+
+                    'click:relay(.pair:last-child input[type="file"])': function(event) {
+                        event.preventDefault();
+                        this.getParent('.controls').fireEvent('click', new FakeEvent(this.getNext('.add')));
+                    },
+
+                    // clear error highlight on pairs
+                    'keyup:relay(.error input[type="text"]:first-child)': function(event) {
+                        this.getParent('.pair').removeClass('error');
+                    },
+
+                    // check for empty keys on pairs
+                    'blur:relay(.pair:not(:last-child) input[type="text"]:first-child)': function(event) {
+                        var value = this.get('value').trim();
+
+                        if (value == '') {
+                            this.getParent('.pair').addClass('error');
+                        } else {
+                            this.set('value', value);
+                        }
+                    },
+
+                    'addRow': function(header) {
+                        var pair = this.getElement('.pair:last-child');
+                        var clone = pair.clone().cloneEvents(pair);
+
+                        if (header) {
+                            clone.getElement('input[name="key"]').set('value', header.name);
+                            clone.getElement('input[name="value"]').set('value', header.value);
+                        }
+
+                        clone.inject(pair, 'before');
+                        clone.getElement('input').focus();
+                    },
+
+                    'click:relay(.add)': function(event) {
+                        var pair = this.getParent('.pair');
+                        var previous = pair.getPrevious('.pair');
+
+                        if (previous && previous.getElement('input').get('value') == '') {
+                            previous.addClass('error').getElement('input').focus();
+                        } else {
+                            this.getParent('.controls').fireEvent('addRow');
+                        }
+                    },
+
+                    'click:relay(.remove)': function(event) {
+                        var pair = this.getParent('.pair');
+                        var next = pair.getNext();
+
+                        // don't focus on the next pair if its the last
+                        // otherwise you get stuck in a loop
+                        if (next != pair.getParent().getLast()) {
+                            next.getElement('input').focus();
+                        } else if (pair.getPrevious('.controls')) {
+                            pair.getPrevious('.pair').getElement('input').focus();
+                        }
+
+                        pair.destroy();
+
+                        document.fireEvent('change', new FakeEvent(next.getElement('input')));
+                    }
+                }},
+
+                div({'class': 'input-append pair'},
+                    input({'class': 'span5', 'type': 'text', 'name': 'key', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: key', 'x-webkit-speech': true}),
+                    data.name == 'files' ? input({'class': 'span6', 'type': 'file', 'name': 'file', 'multiple': false, 'tabindex': data.tabindex, 'autocomplete': false, 'value': null}) : input({'class': 'span6', 'type': 'text', 'name': 'value', 'data-storage': data['data-storage'], 'tabindex': data.tabindex, 'autocomplete': true, 'value': null, 'placeholder': 'ex: value', 'x-webkit-speech': true}),
+
+                    span({'class': 'add-on btn-success add'}),
+                    span({'class': 'add-on btn-danger remove'})
+                )
+            )
+        )
+    </script>
+
+    <!-- history -->
+    <script type="text/mooml" name="history-item">
+        var url = data.url.parseUrl();
+
+        li({
+            'events': {
+                'mouseover': function(event) {
+                    this.getElement('.popover').position({
+                        relativeTo: this,
+                        position: 'centerRight',
+                        edge: 'centerLeft'
+                    });
+                }
+            }},
+
+            a(strong(data.method), ' ', url.path),
+
+            div({'class': 'popover right'},
+                div({'class': 'arrow'}),
+                div({'class': 'inner'},
+                    h3({'class': 'title'},
+                        div({'class': 'pull-right'},
+                            button({
+                                'class': 'btn',
+                                'events': {
+                                    'click': function(event) {
+                                        var item = this.getParent('li');
+                                        var index = this.getParent('ul').getElements('li').indexOf(item);
+
+                                        var data = new History().get(index);
+
+                                        $RESTConsole.resetValues(data);
+                                        $RESTConsole.saveValues();
+                                    }
+                                }}, i({'class': 'icon-repeat'}), 'Repeat'
+                            ),
+
+                            button({
+                                'class': 'btn-danger',
+                                'events': {
+                                    'click': function(event) {
+                                        var item = this.getParent('li');
+                                        var index = this.getParent('ul').getElements('li').indexOf(item);
+
+                                        new History().remove(index);
+
+                                        item.destroy();
+                                    }
+                                }}, i({'class': 'icon-trash icon-white'}), 'Delete'
+                            )
+                        ),
+
+                        div({'class': 'host'}, url.host)
+                    ),
+
+                    div({'class': 'content'},
+                        table({'class': 'table table-striped table-bordered'},
+                            tbody(
+                                tr(th('Method'), td({'class': 'selectable'}, data.method)),
+                                tr(th('Path'), td({'class': 'selectable'}, url.path)),
+                                tr(th('QueryString'), td({'class': 'selectable'}, data.queryString.toQueryString())),
+                                tr(th('Headers'), td({'class': 'selectable'}, Mooml.renderTemplate('historyHeaders', data.headers))),
+                                tr(th('Payload'), td({'class': 'selectable'}, data.postData.text))
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    </script>
+
+    <script type="text/mooml" name="history-headers">
+        div(header.name, ': ', header.value)
+    </script>
+
+    <!-- response -->
+    <script type="text/mooml" name="http-request">
+        span({'class': 'nocode'}, span({'class': 'kwd'}, data.method, ' ', data.url.path, (data.queryString != '') ? '?' + data.queryString : '', ' ', 'HTTP/1.1 ')),
+        span('\n'),
+        span({'class': 'nocode'}, span({'class': 'typ'}, 'HOST'), span({'class': 'pun'}, ': '), span({'class': 'pln'}, data.url.host)),
+        span('\n'),
+        span(Mooml.renderTemplate('http-headers', data.headers)),
+        span('\n')
+    </script>
+
+    <script type="text/mooml" name="http-response">
+        span({'class': 'nocode'}, span({'class': 'kwd'}, 'HTTP/1.1 ', data.status, ' ', data.statusText)),
+        span('\n'),
+        span(Mooml.renderTemplate('http-headers', data.headers)),
+        span('\n')
+    </script>
+
+    <script type="text/mooml" name="http-headers">
+        span({'class': 'nocode'},
+            span({'class': 'typ'}, header.name),
+            span({'class': 'pun'}, ': '),
+            span({'class': 'pln', 'text': header.value})
+        ),
+        span('\n')
+    </script>
+
+    <!-- misc -->
+    <script type="text/mooml" name="social">
+        li({'class': 'divider-vertical'}),
+        li({'class': 'twitter'}, a({'tabindex': -1, 'href': 'https://twitter.com/share', 'class': 'twitter-share-button', 'data-url': 'https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn', 'data-text': 'Checkout @RESTConsole App for Google #Chrome for #REST #API development', 'data-via': 'CodeInChaos', 'data-related': 'CodeInChaos,AhmadNassri', 'data-hashtags': 'HTTP,RESTful'}, 'Tweet')),
+        li({'class': 'facebook'}, iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'src': 'http://www.facebook.com/plugins/like.php?href=https%3A%2F%2Fchrome.google.com%2Fwebstore%2Fdetail%2Fcokgbflfommojglbmbpenpphppikmonn&send=false&layout=button_count&width=450&show_faces=false&action=like&amp&height=21&appId=199139246805784'})),
+        li({'class': 'googleplus'}, iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'src': 'https://plusone.google.com/_/+1/fastbutton?url=https%3A%2F%2Fchrome.google.com%2Fwebstore%2Fdetail%2Fcokgbflfommojglbmbpenpphppikmonn&size=medium&count=true&annotation=&hl=en-US&jsh=m%3B%2F_%2Fapps-static%2F_%2Fjs%2Fwidget%2F__features__%2Frt%3Dj%2Fver%3DXsa0GTewdqg.en.%2Fsv%3D1%2Fam%3D!KW4lzGmbF_KIhSW8Og%2Fd%3D1%2F#id=I1_1327261815981&parent=chrome-extension%3A%2F%2Fbjdlekdiiieofkpjfhpcmlhalmbnpjnh&rpctoken=858197945&_methods=onPlusOne%2C_ready%2C_close%2C_open%2C_resizeMe'})),
+        li({'class': 'linkedin'}, script({'type': 'IN/Share', 'data-url': 'https://chrome.google.com/webstore/detail/cokgbflfommojglbmbpenpphppikmonn', 'data-counter': 'right'})),
+        li({'class': 'github'}, iframe({'allowtransparency': true, 'frameborder': 0, 'scrolling': 'no', 'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=restconsole&type=watch&count=true'}))
+        /*
+        li(a({'tabindex': -1, 'href': 'https://twitter.com/CodeInChaos', 'class': 'twitter-follow-button', 'data-width': '155px', 'data-link-color': '#0069D6', 'data-show-count': false}, 'Follow @CodeInChaos')),
+
+        li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&repo=restconsole&type=fork&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '60px', 'height': '20px'})),
+        li(iframe({'src': 'http://markdotto.github.com/github-buttons/github-btn.html?user=codeinchaos&type=follow&count=true', 'allowtransparency': true, 'frameborder': 0, 'scrolling': 0, 'width': '150px', 'height': '20px'}))
+        */
+    </script>
+
+    <script type="text/mooml" name="scripts">
+        script({'type': 'text/javascript', 'src': 'http://platform.twitter.com/widgets.js', 'async': true}),
+        script({'type': 'text/javascript', 'src': 'http://platform.linkedin.com/in.js', 'async': true}),
+        script({'type': 'text/javascript', 'src': 'https://ssl.google-analytics.com/ga.js', 'async': true})
+    </script>
+
+    <script type="text/mooml" name="image-preview">
+        div({'class': 'thumbnail'},
+            img({'src': data})
+        )
+    </script>
+
+    <script type="text/mooml" name="datalist">
+        datalist({'id': data.id}, Mooml.renderTemplate('option', data.values))
+    </script>
+
+    <script type="text/mooml" name="option">
+        data = Array.from(data);
+        option({'value': data[0]}, [data[1], data[0]].pick())
+    </script>
 
     <body></body>
 </html>

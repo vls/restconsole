@@ -1,8 +1,8 @@
 var Alert = new Class({
-    'Implements': [Events, Templates],
+    'Implements': [Events, Mooml.Templates],
 
     'templates': {
-        'main': new Template(function(data) {
+        'main': new Mooml.Template(function(data) {
             div({
                 'class': 'alert alert-' + data.type,
                 'events': {
@@ -11,7 +11,7 @@ var Alert = new Class({
                     }
                 }},
 
-                a({'class': 'close'}, '×'),
+                a({'class': 'close'}, '&times;'),
                 strong(data.title + ' '),
                 data.message
             )

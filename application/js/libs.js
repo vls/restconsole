@@ -20,41 +20,16 @@
 
     'groupStart': function() {
         if (this.enabled) {
-            console.groupCollapsed.apply(console, arguments);
+            //console.groupCollapsed.apply(console, arguments);
         }
     },
 
     'groupEnd': function() {
         if (this.enabled) {
-            console.groupEnd.apply(console, arguments);
+            //console.groupEnd.apply(console, arguments);
         }
     }
 })
-
-/**
- * Template class shortcut for Mooml templates
- */
-Template = new Class({
-    'Extends': Mooml.Template,
-
-    'initialize': function(HTMLCode) {
-        this.name = null;
-        this.HTMLCode = HTMLCode;
-        this.prepared = false;
-    }
-});
-
-/**
- * Mixin for implemenation in Mootools classes
- */
-Templates = new Class({
-    'Implements': [Mooml.Templates],
-
-    'renderSection': function(name, data, bind) {
-        var template = this.sections[name];
-        return (template)? template.render(data, [bind, this].pick()) : null;
-    }
-});
 
 String.implement({
     'htmlEntities': function() {
