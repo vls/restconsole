@@ -205,7 +205,6 @@ var Request = this.Request = new Class({
             var data = new FormData();
 
             // restructure the upload object with the request params
-                console.log(payload);
             if (['object', 'hash'].contains(typeOf(payload))) {
                 Object.each(payload, function(value, key) {
                    data.append(key, value);
