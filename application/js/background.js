@@ -45,7 +45,7 @@ chrome.contextMenus.removeAll(function() {
         'targetUrlPatterns': ['http://*/*', 'https://*/*']
     });
 });
-
+/*
 var oAuth = {
     'instance': null,
 
@@ -89,3 +89,4 @@ var oAuth = {
         }
     }
 }
+*/

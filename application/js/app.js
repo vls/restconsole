@@ -630,7 +630,7 @@ var App = new Class({
                 div({'class': 'navbar-inner'},
                     div({'class': 'fluid-container'},
                         div({'class': 'brand'},
-                            img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0')
+                            img({'src': '/images/logo/32.png', 'align': 'left'}), span('REST Console'), small('version 4.1.0 BETA')
                         ),
 
                         div({'class': 'fluid-content'},
@@ -654,10 +654,12 @@ var App = new Class({
                                     }
                                 }},
 
-                                li({'class': 'active'}, a({'accesskey': 'm', 'data-target': 'main'}, i({'class': 'icon white home'}), span('M'), 'ain')),
+                                li({'class': 'active'}, a({'accesskey': 'm', 'data-target': 'main'}, i({'class': 'icon white home'}), span('M'), 'ain'))
+                                /*,
                                 li(a({'accesskey': 's', 'data-target': 'settings'}, i({'class': 'icon settings'}), span('S'), 'ettings')),
                                 li(a({'data-target': 'help'}, i({'class': 'icon question'}), 'Help')),
                                 li(a({'data-target': 'about'}, i({'class': 'icon info'}), 'About'))
+                                */
                             ),
 
                             ul({'class': 'social pull-right'})
