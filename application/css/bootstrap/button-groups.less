@@ -16,6 +16,8 @@
 
 // Optional: Group multiple button groups together for a toolbar
 .btn-toolbar {
+  margin-top: @baseLineHeight / 2;
+  margin-bottom: @baseLineHeight / 2;
   .btn-group {
     display: inline-block;
     .ie7-inline-block();
@@ -71,9 +73,17 @@
 // On hover/focus/active, bring the proper btn to front
 .btn-group .btn:hover,
 .btn-group .btn:focus,
-.btn-group .btn:active {
+.btn-group .btn:active,
+.btn-group .btn.active {
   z-index: 2;
 }
+
+// On active and open, don't show outline
+.btn-group .dropdown-toggle:active,
+.btn-group.open .dropdown-toggle {
+  outline: 0;
+}
+
 
 
 // Split button dropdowns
@@ -110,23 +120,30 @@
 
 // Reposition the caret
 .btn .caret {
-  margin-top: 6px;
+  margin-top: 7px;
   margin-left: 0;
 }
+.btn:hover .caret,
+.open.btn-group .caret {
+  .opacity(100);
+}
+
 
 // Account for other colors
-.primary,
-.danger,
-.info,
-.success {
+.btn-primary,
+.btn-danger,
+.btn-info,
+.btn-success,
+.btn-inverse {
   .caret {
     border-top-color: @white;
+    border-bottom-color: @white;
     .opacity(75);
   }
 }
 
 // Small button dropdowns
-.btn.small .caret {
+.btn-small .caret {
   margin-top: 4px;
 }
 
