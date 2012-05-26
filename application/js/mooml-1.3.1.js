@@ -39,7 +39,7 @@ var Mooml = {
     htmlTags: [
         "a", "abbr", "address", "area", "article", "aside", "audio",
         "b", "base", "bdo", "blockquote", "body", "br", "button",
-        "canvas", "caption", "cite", "col", "colgroup", "command",
+        "canvas", "caption", "cite", "code", "col", "colgroup", "command",
         "datalist", "dd", "del", "details", "dialog", "dfn", "div", "dl", "dt",
         "em", "embed",
         "fieldset", "figure",
@@ -59,9 +59,7 @@ var Mooml = {
         "ul",
         "var", "video",
         // Deprecated in HTML 5
-        "acronym", "applet", "basefont", "big", "center", "dir", "font", "frame", "frameset", "noframes", "s", "strike", "tt", "u", "xmp",
-        // Not supported tags
-        "code"
+        "acronym", "applet", "basefont", "big", "center", "dir", "font", "frame", "frameset", "noframes", "s", "strike", "tt", "u", "xmp"
     ],
 
     /**
@@ -81,13 +79,15 @@ var Mooml = {
 
         Array.from([data, {}].pick()).each(function(params, index) {
             if (bind) {
-            template.HTMLCode.apply(bind, [params, index]);
+                template.HTMLCode.apply(bind, [params, index]);
             } else {
                 template.HTMLCode(params, index);
             }
+
             elements.append(template.nodes.filter(function(node) {
                 return node.getParent() === null;
             }));
+
             template.nodes.empty();
         });
 
