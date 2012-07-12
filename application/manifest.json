@@ -2,7 +2,7 @@
     "version": "4.0.2",
 
     "name": "REST Console For China",
-    "description": "REST Console is an HTTP Request Visualizer and Constructor tool, helps developers build, debug and test RESTful APIs. It's specialize for China user",
+    "description": "REST Console is an HTTP Request Visualizer and Constructor tool, helps developers build, debug and test RESTful APIs.",
 
 
     "options_page": "index.html#options",
